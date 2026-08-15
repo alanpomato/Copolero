@@ -1,0 +1,268 @@
+/*
+ * Identidad visual de Copolero: fondo oscuro, tipografía fuerte, tarjetas
+ * grandes, números bien visibles y botones que se puedan apretar con el pulgar.
+ * Mobile-first: todo se diseña para el celular y después crece.
+ */
+
+:root {
+	--fondo: #0d1117;
+	--tarjeta: #161b22;
+	--tarjeta-alta: #1c2430;
+	--borde: #272e38;
+	--texto: #e6edf3;
+	--tenue: #9aa7b4;
+
+	--acento: #4ade80;
+	--acento-oscuro: #1f6f43;
+	--espera: #fbbf24;
+	--malo: #f87171;
+
+	--radio: 14px;
+	--ancho: 34rem;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--fondo);
+	color: var(--texto);
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		Roboto,
+		sans-serif;
+	line-height: 1.55;
+}
+
+.pantalla {
+	max-width: var(--ancho);
+	margin: 0 auto;
+	padding: 1.5rem 1rem 4rem;
+}
+
+h1 {
+	font-size: clamp(1.9rem, 8vw, 2.6rem);
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	line-height: 1.05;
+	margin: 0 0 0.35rem;
+}
+
+h2 {
+	font-size: 1.15rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	margin: 2rem 0 0.75rem;
+}
+
+.bajada {
+	color: var(--tenue);
+	margin: 0 0 2rem;
+}
+
+/* --- Tarjetas ------------------------------------------------------------ */
+
+.tarjeta {
+	background: var(--tarjeta);
+	border: 1px solid var(--borde);
+	border-radius: var(--radio);
+	padding: 1.1rem 1.2rem;
+	margin-bottom: 1rem;
+}
+
+.tarjeta h3 {
+	margin: 0 0 0.75rem;
+	font-size: 0.78rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	color: var(--tenue);
+}
+
+/* --- Números grandes ----------------------------------------------------- */
+
+.cifras {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+	gap: 0.85rem;
+}
+
+.cifra {
+	background: var(--tarjeta-alta);
+	border-radius: 10px;
+	padding: 0.7rem 0.8rem;
+}
+
+.cifra .valor {
+	display: block;
+	font-size: 1.5rem;
+	font-weight: 800;
+	line-height: 1.15;
+	font-variant-numeric: tabular-nums;
+}
+
+.cifra .etiqueta {
+	display: block;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--tenue);
+	margin-top: 0.15rem;
+}
+
+/* --- Formularios --------------------------------------------------------- */
+
+label {
+	display: block;
+	margin-bottom: 1rem;
+}
+
+label .titulo {
+	display: block;
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--tenue);
+	margin-bottom: 0.35rem;
+}
+
+input,
+select,
+textarea {
+	width: 100%;
+	background: var(--fondo);
+	color: var(--texto);
+	border: 1px solid var(--borde);
+	border-radius: 10px;
+	padding: 0.75rem 0.85rem;
+	font: inherit;
+	font-size: 1rem; /* 16px: evita que iOS haga zoom al enfocar */
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 2px solid var(--acento-oscuro);
+	outline-offset: 1px;
+}
+
+textarea {
+	resize: vertical;
+	min-height: 5rem;
+}
+
+button {
+	width: 100%;
+	background: var(--acento);
+	color: #06240f;
+	border: 0;
+	border-radius: 10px;
+	padding: 0.95rem 1rem;
+	font: inherit;
+	font-size: 1.02rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+button:hover {
+	filter: brightness(1.07);
+}
+
+button:disabled {
+	background: var(--borde);
+	color: var(--tenue);
+	cursor: not-allowed;
+}
+
+button.secundario {
+	background: transparent;
+	color: var(--acento);
+	border: 1px solid var(--acento-oscuro);
+}
+
+/* --- Varios -------------------------------------------------------------- */
+
+.chip {
+	display: inline-block;
+	font-size: 0.72rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	padding: 0.22rem 0.6rem;
+	border-radius: 999px;
+	border: 1px solid var(--borde);
+	color: var(--tenue);
+}
+
+.chip.espera {
+	color: var(--espera);
+	border-color: rgba(251, 191, 36, 0.35);
+	background: rgba(251, 191, 36, 0.12);
+}
+
+.chip.listo {
+	color: var(--acento);
+	border-color: rgba(74, 222, 128, 0.35);
+	background: rgba(74, 222, 128, 0.12);
+}
+
+.error {
+	background: rgba(248, 113, 113, 0.12);
+	border: 1px solid rgba(248, 113, 113, 0.35);
+	color: var(--malo);
+	border-radius: 10px;
+	padding: 0.75rem 0.9rem;
+	margin-bottom: 1rem;
+}
+
+.diario {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.diario li {
+	padding: 0.7rem 0;
+	border-bottom: 1px solid var(--borde);
+	font-size: 0.94rem;
+}
+
+.diario li:last-child {
+	border-bottom: 0;
+}
+
+.diario .momento {
+	display: block;
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--tenue);
+	margin-bottom: 0.1rem;
+}
+
+.codigo {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 2rem;
+	font-weight: 800;
+	letter-spacing: 0.22em;
+	text-align: center;
+	display: block;
+	padding: 0.75rem 0;
+	color: var(--acento);
+}
+
+a {
+	color: var(--acento);
+}
+
+.sutil {
+	color: var(--tenue);
+	font-size: 0.88rem;
+}
