@@ -29,6 +29,11 @@ if [[ ! -d "$DIR_CODIGO/.git" ]]; then
 	exit 1
 fi
 
+# El repositorio es del usuario del servicio pero git corre como root: hay que
+# declararlo confiable o git se niega ("dubious ownership").
+git config --global --get-all safe.directory 2> /dev/null | grep -qx "$DIR_CODIGO" ||
+	git config --global --add safe.directory "$DIR_CODIGO"
+
 # Si no dijeron rama, seguimos en la que ya estaba.
 if [[ -z "$RAMA" ]]; then
 	RAMA="$(git -C "$DIR_CODIGO" rev-parse --abbrev-ref HEAD)"

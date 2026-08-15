@@ -102,6 +102,11 @@ fi
 install -d -o "$USUARIO" -g "$USUARIO" -m 750 "$DIR_DATOS"
 
 paso "Bajando el código (rama $RAMA)"
+# El repositorio es del usuario del servicio pero git corre como root, así que
+# hay que declararlo confiable o git se niega ("dubious ownership").
+git config --global --get-all safe.directory 2> /dev/null | grep -qx "$DIR_CODIGO" ||
+	git config --global --add safe.directory "$DIR_CODIGO"
+
 if [[ -d "$DIR_CODIGO/.git" ]]; then
 	git -C "$DIR_CODIGO" remote set-url origin "$REPOSITORIO"
 	git -C "$DIR_CODIGO" fetch --quiet origin "$RAMA"
