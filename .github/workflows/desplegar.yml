@@ -1,0 +1,60 @@
+name: Desplegar al servidor
+
+# Deploy automático: en cada push a la rama que sirve el servidor, entra por SSH
+# y corre deploy/actualizar.sh.
+#
+# Necesita tres secretos en Settings → Secrets and variables → Actions:
+#   SERVIDOR_HOST     la IP o el dominio del servidor
+#   SERVIDOR_USUARIO  normalmente root
+#   SERVIDOR_SSH_KEY  la clave privada (el archivo entero, con sus dos líneas
+#                     de BEGIN y END)
+#
+# Sin esos secretos el workflow no hace nada y no falla, así que se puede
+# mergear tranquilo antes de tener el servidor.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      rama:
+        description: 'Rama a desplegar'
+        required: false
+        default: main
+
+concurrency:
+  group: desplegar
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ¿Están los secretos?
+        id: revisar
+        env:
+          HOST: ${{ secrets.SERVIDOR_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "Sin SERVIDOR_HOST configurado: no hay servidor todavía, salteo el deploy."
+            echo "hay_servidor=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_servidor=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Desplegar por SSH
+        if: steps.revisar.outputs.hay_servidor == 'si'
+        env:
+          HOST: ${{ secrets.SERVIDOR_HOST }}
+          USUARIO: ${{ secrets.SERVIDOR_USUARIO }}
+          CLAVE: ${{ secrets.SERVIDOR_SSH_KEY }}
+          RAMA: ${{ inputs.rama || github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CLAVE" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_deploy "${USUARIO:-root}@$HOST" \
+            "bash /opt/copolero/deploy/actualizar.sh '$RAMA'"

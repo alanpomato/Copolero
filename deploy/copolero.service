@@ -1,0 +1,40 @@
+# Servicio de systemd para Copolero.
+# Lo instala deploy/instalar.sh en /etc/systemd/system/copolero.service
+
+[Unit]
+Description=Copolero
+Documentation=https://github.com/alanpomato/Copolero
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=copolero
+Group=copolero
+WorkingDirectory=/opt/copolero
+EnvironmentFile=/etc/copolero.env
+ExecStart=/usr/bin/node build/index.js
+
+# Si se cae, que vuelva sola.
+Restart=always
+RestartSec=3
+
+# Endurecimiento: el proceso solo puede escribir donde vive la base.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/copolero
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=copolero
+
+[Install]
+WantedBy=multi-user.target
