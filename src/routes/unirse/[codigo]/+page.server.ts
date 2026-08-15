@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
+import { obtenerDb } from '$lib/server/db';
 import { jugadores, partidas } from '$lib/server/db/schema';
 import { ErrorDePartida, unirseAPartida } from '$lib/server/partidas';
 import { ROLES, type Estado } from '$lib/engine/tipos';
@@ -8,13 +8,17 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {
 	const codigo = params.codigo.toUpperCase();
-	const partida = db.select().from(partidas).where(eq(partidas.codigo, codigo)).get();
+	const partida = obtenerDb().select().from(partidas).where(eq(partidas.codigo, codigo)).get();
 
 	if (!partida) {
 		error(404, 'No existe ninguna partida con ese código.');
 	}
 
-	const presentes = db.select().from(jugadores).where(eq(jugadores.partidaId, partida.id)).all();
+	const presentes = obtenerDb()
+		.select()
+		.from(jugadores)
+		.where(eq(jugadores.partidaId, partida.id))
+		.all();
 	const rolLibre = ROLES.find((r) => !presentes.some((j) => j.rol === r)) ?? null;
 	const estado = JSON.parse(partida.estadoJson) as Estado;
 
@@ -42,7 +46,7 @@ export const actions: Actions = {
 
 		let token: string;
 		try {
-			token = unirseAPartida(db, params.codigo, nombre);
+			token = unirseAPartida(obtenerDb(), params.codigo, nombre);
 		} catch (e) {
 			const mensaje = e instanceof ErrorDePartida ? e.message : 'No se pudo entrar a la partida.';
 			return fail(400, { problema: mensaje });

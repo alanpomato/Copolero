@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { obtenerDb } from '$lib/server/db';
 import { crearPartida, ErrorDePartida } from '$lib/server/partidas';
 import { EDAD_INICIAL_POR_DEFECTO } from '$lib/engine/estado';
 import { POSICIONES, ROLES, type Posicion, type Rol } from '$lib/engine/tipos';
@@ -43,7 +43,7 @@ export const actions: Actions = {
 		let creada;
 		try {
 			creada = crearPartida(
-				db,
+				obtenerDb(),
 				{
 					futbolista: { nombre: nombreFutbolista, nacionalidad, posicion, edadInicial, club },
 					representante: { nombre: rol === 'representante' ? tuNombre : 'Sin representante' }
