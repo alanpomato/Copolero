@@ -16,6 +16,9 @@ on:
   push:
     branches:
       - main
+      # La rama en la que se está trabajando: mientras el juego se arma, es la
+      # que sirve el servidor. Cuando esto se estabilice queda solo main.
+      - 'claude/**'
   workflow_dispatch:
     inputs:
       rama:

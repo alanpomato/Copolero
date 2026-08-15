@@ -123,9 +123,9 @@ cambio roto.
 
 ### Que se actualice solo
 
-Hay un workflow (`.github/workflows/desplegar.yml`) que hace eso en cada push.
-Para activarlo, cargá tres secretos en el repositorio, en
-**Settings → Secrets and variables → Actions**:
+Hay un workflow (`.github/workflows/desplegar.yml`) que hace eso en cada push a
+`main` o a la rama de trabajo (`claude/**`). Para activarlo, cargá tres secretos
+en el repositorio, en **Settings → Secrets and variables → Actions**:
 
 | Secreto            | Valor                                    |
 | ------------------ | ---------------------------------------- |
@@ -137,11 +137,38 @@ Para generar la clave, si no tenés una:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/copolero_deploy -N ""
+```
+
+Después hay que dejar la pública en el servidor. En Linux o Mac:
+
+```bash
 ssh-copy-id -i ~/.ssh/copolero_deploy.pub root@la.ip.del.servidor
-cat ~/.ssh/copolero_deploy      # esto es lo que va en el secreto
+```
+
+En Windows no existe `ssh-copy-id`, así que va a mano desde el CMD:
+
+```cmd
+type %USERPROFILE%\.ssh\copolero_deploy.pub | ssh root@la.ip.del.servidor "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+Y lo que va en el secreto `SERVIDOR_SSH_KEY` es la **privada** entera, con sus
+dos líneas de `BEGIN` y `END`:
+
+```bash
+cat ~/.ssh/copolero_deploy          # Linux o Mac
+type %USERPROFILE%\.ssh\copolero_deploy   # Windows
 ```
 
 Sin esos secretos el workflow no hace nada y no falla.
+
+### Actualizar sin abrir una terminal
+
+Con los secretos ya cargados no hace falta entrar más al servidor: cada push
+despliega solo. Y si querés forzar un despliegue sin pushear nada, se hace desde
+la web: **Actions → Desplegar al servidor → Run workflow**, eligiendo la rama.
+
+El primer despliegue, en cambio, sí es a mano: hasta que la clave esté puesta en
+el servidor, GitHub no puede entrar.
 
 ## 6. El día a día
 
