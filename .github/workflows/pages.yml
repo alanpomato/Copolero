@@ -40,7 +40,11 @@ jobs:
 
       - run: node scripts/construir-sitio.mjs
 
+      # enablement: activa GitHub Pages en el repo la primera vez, así no hace
+      # falta ir a Settings a mano.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
