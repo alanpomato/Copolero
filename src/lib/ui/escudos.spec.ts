@@ -38,6 +38,9 @@ describe('los escudos', () => {
 		expect(iniciales('Palmeiras')).toBe('PAL');
 		expect(iniciales('Gimnasia y Esgrima La Plata')).toBe('GEP');
 		expect(iniciales('Real Madrid')).toBe('RM');
+		// "Deportivo" no distingue: hay diez Deportivos y todos darían lo mismo.
+		expect(iniciales('Deportivo Morón')).toBe('MOR');
+		expect(iniciales('Deportivo Maipú')).toBe('MAI');
 	});
 });
 

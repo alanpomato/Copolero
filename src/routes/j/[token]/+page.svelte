@@ -5,6 +5,7 @@
 	import { media } from '$lib/engine/estado';
 	import { NOMBRE_FASE } from '$lib/engine/tipos';
 	import Bandera from '$lib/ui/Bandera.svelte';
+	import Decisiones from '$lib/ui/Decisiones.svelte';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import Escudo from '$lib/ui/Escudo.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -208,6 +209,40 @@
 		</div>
 	{/if}
 
+	{#if estado.ultimaTemporada}
+		{@const t = estado.ultimaTemporada}
+		<div class="tarjeta">
+			<h3>La temporada {t.temporada}</h3>
+			<div class="cifras">
+				<div class="cifra">
+					<span class="valor">{t.nota.toFixed(1)}</span>
+					<span class="etiqueta">Nota</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{t.partidos}</span>
+					<span class="etiqueta">Partidos</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{t.goles}</span>
+					<span class="etiqueta">Goles</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{t.asistencias}</span>
+					<span class="etiqueta">Asistencias</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{t.puesto}º</span>
+					<span class="etiqueta">de {t.equipos}</span>
+				</div>
+			</div>
+			{#if t.campeon}
+				<p style="margin:.8rem 0 0"><span class="chip listo">Campeón</span></p>
+			{:else if t.lesionado}
+				<p style="margin:.8rem 0 0"><span class="chip espera">Se lesionó</span></p>
+			{/if}
+		</div>
+	{/if}
+
 	<div class="tarjeta">
 		<h3>La relación</h3>
 		<div class="cifras">
@@ -236,20 +271,22 @@
 				<p class="sutil" style="margin:.5rem 0 0">Esta pantalla se actualiza sola.</p>
 			</div>
 		{:else}
-			<div class="tarjeta">
-				<p class="sutil" style="margin:0 0 1rem">
-					Todavía no hay decisiones de juego: llegan con los eventos en el hito M1. Por ahora podés
-					dejar una nota, que queda privada hasta que los dos cierren la fase.
-				</p>
-				<form method="POST" action="?/cerrarFase" use:enhance>
-					<label>
-						<span class="titulo">Nota para esta fase (opcional)</span>
-						<textarea name="nota" maxlength="280" placeholder="Lo que quieras dejar anotado…"
+			<form method="POST" action="?/cerrarFase" use:enhance>
+				<Decisiones opciones={vista.opciones} {estado} rol={vista.rol} />
+
+				<div class="tarjeta">
+					<label style="margin:0">
+						<span class="titulo">Nota para el otro (opcional)</span>
+						<textarea name="nota" maxlength="280" placeholder="Lo que quieras dejarle dicho…"
 						></textarea>
 					</label>
-					<button type="submit">Cerrar mi parte de la fase</button>
-				</form>
-			</div>
+					<p class="sutil" style="margin:0">
+						Queda privada hasta que los dos cierren la fase. Después la ven los dos.
+					</p>
+				</div>
+
+				<button type="submit">Cerrar mi parte de la fase</button>
+			</form>
 		{/if}
 	{/if}
 

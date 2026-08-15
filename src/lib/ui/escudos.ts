@@ -180,10 +180,16 @@ function luminancia(hex: string): number {
  */
 export function iniciales(nombre: string): string {
 	const menores = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'el', 'do', 'da', 'of', 'and']);
-	const palabras = nombre
+	// "Deportivo" no distingue a nadie: hay diez. Se tira y queda el nombre.
+	const genericos = new Set(['deportivo', 'club', 'atletico', 'ca', 'cd', 'sc', 'fc', 'ac']);
+
+	let palabras = nombre
 		.split(/[\s.]+/)
 		.map((p) => p.replace(/[^\p{L}]/gu, ''))
 		.filter((p) => p.length > 0 && !menores.has(p.toLowerCase()));
+
+	const sinGenericos = palabras.filter((p) => !genericos.has(p.toLowerCase()));
+	if (sinGenericos.length > 0) palabras = sinGenericos;
 
 	if (palabras.length === 0) return '??';
 	if (palabras.length === 1) return palabras[0].slice(0, 3).toUpperCase();

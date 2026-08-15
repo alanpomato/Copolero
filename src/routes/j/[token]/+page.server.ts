@@ -1,7 +1,16 @@
 import { error, fail } from '@sveltejs/kit';
 import { obtenerDb } from '$lib/server/db';
 import { enviarDecision, ErrorDePartida, tocarJugador, vistaPara } from '$lib/server/partidas';
+import type { Decision } from '$lib/engine/tipos';
 import type { Actions, PageServerLoad } from './$types';
+
+/** Un campo del formulario, recortado, o `undefined` si no vino. */
+function campo(datos: FormData, nombre: string): string | undefined {
+	const valor = datos.get(nombre);
+	if (typeof valor !== 'string') return undefined;
+	const limpio = valor.trim().slice(0, 60);
+	return limpio.length > 0 ? limpio : undefined;
+}
 
 export const load: PageServerLoad = ({ params, cookies }) => {
 	const vista = vistaPara(obtenerDb(), params.token);
@@ -31,8 +40,30 @@ export const actions: Actions = {
 		const vista = vistaPara(obtenerDb(), params.token);
 		if (!vista) error(404, 'Ese link no corresponde a ninguna partida.');
 
+		// Lo que manda cada rol se recorta a lo que ese rol puede decidir: el
+		// futbolista no puede mandar una gestión ni el representante un plan de
+		// entrenamiento, por más que edite el formulario.
+		const decision: Decision = { rol: vista.rol, nota };
+		if (vista.rol === 'futbolista') {
+			decision.entrenamiento = campo(datos, 'entrenamiento');
+			decision.intensidad = campo(datos, 'intensidad');
+			// Una elección por ocasión, en el mismo orden en que se mostraron.
+			const cuantas = vista.opciones.ocasiones?.length ?? 0;
+			if (cuantas > 0) {
+				decision.ocasiones = Array.from(
+					{ length: cuantas },
+					(_, i) => campo(datos, `ocasion-${i}`) ?? ''
+				);
+			}
+		} else {
+			decision.gestion = campo(datos, 'gestion');
+		}
+		if (vista.estado.fase === 3) {
+			decision.destino = campo(datos, 'destino');
+		}
+
 		try {
-			const resultado = enviarDecision(obtenerDb(), params.token, { rol: vista.rol, nota });
+			const resultado = enviarDecision(obtenerDb(), params.token, decision);
 			return { faseCerrada: resultado.faseCerrada };
 		} catch (e) {
 			const mensaje = e instanceof ErrorDePartida ? e.message : 'No se pudo cerrar la fase.';

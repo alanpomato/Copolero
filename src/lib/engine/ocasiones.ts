@@ -128,6 +128,9 @@ type Plantilla = (a: Atributos, e: Escenario) => Ocasion;
 
 const arqueroDelRival = (e: Escenario) => e.arqueroRival ?? `el arquero de ${club(e.rival).nombre}`;
 
+/** Para las frases que arrancan con un nombre que puede venir en minúscula. */
+const Mayus = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
+
 const PARA_DELANTERO: Plantilla[] = [
 	(a, e) => ({
 		id: 'mano-a-mano',
@@ -140,7 +143,7 @@ const PARA_DELANTERO: Plantilla[] = [
 				detalle: 'Lo que haría un nueve. Si entra, es golazo.',
 				probabilidad: chance(46, a.definicion),
 				siSale: `Se la cruzaste a ${arqueroDelRival(e)} y la clavaste contra el palo.`,
-				siFalla: `${arqueroDelRival(e)} te adivinó el palo y la sacó al córner.`,
+				siFalla: `${Mayus(arqueroDelRival(e))} te adivinó el palo y la sacó al córner.`,
 				premio: { goles: 1, fama: 3, moral: 6, hinchada: 4, prensa: 3 },
 				castigo: { moral: -4, hinchada: -1 }
 			},
@@ -177,7 +180,7 @@ const PARA_DELANTERO: Plantilla[] = [
 				detalle: 'Si entra sos el que la puso. Si la errás, también.',
 				probabilidad: chance(72, a.definicion, 0.4),
 				siSale: `Se la pusiste abajo del ángulo a ${arqueroDelRival(e)}. Explotó la cancha.`,
-				siFalla: `${arqueroDelRival(e)} te la sacó abajo. Silencio.`,
+				siFalla: `${Mayus(arqueroDelRival(e))} te la sacó abajo. Silencio.`,
 				premio: { goles: 1, fama: 5, moral: 8, hinchada: 8 },
 				castigo: { moral: -10, hinchada: -6, prensa: -4 }
 			},

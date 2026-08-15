@@ -5,6 +5,7 @@ import type { Db } from './db/cliente';
 import { decisiones, jugadores, log, partidas, snapshots } from './db/schema';
 import { estadoInicial, type ConfigPartida } from '$lib/engine/estado';
 import { estadoSincronizacion, resolverFase } from '$lib/engine/fases';
+import { opcionesDeFase, type OpcionesDeFase } from '$lib/engine/pantalla';
 import { nuevaSemilla, rngPara } from '$lib/engine/rng';
 import {
 	ROLES,
@@ -178,6 +179,8 @@ export type Vista = {
 	yaCerre: boolean;
 	/** Solo las entradas que este rol tiene permitido ver. */
 	diario: { tipo: string; texto: string; temporada: number; fase: number }[];
+	/** Lo que este rol tiene para decidir en esta fase. */
+	opciones: OpcionesDeFase;
 };
 
 /**
@@ -231,7 +234,8 @@ export function vistaPara(db: Db, token: string): Vista | null {
 		estado,
 		sincronizacion: otroJugador ? estadoSincronizacion(estado, cerraron) : 'WAITING_FOR_BOTH',
 		yaCerre: cerraron.includes(jugador.rol),
-		diario
+		diario,
+		opciones: opcionesDeFase(estado, jugador.rol, partida.semilla)
 	};
 }
 
