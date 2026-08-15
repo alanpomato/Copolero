@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clubes } from '../../../content/mundo';
-import { escudoDe, iniciales } from './escudos';
+import { escudoDe, iniciales, tieneColoresPropios } from './escudos';
 import { BANDERAS, paisDeNacionalidad } from './banderas';
 import { paises } from '../../../content/mundo';
 
@@ -12,6 +12,14 @@ describe('los escudos', () => {
 			expect(e.secundario, c.nombre).toMatch(/^#[0-9a-f]{6}$/);
 			expect(e.iniciales.length, c.nombre).toBeGreaterThanOrEqual(2);
 			expect(e.iniciales.length, c.nombre).toBeLessThanOrEqual(3);
+		}
+	});
+
+	it('los 268 clubes tienen sus colores puestos a mano', () => {
+		// El fallback por hash sigue existiendo por si mañana se agrega una liga,
+		// pero hoy no lo usa nadie: todos los clubes del mundo tienen su color.
+		for (const c of clubes) {
+			expect(tieneColoresPropios(c.id), c.nombre).toBe(true);
 		}
 	});
 

@@ -14,13 +14,36 @@
 	import type { Atributos } from '$lib/engine/tipos';
 	import Bandera from '$lib/ui/Bandera.svelte';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
-	import { CLUB_POR_DEFECTO, clubesPorLiga, nacionalidades } from '$lib/ui/opciones';
+	import { CLUB_POR_DEFECTO, mundoPorPais, nacionalidades } from '$lib/ui/opciones';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
 
-	const grupos = clubesPorLiga();
+	const mundo = mundoPorPais();
 	const paises = nacionalidades();
+
+	// Tres pasos en vez de un desplegable con 268 clubes: país, división y club.
+	// Es como se piensa, y en el celular es la diferencia entre elegir y buscar.
+	let paisElegido = $state('ar');
+	const ligasDelPais = $derived(mundo.find((p) => p.id === paisElegido)?.ligas ?? []);
+
+	let ligaElegida = $state('ar-2');
+	const laLiga = $derived(
+		ligasDelPais.find((l) => l.id === ligaElegida) ?? ligasDelPais[ligasDelPais.length - 1]
+	);
+
+	// Cambiar de país cambia la división, y cambiar de división cambia el club:
+	// si no, quedaría elegido algo que ya no está en la lista.
+	$effect(() => {
+		if (!ligasDelPais.some((l) => l.id === ligaElegida)) {
+			ligaElegida = ligasDelPais[ligasDelPais.length - 1]?.id ?? '';
+		}
+	});
+	$effect(() => {
+		if (laLiga && !laLiga.clubes.some((c) => c.id === clubElegido)) {
+			clubElegido = laLiga.clubes[0]?.id ?? '';
+		}
+	});
 
 	const LINEAS: { etiqueta: string; posicion: string }[] = [
 		{ etiqueta: 'Arco', posicion: 'arquero' },
@@ -156,15 +179,30 @@
 				Este puesto es por la {elPuesto.lado === 'izquierdo' ? 'izquierda' : 'derecha'}.
 			{/if}
 		</p>
+		<div class="fila">
+			<label>
+				<span class="titulo">País</span>
+				<select name="paisDelClub" bind:value={paisElegido}>
+					{#each mundo as p (p.id)}
+						<option value={p.id}>{p.nombre}</option>
+					{/each}
+				</select>
+			</label>
+			<label>
+				<span class="titulo">División</span>
+				<select name="divisionDelClub" bind:value={ligaElegida}>
+					{#each ligasDelPais as l (l.id)}
+						<option value={l.id}>{l.nombre}</option>
+					{/each}
+				</select>
+			</label>
+		</div>
+
 		<label>
 			<span class="titulo">Club donde arranca</span>
 			<select name="clubId" bind:value={clubElegido} required>
-				{#each grupos as grupo (grupo.etiqueta)}
-					<optgroup label={grupo.etiqueta}>
-						{#each grupo.clubes as club (club.id)}
-							<option value={club.id}>{club.nombre}</option>
-						{/each}
-					</optgroup>
+				{#each laLiga?.clubes ?? [] as club (club.id)}
+					<option value={club.id}>{club.nombre}</option>
 				{/each}
 			</select>
 		</label>
@@ -256,14 +294,13 @@
 <h2>El mundo</h2>
 <div class="tarjeta">
 	<p class="sutil" style="margin:0 0 .85rem">
-		{grupos.reduce((n, g) => n + g.clubes.length, 0)} clubes en {grupos.length} ligas de {new Set(
-			grupos.map((g) => g.paisId)
-		).size} países, con los técnicos y los jugadores de verdad. Se mueven solos: cada temporada hay mercado
-		de pases y hay quien se retira.
+		{mundo.reduce((n, p) => n + p.ligas.reduce((m, l) => m + l.clubes.length, 0), 0)} clubes en
+		{mundo.reduce((n, p) => n + p.ligas.length, 0)} ligas de {mundo.length} países, con los técnicos y
+		los jugadores de verdad. Se mueven solos: cada temporada hay mercado de pases y hay quien se retira.
 	</p>
 	<div class="banderas">
-		{#each [...new Set(grupos.map((g) => g.paisId))] as paisId (paisId)}
-			<Bandera pais={paisId} alto={16} />
+		{#each mundo as p (p.id)}
+			<Bandera pais={p.id} alto={16} />
 		{/each}
 	</div>
 </div>

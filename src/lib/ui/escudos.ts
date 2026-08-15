@@ -24,114 +24,338 @@ export type Escudo = {
 };
 
 /**
- * Los que se ven seguido, con sus colores de verdad.
+ * Los colores de cada club.
  *
- * Agregar uno es agregar una línea. Los que no están se dibujan igual: salen de
- * su id y quedan consistentes toda la partida.
+ * Los colores de un club son un dato, no un diseño: Boca juega de azul y oro
+ * desde 1913 y eso no es de nadie. Lo que sí es de alguien es el escudo, y por
+ * eso el escudo lo dibujamos nosotros (ver `Escudo.svelte`): fondo, patrón e
+ * iniciales, geometría propia.
+ *
+ * Con los colores puestos, el escudo propio se reconoce igual de lejos. Están
+ * los 268 clubes. Los de las ligas grandes son los que todos sabemos; los del
+ * Ascenso argentino y algunas ligas chicas están puestos de memoria y pueden
+ * tener errores. Corregir uno es cambiar una línea.
  */
-const COLORES: Record<string, [string, string, Patron?]> = {
-	// Argentina
-	'ar-river': ['#ffffff', '#d3122b', 'sash'],
-	'ar-boca': ['#12326e', '#f4c430', 'franjas'],
-	'ar-racing': ['#7bb0e0', '#ffffff', 'bandas'],
-	'ar-independiente': ['#d3122b', '#ffffff', 'liso'],
-	'ar-sanlorenzo': ['#12326e', '#b3122b', 'bandas'],
-	'ar-velez': ['#ffffff', '#12326e', 'sash'],
-	'ar-estudiantes': ['#ffffff', '#d3122b', 'bandas'],
-	'ar-gimnasia': ['#12326e', '#ffffff', 'bandas'],
-	'ar-newells': ['#d3122b', '#12326e', 'bandas'],
-	'ar-central': ['#f4c430', '#12326e', 'bandas'],
-	'ar-talleres': ['#ffffff', '#12326e', 'bandas'],
-	'ar-lanus': ['#7a1f2b', '#ffffff', 'sash'],
-	'ar-huracan': ['#ffffff', '#d3122b', 'aro'],
-	'ar-argentinos': ['#d3122b', '#ffffff', 'bandas'],
-	'ar-banfield': ['#0f5c3f', '#ffffff', 'bandas'],
-	'ar2-ferro': ['#0f5c3f', '#ffffff', 'franjas'],
-	'ar2-chacarita': ['#d3122b', '#000000', 'bandas'],
-	'ar2-quilmes': ['#ffffff', '#12326e', 'bandas'],
+
+// La paleta: colores de camiseta, no colores de pantalla. Un poco apagados a
+// propósito, para que el escudo se lea sobre el fondo oscuro del juego.
+const BLANCO = '#f2f2f0';
+const NEGRO = '#141418';
+const ROJO = '#d3122b';
+const AZUL = '#12326e';
+const CELESTE = '#6fb0e0';
+const VERDE = '#0f6b3f';
+const AMARILLO = '#f2c318';
+const ORO = '#e0aa1e';
+const GRANATE = '#7a1f34';
+const VIOLETA = '#6b3fa0';
+const NARANJA = '#e5701f';
+const MARRON = '#6b4a2f';
+
+/**
+ * Colores y patrón de cada club: `[principal, secundario, patrón]`.
+ *
+ * El patrón es cómo se combinan: `bandas` son verticales (River, Inter),
+ * `franjas` horizontales (Boca, Flamengo), `sash` la banda cruzada (River,
+ * Vasco, Nacional), `mitades` mitad y mitad (Mónaco, Feyenoord), `liso` un
+ * color solo con vivos, y `aro` un anillo (Huracán).
+ */
+const COLORES: Record<string, [string, string, Patron]> = {
+	// Argentina · Liga Profesional
+	'ar-river': [BLANCO, ROJO, 'sash'],
+	'ar-boca': [AZUL, ORO, 'franjas'],
+	'ar-racing': [CELESTE, BLANCO, 'bandas'],
+	'ar-independiente': [ROJO, BLANCO, 'liso'],
+	'ar-sanlorenzo': [AZUL, ROJO, 'bandas'],
+	'ar-velez': [BLANCO, AZUL, 'sash'],
+	'ar-estudiantes': [BLANCO, ROJO, 'bandas'],
+	'ar-gimnasia': [AZUL, BLANCO, 'bandas'],
+	'ar-newells': [ROJO, NEGRO, 'bandas'],
+	'ar-central': [ORO, AZUL, 'bandas'],
+	'ar-talleres': [BLANCO, AZUL, 'bandas'],
+	'ar-belgrano': [CELESTE, BLANCO, 'bandas'],
+	'ar-instituto': [ROJO, BLANCO, 'bandas'],
+	'ar-lanus': [GRANATE, BLANCO, 'sash'],
+	'ar-banfield': [VERDE, BLANCO, 'bandas'],
+	'ar-huracan': [BLANCO, ROJO, 'aro'],
+	'ar-argentinos': [ROJO, BLANCO, 'bandas'],
+	'ar-defensa': [VERDE, AMARILLO, 'franjas'],
+	'ar-tigre': [AZUL, ROJO, 'bandas'],
+	'ar-godoycruz': [AZUL, BLANCO, 'bandas'],
+	'ar-union': [ROJO, BLANCO, 'bandas'],
+	'ar-colon': [ROJO, NEGRO, 'bandas'],
+	'ar-atltucuman': [CELESTE, BLANCO, 'bandas'],
+	'ar-platense': [MARRON, BLANCO, 'bandas'],
+
+	// Argentina · Primera Nacional
+	'ar2-moron': [ROJO, BLANCO, 'liso'],
+	'ar2-almagro': [AZUL, BLANCO, 'liso'],
+	'ar2-chacarita': [ROJO, NEGRO, 'bandas'],
+	'ar2-allboys': [BLANCO, NEGRO, 'bandas'],
+	'ar2-chicago': [VERDE, NEGRO, 'bandas'],
+	'ar2-ferro': [VERDE, BLANCO, 'franjas'],
+	'ar2-atlanta': [AZUL, AMARILLO, 'bandas'],
+	'ar2-temperley': [CELESTE, BLANCO, 'franjas'],
+	'ar2-estudiantesrc': [VERDE, BLANCO, 'bandas'],
+	'ar2-sanmartint': [ROJO, BLANCO, 'bandas'],
+	'ar2-gimnasiajujuy': [BLANCO, AZUL, 'bandas'],
+	'ar2-quilmes': [BLANCO, AZUL, 'bandas'],
+	'ar2-maipu': [AZUL, BLANCO, 'bandas'],
+	'ar2-alvarado': [VERDE, BLANCO, 'bandas'],
+	'ar2-agropecuario': [VERDE, BLANCO, 'liso'],
+	'ar2-defensoresbelgrano': [ROJO, NEGRO, 'bandas'],
+	'ar2-colegiales': [BLANCO, ROJO, 'sash'],
+	'ar2-tristansuarez': [VERDE, BLANCO, 'bandas'],
+	'ar2-sanmiguel': [VERDE, ROJO, 'liso'],
+	'ar2-losandes': [ROJO, BLANCO, 'bandas'],
 
 	// Brasil
-	'br-flamengo': ['#d3122b', '#000000', 'franjas'],
-	'br-palmeiras': ['#0f5c3f', '#ffffff', 'liso'],
-	'br-corinthians': ['#ffffff', '#000000', 'bandas'],
-	'br-saopaulo': ['#ffffff', '#d3122b', 'franjas'],
-	'br-santos': ['#ffffff', '#000000', 'franjas'],
-	'br-fluminense': ['#7a1f4b', '#0f5c3f', 'bandas'],
-	'br-botafogo': ['#000000', '#ffffff', 'bandas'],
-	'br-vasco': ['#000000', '#ffffff', 'sash'],
-	'br-gremio': ['#4a90d9', '#000000', 'bandas'],
-	'br-internacional': ['#d3122b', '#ffffff', 'liso'],
-	'br-cruzeiro': ['#12326e', '#ffffff', 'liso'],
-	'br-atleticomg': ['#000000', '#ffffff', 'bandas'],
+	'br-flamengo': [ROJO, NEGRO, 'franjas'],
+	'br-palmeiras': [VERDE, BLANCO, 'liso'],
+	'br-saopaulo': [BLANCO, ROJO, 'franjas'],
+	'br-corinthians': [BLANCO, NEGRO, 'bandas'],
+	'br-santos': [BLANCO, NEGRO, 'franjas'],
+	'br-fluminense': [GRANATE, VERDE, 'bandas'],
+	'br-botafogo': [NEGRO, BLANCO, 'bandas'],
+	'br-vasco': [NEGRO, BLANCO, 'sash'],
+	'br-gremio': [CELESTE, NEGRO, 'bandas'],
+	'br-internacional': [ROJO, BLANCO, 'liso'],
+	'br-atleticomg': [NEGRO, BLANCO, 'bandas'],
+	'br-cruzeiro': [AZUL, BLANCO, 'liso'],
+	'br-athletico': [ROJO, NEGRO, 'bandas'],
+	'br-coritiba': [VERDE, BLANCO, 'franjas'],
+	'br-bahia': [AZUL, ROJO, 'bandas'],
+	'br-vitoria': [ROJO, NEGRO, 'bandas'],
+	'br-sport': [ROJO, NEGRO, 'bandas'],
+	'br-fortaleza': [AZUL, ROJO, 'franjas'],
+	'br-ceara': [NEGRO, BLANCO, 'bandas'],
+	'br-goias': [VERDE, BLANCO, 'bandas'],
+	'br-cuiaba': [VERDE, ORO, 'bandas'],
+	'br-bragantino': [BLANCO, ROJO, 'franjas'],
 
-	// Uruguay y Chile
-	'uy-penarol': ['#f4c430', '#000000', 'bandas'],
-	'uy-nacional': ['#ffffff', '#12326e', 'sash'],
-	'cl-colocolo': ['#ffffff', '#000000', 'sash'],
-	'cl-udechile': ['#12326e', '#d3122b', 'liso'],
-	'cl-ucatolica': ['#ffffff', '#12326e', 'sash'],
+	// Uruguay
+	'uy-penarol': [ORO, NEGRO, 'bandas'],
+	'uy-nacional': [BLANCO, AZUL, 'sash'],
+	'uy-defensor': [VIOLETA, BLANCO, 'liso'],
+	'uy-danubio': [BLANCO, NEGRO, 'sash'],
+	'uy-liverpool': [NEGRO, AZUL, 'bandas'],
+	'uy-wanderers': [BLANCO, NEGRO, 'bandas'],
+	'uy-racing': [CELESTE, BLANCO, 'liso'],
+	'uy-river': [ROJO, BLANCO, 'sash'],
+	'uy-cerro': [AZUL, BLANCO, 'bandas'],
+	'uy-rampla': [VERDE, ROJO, 'bandas'],
+	'uy-progreso': [ROJO, BLANCO, 'bandas'],
+	'uy-bostonriver': [AZUL, BLANCO, 'liso'],
+	'uy-plazacolonia': [BLANCO, VERDE, 'bandas'],
+	'uy-cerrolargo': [VERDE, BLANCO, 'liso'],
+	'uy-maldonado': [BLANCO, AZUL, 'liso'],
+	'uy-miramar': [NEGRO, AMARILLO, 'bandas'],
+
+	// Chile
+	'cl-colocolo': [BLANCO, NEGRO, 'sash'],
+	'cl-udechile': [AZUL, ROJO, 'liso'],
+	'cl-ucatolica': [BLANCO, AZUL, 'sash'],
+	'cl-unionespanola': [ROJO, BLANCO, 'liso'],
+	'cl-palestino': [BLANCO, VERDE, 'franjas'],
+	'cl-audax': [VERDE, BLANCO, 'liso'],
+	'cl-magallanes': [CELESTE, BLANCO, 'liso'],
+	'cl-wanderers': [VERDE, BLANCO, 'liso'],
+	'cl-everton': [AZUL, AMARILLO, 'bandas'],
+	'cl-ohiggins': [CELESTE, BLANCO, 'liso'],
+	'cl-cobreloa': [NARANJA, BLANCO, 'liso'],
+	'cl-cobresal': [BLANCO, NEGRO, 'liso'],
+	'cl-huachipato': [NEGRO, AZUL, 'bandas'],
+	'cl-nublense': [ROJO, BLANCO, 'liso'],
+	'cl-iquique': [CELESTE, BLANCO, 'liso'],
+	'cl-coquimbo': [AMARILLO, NEGRO, 'bandas'],
+	'cl-lacalera': [ROJO, BLANCO, 'liso'],
+	'cl-laserena': [ROJO, AMARILLO, 'bandas'],
 
 	// México
-	'mx-america': ['#f4c430', '#12326e', 'liso'],
-	'mx-chivas': ['#ffffff', '#d3122b', 'sash'],
-	'mx-cruzazul': ['#12326e', '#ffffff', 'liso'],
-	'mx-pumas': ['#12326e', '#f4c430', 'liso'],
-	'mx-tigres': ['#f4c430', '#12326e', 'franjas'],
-	'mx-monterrey': ['#12326e', '#ffffff', 'bandas'],
+	'mx-america': [ORO, AZUL, 'liso'],
+	'mx-chivas': [BLANCO, ROJO, 'sash'],
+	'mx-cruzazul': [AZUL, BLANCO, 'liso'],
+	'mx-pumas': [AZUL, ORO, 'liso'],
+	'mx-tigres': [ORO, AZUL, 'franjas'],
+	'mx-monterrey': [AZUL, BLANCO, 'bandas'],
+	'mx-santos': [VERDE, BLANCO, 'bandas'],
+	'mx-toluca': [ROJO, BLANCO, 'bandas'],
+	'mx-leon': [VERDE, BLANCO, 'bandas'],
+	'mx-pachuca': [AZUL, BLANCO, 'bandas'],
+	'mx-necaxa': [ROJO, BLANCO, 'bandas'],
+	'mx-atlas': [ROJO, NEGRO, 'bandas'],
+	'mx-puebla': [AZUL, BLANCO, 'bandas'],
+	'mx-queretaro': [AZUL, NEGRO, 'bandas'],
+	'mx-tijuana': [ROJO, NEGRO, 'bandas'],
+	'mx-mazatlan': [VIOLETA, BLANCO, 'liso'],
+	'mx-juarez': [VERDE, BLANCO, 'liso'],
+	'mx-sanluis': [ROJO, BLANCO, 'bandas'],
 
 	// España
-	'es-realmadrid': ['#ffffff', '#f4c430', 'liso'],
-	'es-barcelona': ['#7a1f4b', '#12326e', 'bandas'],
-	'es-atletico': ['#ffffff', '#d3122b', 'bandas'],
-	'es-sevilla': ['#ffffff', '#d3122b', 'liso'],
-	'es-betis': ['#0f8a4a', '#ffffff', 'bandas'],
-	'es-valencia': ['#ffffff', '#f47a20', 'liso'],
-	'es-athletic': ['#d3122b', '#ffffff', 'bandas'],
-	'es-villarreal': ['#f4d03f', '#12326e', 'liso'],
+	'es-realmadrid': [BLANCO, ORO, 'liso'],
+	'es-barcelona': [GRANATE, AZUL, 'bandas'],
+	'es-atletico': [BLANCO, ROJO, 'bandas'],
+	'es-sevilla': [BLANCO, ROJO, 'liso'],
+	'es-betis': [VERDE, BLANCO, 'bandas'],
+	'es-valencia': [BLANCO, NARANJA, 'liso'],
+	'es-villarreal': [AMARILLO, AZUL, 'liso'],
+	'es-athletic': [ROJO, BLANCO, 'bandas'],
+	'es-realsociedad': [AZUL, BLANCO, 'bandas'],
+	'es-celta': [CELESTE, BLANCO, 'liso'],
+	'es-getafe': [AZUL, BLANCO, 'liso'],
+	'es-rayo': [BLANCO, ROJO, 'sash'],
+	'es-osasuna': [ROJO, AZUL, 'liso'],
+	'es-mallorca': [ROJO, NEGRO, 'bandas'],
+	'es-girona': [ROJO, BLANCO, 'bandas'],
+	'es-alaves': [AZUL, BLANCO, 'bandas'],
+	'es-espanyol': [BLANCO, AZUL, 'bandas'],
+	'es-laspalmas': [AMARILLO, AZUL, 'liso'],
+	'es-valladolid': [BLANCO, VIOLETA, 'bandas'],
+	'es-leganes': [AZUL, BLANCO, 'bandas'],
 
 	// Italia
-	'it-inter': ['#12326e', '#000000', 'bandas'],
-	'it-milan': ['#d3122b', '#000000', 'bandas'],
-	'it-juventus': ['#ffffff', '#000000', 'bandas'],
-	'it-napoli': ['#4a90d9', '#ffffff', 'liso'],
-	'it-roma': ['#8a1f2b', '#f4c430', 'liso'],
-	'it-lazio': ['#a8d8f0', '#ffffff', 'liso'],
-	'it-atalanta': ['#12326e', '#000000', 'bandas'],
-	'it-fiorentina': ['#7a4fb0', '#ffffff', 'liso'],
+	'it-inter': [AZUL, NEGRO, 'bandas'],
+	'it-milan': [ROJO, NEGRO, 'bandas'],
+	'it-juventus': [BLANCO, NEGRO, 'bandas'],
+	'it-napoli': [CELESTE, BLANCO, 'liso'],
+	'it-roma': [GRANATE, ORO, 'liso'],
+	'it-lazio': [CELESTE, BLANCO, 'liso'],
+	'it-atalanta': [AZUL, NEGRO, 'bandas'],
+	'it-fiorentina': [VIOLETA, BLANCO, 'liso'],
+	'it-bologna': [ROJO, AZUL, 'bandas'],
+	'it-torino': [GRANATE, BLANCO, 'liso'],
+	'it-udinese': [BLANCO, NEGRO, 'bandas'],
+	'it-genoa': [ROJO, AZUL, 'mitades'],
+	'it-sassuolo': [VERDE, NEGRO, 'bandas'],
+	'it-empoli': [AZUL, BLANCO, 'liso'],
+	'it-cagliari': [ROJO, AZUL, 'mitades'],
+	'it-verona': [AMARILLO, AZUL, 'bandas'],
+	'it-lecce': [AMARILLO, ROJO, 'bandas'],
+	'it-monza': [ROJO, BLANCO, 'liso'],
+	'it-parma': [AMARILLO, AZUL, 'bandas'],
+	'it-como': [AZUL, BLANCO, 'liso'],
+
+	// Alemania
+	'de-bayern': [ROJO, BLANCO, 'liso'],
+	'de-dortmund': [AMARILLO, NEGRO, 'liso'],
+	'de-leipzig': [BLANCO, ROJO, 'liso'],
+	'de-leverkusen': [ROJO, NEGRO, 'liso'],
+	'de-eintracht': [NEGRO, ROJO, 'liso'],
+	'de-wolfsburgo': [VERDE, BLANCO, 'liso'],
+	'de-gladbach': [BLANCO, VERDE, 'liso'],
+	'de-stuttgart': [BLANCO, ROJO, 'liso'],
+	'de-werder': [VERDE, BLANCO, 'liso'],
+	'de-hoffenheim': [AZUL, BLANCO, 'liso'],
+	'de-friburgo': [ROJO, NEGRO, 'liso'],
+	'de-union': [ROJO, BLANCO, 'liso'],
+	'de-mainz': [ROJO, BLANCO, 'liso'],
+	'de-augsburgo': [ROJO, VERDE, 'bandas'],
+	'de-bochum': [AZUL, BLANCO, 'liso'],
+	'de-heidenheim': [ROJO, AZUL, 'liso'],
+	'de-stpauli': [MARRON, BLANCO, 'liso'],
+	'de-kiel': [AZUL, BLANCO, 'bandas'],
+
+	// Francia
+	'fr-psg': [AZUL, ROJO, 'sash'],
+	'fr-marsella': [BLANCO, CELESTE, 'liso'],
+	'fr-lyon': [BLANCO, AZUL, 'liso'],
+	'fr-monaco': [ROJO, BLANCO, 'mitades'],
+	'fr-lille': [ROJO, AZUL, 'liso'],
+	'fr-rennes': [ROJO, NEGRO, 'bandas'],
+	'fr-niza': [ROJO, NEGRO, 'bandas'],
+	'fr-lens': [AMARILLO, ROJO, 'bandas'],
+	'fr-nantes': [AMARILLO, VERDE, 'liso'],
+	'fr-estrasburgo': [AZUL, BLANCO, 'liso'],
+	'fr-montpellier': [NARANJA, AZUL, 'bandas'],
+	'fr-toulouse': [VIOLETA, BLANCO, 'liso'],
+	'fr-brest': [ROJO, BLANCO, 'bandas'],
+	'fr-reims': [ROJO, BLANCO, 'bandas'],
+	'fr-angers': [BLANCO, NEGRO, 'bandas'],
+	'fr-auxerre': [BLANCO, AZUL, 'liso'],
+	'fr-saintetienne': [VERDE, BLANCO, 'liso'],
+	'fr-lehavre': [CELESTE, AZUL, 'bandas'],
+
+	// Portugal
+	'pt-benfica': [ROJO, BLANCO, 'liso'],
+	'pt-porto': [BLANCO, AZUL, 'bandas'],
+	'pt-sporting': [VERDE, BLANCO, 'franjas'],
+	'pt-braga': [ROJO, BLANCO, 'liso'],
+	'pt-guimaraes': [BLANCO, NEGRO, 'liso'],
+	'pt-boavista': [NEGRO, BLANCO, 'bandas'],
+	'pt-rioave': [VERDE, BLANCO, 'bandas'],
+	'pt-famalicao': [BLANCO, AZUL, 'bandas'],
+	'pt-gilvicente': [ROJO, BLANCO, 'bandas'],
+	'pt-moreirense': [VERDE, BLANCO, 'bandas'],
+	'pt-arouca': [AMARILLO, NEGRO, 'liso'],
+	'pt-estoril': [AMARILLO, AZUL, 'liso'],
+	'pt-casapia': [NEGRO, BLANCO, 'bandas'],
+	'pt-santaclara': [ROJO, BLANCO, 'bandas'],
+	'pt-nacional': [BLANCO, NEGRO, 'bandas'],
+	'pt-farense': [BLANCO, NEGRO, 'bandas'],
+	'pt-estrela': [VERDE, ROJO, 'bandas'],
+	'pt-avs': [AMARILLO, NEGRO, 'bandas'],
+
+	// Países Bajos
+	'nl-ajax': [BLANCO, ROJO, 'sash'],
+	'nl-psv': [ROJO, BLANCO, 'bandas'],
+	'nl-feyenoord': [BLANCO, ROJO, 'mitades'],
+	'nl-az': [ROJO, BLANCO, 'liso'],
+	'nl-twente': [ROJO, BLANCO, 'liso'],
+	'nl-utrecht': [ROJO, BLANCO, 'liso'],
+	'nl-vitesse': [AMARILLO, NEGRO, 'bandas'],
+	'nl-heerenveen': [AZUL, BLANCO, 'mitades'],
+	'nl-groningen': [VERDE, BLANCO, 'bandas'],
+	'nl-nec': [VERDE, NEGRO, 'bandas'],
+	'nl-sparta': [ROJO, BLANCO, 'mitades'],
+	'nl-goahead': [ROJO, AMARILLO, 'bandas'],
+	'nl-fortuna': [AMARILLO, VERDE, 'bandas'],
+	'nl-heracles': [NEGRO, BLANCO, 'bandas'],
+	'nl-zwolle': [AZUL, BLANCO, 'bandas'],
+	'nl-willem2': [ROJO, AZUL, 'bandas'],
+	'nl-rkc': [AMARILLO, AZUL, 'bandas'],
+	'nl-almere': [ROJO, NEGRO, 'bandas'],
 
 	// Inglaterra
-	'en-mancity': ['#6ab6e0', '#ffffff', 'liso'],
-	'en-arsenal': ['#d3122b', '#ffffff', 'liso'],
-	'en-liverpool': ['#c8102e', '#ffffff', 'liso'],
-	'en-manutd': ['#d3122b', '#000000', 'liso'],
-	'en-chelsea': ['#1a4ba8', '#ffffff', 'liso'],
-	'en-tottenham': ['#ffffff', '#12326e', 'liso'],
-	'en-newcastle': ['#000000', '#ffffff', 'bandas'],
-	'en-astonvilla': ['#7a1f4b', '#a8d8f0', 'bandas'],
-	'en-everton': ['#12326e', '#ffffff', 'liso'],
-	'en-westham': ['#7a1f2b', '#4a90d9', 'liso'],
+	'en-mancity': [CELESTE, BLANCO, 'liso'],
+	'en-arsenal': [ROJO, BLANCO, 'liso'],
+	'en-liverpool': [ROJO, BLANCO, 'liso'],
+	'en-manutd': [ROJO, NEGRO, 'liso'],
+	'en-chelsea': [AZUL, BLANCO, 'liso'],
+	'en-tottenham': [BLANCO, AZUL, 'liso'],
+	'en-newcastle': [NEGRO, BLANCO, 'bandas'],
+	'en-astonvilla': [GRANATE, CELESTE, 'bandas'],
+	'en-brighton': [AZUL, BLANCO, 'bandas'],
+	'en-westham': [GRANATE, CELESTE, 'liso'],
+	'en-everton': [AZUL, BLANCO, 'liso'],
+	'en-crystalpalace': [ROJO, AZUL, 'bandas'],
+	'en-fulham': [BLANCO, NEGRO, 'liso'],
+	'en-brentford': [ROJO, BLANCO, 'bandas'],
+	'en-forest': [ROJO, BLANCO, 'liso'],
+	'en-bournemouth': [ROJO, NEGRO, 'bandas'],
+	'en-wolves': [NARANJA, NEGRO, 'liso'],
+	'en-leicester': [AZUL, BLANCO, 'liso'],
+	'en-southampton': [ROJO, BLANCO, 'bandas'],
+	'en-ipswich': [AZUL, BLANCO, 'liso'],
 
-	// Alemania, Francia, Portugal, Países Bajos, Turquía
-	'de-bayern': ['#d3122b', '#ffffff', 'liso'],
-	'de-dortmund': ['#f4d03f', '#000000', 'liso'],
-	'de-leipzig': ['#ffffff', '#d3122b', 'liso'],
-	'de-leverkusen': ['#d3122b', '#000000', 'liso'],
-	'de-eintracht': ['#000000', '#d3122b', 'liso'],
-	'fr-psg': ['#12326e', '#d3122b', 'sash'],
-	'fr-marsella': ['#ffffff', '#6ab6e0', 'liso'],
-	'fr-lyon': ['#ffffff', '#12326e', 'liso'],
-	'fr-monaco': ['#d3122b', '#ffffff', 'mitades'],
-	'fr-lille': ['#d3122b', '#12326e', 'liso'],
-	'pt-benfica': ['#d3122b', '#ffffff', 'liso'],
-	'pt-porto': ['#ffffff', '#12326e', 'bandas'],
-	'pt-sporting': ['#0f8a4a', '#ffffff', 'franjas'],
-	'nl-ajax': ['#ffffff', '#d3122b', 'sash'],
-	'nl-psv': ['#d3122b', '#ffffff', 'bandas'],
-	'nl-feyenoord': ['#ffffff', '#d3122b', 'mitades'],
-	'tr-galatasaray': ['#a83a1f', '#f4c430', 'bandas'],
-	'tr-fenerbahce': ['#f4d03f', '#12326e', 'bandas'],
-	'tr-besiktas': ['#ffffff', '#000000', 'bandas'],
-	'tr-trabzonspor': ['#7a1f2b', '#6ab6e0', 'bandas']
+	// Turquía
+	'tr-galatasaray': [GRANATE, ORO, 'bandas'],
+	'tr-fenerbahce': [AMARILLO, AZUL, 'bandas'],
+	'tr-besiktas': [BLANCO, NEGRO, 'bandas'],
+	'tr-trabzonspor': [GRANATE, CELESTE, 'bandas'],
+	'tr-basaksehir': [NARANJA, AZUL, 'bandas'],
+	'tr-adanademir': [AZUL, BLANCO, 'bandas'],
+	'tr-konyaspor': [VERDE, BLANCO, 'bandas'],
+	'tr-alanyaspor': [NARANJA, VERDE, 'bandas'],
+	'tr-antalyaspor': [ROJO, BLANCO, 'bandas'],
+	'tr-kayserispor': [ROJO, AMARILLO, 'bandas'],
+	'tr-sivasspor': [ROJO, BLANCO, 'bandas'],
+	'tr-gaziantep': [ROJO, NEGRO, 'bandas'],
+	'tr-rizespor': [VERDE, AZUL, 'bandas'],
+	'tr-kasimpasa': [AZUL, BLANCO, 'bandas'],
+	'tr-samsunspor': [ROJO, BLANCO, 'bandas'],
+	'tr-hatayspor': [GRANATE, BLANCO, 'bandas'],
+	'tr-goztepe': [ROJO, AMARILLO, 'bandas'],
+	'tr-eyupspor': [AMARILLO, NEGRO, 'bandas']
 };
 
 /** Paleta de la que salen los clubes que no tienen colores a mano. */
@@ -198,6 +422,11 @@ export function iniciales(nombre: string): string {
 		.map((p) => p[0])
 		.join('')
 		.toUpperCase();
+}
+
+/** ¿Están sus colores en la tabla, o se los inventa el hash? */
+export function tieneColoresPropios(clubId: string): boolean {
+	return clubId in COLORES;
 }
 
 /** El escudo de un club: lo de la tabla si está, y si no lo que da su id. */

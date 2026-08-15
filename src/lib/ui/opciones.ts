@@ -1,4 +1,4 @@
-import { clubes, ligas, paises, contexto } from '../../../content/mundo';
+import { clubes, contexto, ligas, paises } from '../../../content/mundo';
 
 /**
  * Las listas que llenan los `select` de la pantalla de creación.
@@ -12,6 +12,47 @@ export type GrupoDeClubes = {
 	paisId: string;
 	clubes: { id: string; nombre: string }[];
 };
+
+/**
+ * El mundo en tres pasos: país, división y club.
+ *
+ * Un solo desplegable con 268 clubes es imposible de usar en el celular. Así se
+ * elige como se piensa: primero el país, después en qué división de ese país, y
+ * recién ahí el club.
+ */
+export type PaisConLigas = {
+	id: string;
+	nombre: string;
+	ligas: {
+		id: string;
+		/** El nombre real y actual: LaLiga, Serie A, Primera Nacional. */
+		nombre: string;
+		nivel: 1 | 2;
+		clubes: { id: string; nombre: string }[];
+	}[];
+};
+
+export function mundoPorPais(): PaisConLigas[] {
+	return paises
+		.map((pais) => ({
+			id: pais.id,
+			nombre: pais.nombre,
+			ligas: ligas
+				.filter((l) => l.paisId === pais.id)
+				// Primera arriba, después el ascenso: es el orden en que se lee.
+				.sort((a, b) => a.nivel - b.nivel)
+				.map((liga) => ({
+					id: liga.id,
+					nombre: liga.nombre,
+					nivel: liga.nivel,
+					clubes: clubes
+						.filter((c) => c.ligaId === liga.id)
+						.map((c) => ({ id: c.id, nombre: c.nombre }))
+						.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+				}))
+		}))
+		.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+}
 
 /**
  * Todos los clubes agrupados por liga, ordenados como la escalera de la
