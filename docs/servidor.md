@@ -189,6 +189,24 @@ systemctl restart copolero
 systemctl status copolero
 ```
 
+### Escudos propios
+
+El juego dibuja sus escudos, pero si dejás imágenes en
+`/opt/copolero/static/escudos/` las usa en su lugar. Un archivo por club, con el
+id del club como nombre (`ar-boca.png`).
+
+```bash
+# Subir una carpeta entera desde tu PC
+scp -r C:\Users\vos\logos root@la.ip.del.servidor:/tmp/logos
+
+# Y acomodarla: renombra sola lo que reconoce
+ssh root@la.ip.del.servidor "cd /opt/copolero && npm run escudos -- /tmp/logos"
+```
+
+No hay que recompilar ni reiniciar: el servidor lee la carpeta en el momento.
+Recargás la página y están. Los clubes sin archivo siguen con el dibujado, y los
+dos conviven sin que se note.
+
 ### Respaldar las partidas
 
 Toda la partida vive en un solo archivo. Para copiarlo sin cortar el servicio:

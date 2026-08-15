@@ -14,8 +14,11 @@ static/escudos/br-flamengo.webp
 ```
 
 Se aceptan `.png`, `.svg` y `.webp`, y se prueban en ese orden. El que exista
-gana; el club que no tenga archivo sigue usando el dibujado. No hay que tocar
-código ni reiniciar nada: alcanza con dejar el archivo y recargar.
+gana; el club que no tenga archivo sigue usando el dibujado.
+
+**No hace falta recompilar ni reiniciar.** El servidor lee esta carpeta en el
+momento: se deja el archivo, se recarga la página y ya está. Si querés tenerla
+en otro lado, poné `ESCUDOS_DIR` en `/etc/copolero.env` con la ruta.
 
 Los ids están todos en `content/mundo/clubes.ts`, y también los podés ver en la
 pantalla `/escudos` del juego.
