@@ -96,16 +96,32 @@ const RUIDO = new Set([
 	'badge'
 ]);
 
+function limpiar(texto) {
+	return (
+		texto
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			// Los packs suelen traer caracteres invisibles pegados de una web.
+			.replace(/[\u200b-\u200f\ufeff]/g, '')
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, ' ')
+			.trim()
+	);
+}
+
+/** El nombre entero, solo sin acentos ni puntuación. */
+function normalizarEntero(texto) {
+	return limpiar(texto);
+}
+
+/** El nombre sin las palabras que tienen la mitad de los clubes. */
 function normalizar(texto) {
-	return texto
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, ' ')
+	const partes = limpiar(texto)
 		.split(' ')
-		.filter((p) => p.length > 0 && !RUIDO.has(p))
-		.join(' ')
-		.trim();
+		.filter((p) => p.length > 0 && !RUIDO.has(p));
+	// Si sacando el ruido no queda nada (un club que se llama "Racing Club"),
+	// vale más el nombre entero que la cadena vacía.
+	return partes.length > 0 ? partes.join(' ') : limpiar(texto);
 }
 
 /** Parecido entre dos textos, 0 a 1, contando pares de letras en común. */
@@ -151,23 +167,146 @@ const UMBRAL_DUDOSO = 0.6;
  */
 const MARGEN_MINIMO = 0.06;
 
+/**
+ * Un club se compara contra varias formas de su nombre.
+ *
+ * Los packs nombran los archivos pegando las palabras: `atleticotucuman`,
+ * `atlmadrid`, `bmonchengladbach`. Contra el nombre sin ruido —"tucuman"— eso
+ * da un parecido pobre; contra el nombre entero —"atletico tucuman"— da
+ * exacto. Por eso van las dos formas, más el id.
+ */
+/**
+ * Una clave que es puro ruido no distingue nada.
+ *
+ * El id de Atlético de Madrid es `es-atletico`, que da la clave "atletico", y
+ * con ésa cualquier archivo que empiece con "atletico" le cae encima:
+ * `atleticosl` es Atlético San Luis y se lo llevaba Madrid. Las claves que solo
+ * tienen palabras genéricas se descartan.
+ */
+function claveSirve(clave) {
+	const partes = clave.split(' ').filter((p) => p.length > 0);
+	return partes.length > 0 && partes.some((p) => !RUIDO.has(p));
+}
+
 const candidatos = clubes.map((c) => ({
 	id: c.id,
 	nombre: c.nombre,
-	// Se compara contra el nombre y contra el id sin el prefijo del país: muchas
-	// carpetas nombran los archivos como "boca" a secas.
-	claves: [normalizar(c.nombre), normalizar(c.id.replace(/^[a-z]{2}\d?-/, ''))]
+	claves: [
+		...new Set([
+			normalizarEntero(c.nombre),
+			normalizar(c.nombre),
+			normalizar(c.id.replace(/^[a-z]{2}\d?-/, ''))
+		])
+	].filter(claveSirve)
 }));
 
+/**
+ * Cosas que no son clubes y que todos los packs traen igual: banderas de
+ * selecciones y logos de marcas de ropa. Se descartan antes de comparar, porque
+ * "chile.png" se parece bastante a "Universidad de Chile" y "joma.png" a "Roma".
+ */
+const NO_SON_CLUBES = new Set(
+	[
+		'adidas',
+		'nike',
+		'puma',
+		'umbro',
+		'joma',
+		'kappa',
+		'errea',
+		'macron',
+		'lotto',
+		'topper',
+		'penalty',
+		'mizuno',
+		'hummel',
+		'newbalance',
+		'asianfc',
+		'conmebol',
+		'uefa',
+		'fifa',
+		'argentina',
+		'brasil',
+		'uruguay',
+		'chile',
+		'mexico',
+		'espana',
+		'italia',
+		'francia',
+		'alemania',
+		'portugal',
+		'holanda',
+		'paisesbajos',
+		'turquia',
+		'inglaterra',
+		'colombia',
+		'peru',
+		'paraguay',
+		'bolivia',
+		'ecuador',
+		'venezuela',
+		'belgica',
+		'grecia',
+		'gales',
+		'escocia',
+		'irlanda',
+		'suiza',
+		'austria',
+		'polonia',
+		'croacia',
+		'serbia',
+		'dinamarca',
+		'suecia',
+		'noruega',
+		'japon',
+		'corea',
+		'australia',
+		'canada',
+		'estadosunidos',
+		'marruecos',
+		'senegal',
+		'nigeria',
+		'ghana',
+		'camerun',
+		'egipto',
+		'tunez',
+		'argelia',
+		'arabiasaudita',
+		'qatar',
+		'iran',
+		'salvador',
+		'elsalvador',
+		'honduras',
+		'panama',
+		'costarica',
+		'jamaica'
+	].map((n) => n.replace(/ /g, ''))
+);
+
+/** `argentina2`, `espana_fem`, `brasil3`: variantes del mismo no-club. */
+function pareceUnPais(normalizado) {
+	const raiz = normalizado.replace(/ /g, '').replace(/(fem|\d+)$/g, '');
+	return NO_SON_CLUBES.has(raiz);
+}
+
 function mejorClub(nombreDeArchivo) {
+	const entero = normalizarEntero(nombreDeArchivo);
 	const buscado = normalizar(nombreDeArchivo);
 	if (!buscado) return null;
+	if (pareceUnPais(entero)) return null;
 
-	// El puntaje de un club es el mejor de sus claves.
+	// El puntaje de un club es el mejor entre todas las combinaciones de cómo se
+	// escribe el archivo y cómo se escribe el club.
+	const formas = [...new Set([entero, buscado])];
 	const puntuados = candidatos
 		.map((club) => ({
 			club,
-			puntaje: Math.max(...club.claves.map((clave) => parecido(buscado, clave)))
+			puntaje:
+				club.claves.length === 0
+					? 0
+					: Math.max(
+							...formas.flatMap((forma) => club.claves.map((clave) => parecido(forma, clave)))
+						)
 		}))
 		.sort((a, b) => b.puntaje - a.puntaje);
 
