@@ -100,8 +100,8 @@
 			<ClubLinea clubId={clubElegido} tamano={40} />
 		</div>
 		<p class="sutil" style="margin:-.4rem 0 1rem">
-			Cuanto más abajo arranques, más carrera hay para hacer. El Ascenso argentino es el escalón
-			más bajo del mundo.
+			Cuanto más abajo arranques, más carrera hay para hacer. El Ascenso argentino es el escalón más
+			bajo del mundo.
 		</p>
 		<label>
 			<span class="titulo">Edad inicial</span>
@@ -143,8 +143,8 @@
 	<p class="sutil" style="margin:0 0 .85rem">
 		{grupos.reduce((n, g) => n + g.clubes.length, 0)} clubes en {grupos.length} ligas de {new Set(
 			grupos.map((g) => g.paisId)
-		).size} países, con los técnicos y los jugadores de verdad. Se mueven solos: cada temporada hay
-		mercado de pases y hay quien se retira.
+		).size} países, con los técnicos y los jugadores de verdad. Se mueven solos: cada temporada hay mercado
+		de pases y hay quien se retira.
 	</p>
 	<div class="banderas">
 		{#each [...new Set(grupos.map((g) => g.paisId))] as paisId (paisId)}

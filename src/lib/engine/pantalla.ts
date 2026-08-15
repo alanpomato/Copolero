@@ -67,7 +67,9 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	if (estado.fase === 3) {
 		opciones.ofertas = ofertasPara(estado, semilla);
 		opciones.valorDeMercadoUsd = valorDeMercado(estado);
-		opciones.brechaActual = Math.round(brechaCon(estado.futbolista, estado.futbolista.contrato.clubId));
+		opciones.brechaActual = Math.round(
+			brechaCon(estado.futbolista, estado.futbolista.contrato.clubId)
+		);
 	}
 
 	return opciones;

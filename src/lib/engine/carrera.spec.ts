@@ -106,8 +106,7 @@ describe('una carrera entera', () => {
 		const roto = correrCarrera('c2', 'delantero', 'ar2-moron', AMBICIOSO);
 		const entero = correrCarrera('c2', 'delantero', 'ar2-moron', PRUDENTE);
 
-		const techo = (r: typeof roto) =>
-			Math.max(...r.clubes.map((c) => contexto(c).liga.fuerza));
+		const techo = (r: typeof roto) => Math.max(...r.clubes.map((c) => contexto(c).liga.fuerza));
 		expect(techo(roto)).toBeGreaterThanOrEqual(techo(entero));
 		expect(roto.estado.futbolista.dineroUsd).toBeGreaterThan(entero.estado.futbolista.dineroUsd);
 	});

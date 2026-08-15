@@ -13,11 +13,7 @@
 	 * futbolista nunca recibe las gestiones del representante ni al revés, así
 	 * que no hay nada que esconder del lado del navegador.
 	 */
-	let {
-		opciones,
-		estado,
-		rol
-	}: { opciones: OpcionesDeFase; estado: Estado; rol: Rol } = $props();
+	let { opciones, estado, rol }: { opciones: OpcionesDeFase; estado: Estado; rol: Rol } = $props();
 
 	// Elecciones por defecto: las mismas que toma el motor si nadie toca nada.
 	let plan = $state('fisico');
@@ -64,8 +60,8 @@
 	<div class="tarjeta">
 		<h3>Con cuánta intensidad</h3>
 		<p class="sutil" style="margin:-.35rem 0 .8rem">
-			A los {estado.futbolista.edad} años, con {estado.futbolista.desgaste} de desgaste. Lo que
-			ganás de más lo paga el cuerpo.
+			A los {estado.futbolista.edad} años, con {estado.futbolista.desgaste} de desgaste. Lo que ganás
+			de más lo paga el cuerpo.
 		</p>
 		{#each opciones.intensidades ?? [] as i (i.id)}
 			<Opcion
@@ -82,8 +78,8 @@
 <!-- ---------- Fase 2: la rueda de ocasión ---------- -->
 {#if opciones.ocasiones}
 	<p class="sutil" style="margin:0 0 1rem">
-		Tres momentos de la temporada. Las probabilidades salen de tus atributos y son las de verdad:
-		lo que dice el número es lo que se tira.
+		Tres momentos de la temporada. Las probabilidades salen de tus atributos y son las de verdad: lo
+		que dice el número es lo que se tira.
 	</p>
 
 	{#each opciones.ocasiones as ocasion, i (ocasion.id)}

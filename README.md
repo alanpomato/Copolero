@@ -8,20 +8,38 @@ puede, y la partida no avanza hasta que los dos cerraron su parte.
   `docs/diseno-inicial.md` y `docs/spec-bebo.md` (los dos documentos de partida).
 - **Estado del proyecto**: se publica solo en GitHub Pages en cada push.
 
-## Qué anda hoy — hito M0
+## Qué anda hoy
 
-Crear partida, código de invitación, los dos roles y las tres fases con
-barrera. Todavía sin contenido de juego: los eventos llegan en el M1.
+Una carrera entera se puede jugar de punta a punta: de los 16 en el Ascenso
+hasta el retiro, con pases, temporadas simuladas y las dos personas decidiendo
+en paralelo.
 
-- Se crea una partida eligiendo rol y armando al futbolista.
-- Sale un código de 6 letras; el otro entra con ese código y toma el rol libre.
-- Cada temporada tiene tres fases (Pretemporada, Temporada, Mercado y cierre) y
-  **ninguna avanza hasta que los dos cierran la suya**.
-- Al cerrar la fase 3 pasa un año: el futbolista envejece y cobra, el
-  representante cobra su fijo más la comisión, sube el desgaste y la confianza
-  se enfría sola.
-- Cada rol ve su propio diario. Lo del otro no se esconde en el navegador: no
-  viaja.
+**El mundo.** 268 clubes en 14 ligas de 13 países, con los técnicos y los
+futbolistas reales. Se mueven solos: cada temporada hay mercado de pases, los
+pibes suben de liga, los veteranos bajan y los muy veteranos se retiran. Es lo
+que hace que la foto de nombres con la que arranca la partida no quede vieja.
+
+**Las tres fases**, y ninguna avanza hasta que los dos cierran la suya:
+
+1. **Pretemporada.** El futbolista elige qué entrenar y con cuánta intensidad.
+   A matar sube rápido y rompe antes; suave llega entero y llega tarde. El
+   representante elige una gestión: sondear el mercado, apretar por una mejora,
+   instalarlo en los medios, formarse, o simplemente estar.
+2. **Temporada.** Tres ocasiones marcadas donde el futbolista elige con las
+   probabilidades a la vista, sacadas de sus propios atributos. Después se
+   simula el año —minutos, goles, asistencias, puesto del equipo, lesiones— y
+   se narran las jugadas con nombres de verdad: no es "metiste 12 goles", es
+   "le metiste un gol a Emiliano Martínez en la cancha de Aston Villa".
+3. **Mercado y cierre.** Aparecen ofertas, y **el pase se hace solo si los dos
+   eligen el mismo club**. Si no coinciden, no hay pase y la confianza se paga.
+   Después pasa el año: se cobra, se envejece, se desgasta, y el mundo se mueve.
+
+**La confianza** se enfría cinco puntos por temporada. Lo único que la sostiene
+de verdad es que el representante elija estar, y eso le cuesta las gestiones
+que sí dan plata. Ésa es su decisión de todas las fases.
+
+Cada rol ve su propio diario. Lo del otro no se esconde en el navegador: no
+viaja.
 
 ## Cómo levantarlo
 
@@ -55,14 +73,14 @@ copiala.
 
 ## Comandos
 
-| Comando                            | Qué hace                                 |
-| ---------------------------------- | ---------------------------------------- |
-| `npm run dev`                      | Servidor de desarrollo                   |
-| `npm test`                         | Tests del motor y de la barrera          |
-| `npm run check`                    | Chequeo de tipos                         |
-| `npm run format`                   | Formatea con Prettier                    |
-| `npm run db:generate`              | Genera una migración a partir del schema |
-| `node scripts/construir-sitio.mjs` | Arma la página de progreso en `sitio/`   |
+| Comando                            | Qué hace                                       |
+| ---------------------------------- | ---------------------------------------------- |
+| `npm run dev`                      | Servidor de desarrollo                         |
+| `npm test`                         | Tests del motor, la barrera y carreras enteras |
+| `npm run check`                    | Chequeo de tipos                               |
+| `npm run format`                   | Formatea con Prettier                          |
+| `npm run db:generate`              | Genera una migración a partir del schema       |
+| `node scripts/construir-sitio.mjs` | Arma la página de progreso en `sitio/`         |
 
 ## Cómo está armado
 

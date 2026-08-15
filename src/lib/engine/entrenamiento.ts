@@ -131,7 +131,8 @@ export function entrenar(
 	semilla: string
 ): ResultadoEntrenamiento {
 	const f = estado.futbolista;
-	const plan = PLANES.find((p) => p.id === planId) ?? PLANES.find((p) => p.id === PLAN_POR_DEFECTO)!;
+	const plan =
+		PLANES.find((p) => p.id === planId) ?? PLANES.find((p) => p.id === PLAN_POR_DEFECTO)!;
 	const intensidad =
 		INTENSIDADES.find((i) => i.id === intensidadId) ??
 		INTENSIDADES.find((i) => i.id === INTENSIDAD_POR_DEFECTO)!;

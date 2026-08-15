@@ -26,13 +26,7 @@
 	} = $props();
 
 	const tono = $derived(
-		probabilidad === null
-			? ''
-			: probabilidad >= 70
-				? 'alta'
-				: probabilidad >= 40
-					? 'media'
-					: 'baja'
+		probabilidad === null ? '' : probabilidad >= 70 ? 'alta' : probabilidad >= 40 ? 'media' : 'baja'
 	);
 </script>
 

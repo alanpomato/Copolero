@@ -209,7 +209,8 @@ const PARA_MEDIO: Plantilla[] = [
 				etiqueta: 'El pase filtrado entre los centrales',
 				detalle: 'Si le pega bien, es gol y es tuyo.',
 				probabilidad: chance(42, a.pase),
-				siSale: 'Metiste el pase justo entre los centrales y la definieron. Asistencia de las que se guardan.',
+				siSale:
+					'Metiste el pase justo entre los centrales y la definieron. Asistencia de las que se guardan.',
 				siFalla: 'El pase murió en el central y quedó el contragolpe.',
 				premio: { asistencias: 1, fama: 4, moral: 6, dt: 5, prensa: 4 },
 				castigo: { moral: -4, dt: -4 }
@@ -343,7 +344,8 @@ const PARA_ARQUERO: Plantilla[] = [
 				etiqueta: 'Esperar parado hasta el final',
 				detalle: 'Menos épica, más chance de que te la pateen encima.',
 				probabilidad: chance(22, a.liderazgo, 0.4),
-				siSale: 'Te quedaste parado y te la pateó al cuerpo. Quedaste de pie con la pelota en el pecho.',
+				siSale:
+					'Te quedaste parado y te la pateó al cuerpo. Quedaste de pie con la pelota en el pecho.',
 				siFalla: 'Se la puso abajo, contra el palo. No había nada que hacer.',
 				premio: { fama: 5, moral: 7, hinchada: 6, dt: 4 },
 				castigo: { moral: -2 }

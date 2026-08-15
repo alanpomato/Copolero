@@ -105,10 +105,7 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 			// Cuanto más contrato le queda, más caro sale sacarlo.
 			const porContrato = 0.55 + f.contrato.temporadasRestantes * 0.28;
 			const ganas = 0.8 + rng.entero(0, 60) / 100;
-			const monto = Math.max(
-				20_000,
-				Math.round((valor * porContrato * ganas) / 10_000) * 10_000
-			);
+			const monto = Math.max(20_000, Math.round((valor * porContrato * ganas) / 10_000) * 10_000);
 
 			// Lo que ofrecen depende de para qué lo compran: si viene a ser titular
 			// paga el precio del puesto, y si viene a competir por el puesto, menos.

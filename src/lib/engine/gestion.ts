@@ -55,11 +55,7 @@ export const ACCIONES: AccionDeGestion[] = [
 					}
 				];
 			}
-			e.representante.atributos.contactos = acotar(
-				e.representante.atributos.contactos + 2,
-				0,
-				100
-			);
+			e.representante.atributos.contactos = acotar(e.representante.atributos.contactos + 2, 0, 100);
 			e.futbolista.valorMercadoUsd = Math.round(e.futbolista.valorMercadoUsd * 1.08);
 			return [
 				{
@@ -80,7 +76,8 @@ export const ACCIONES: AccionDeGestion[] = [
 		fases: [1, 2],
 		probabilidad: (e) => {
 			const f = e.futbolista;
-			const merecimiento = media(f.atributos, f.posicion) - contexto(f.contrato.clubId).club.prestigio;
+			const merecimiento =
+				media(f.atributos, f.posicion) - contexto(f.contrato.clubId).club.prestigio;
 			return chance(30 + merecimiento * 0.8, e.representante.atributos.negociacion);
 		},
 		aplicar: (e, salio) => {

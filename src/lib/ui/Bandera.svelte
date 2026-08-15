@@ -44,7 +44,9 @@
 		for (let i = 0; i < puntas * 2; i++) {
 			const radio = i % 2 === 0 ? r : r * 0.45;
 			const angulo = (i * Math.PI) / puntas - Math.PI / 2;
-			puntos.push(`${(cx + radio * Math.cos(angulo)).toFixed(2)},${(cy + radio * Math.sin(angulo)).toFixed(2)}`);
+			puntos.push(
+				`${(cx + radio * Math.cos(angulo)).toFixed(2)},${(cy + radio * Math.sin(angulo)).toFixed(2)}`
+			);
 		}
 		return puntos.join(' ');
 	}
@@ -54,7 +56,9 @@
 		for (let i = 0; i < 10; i++) {
 			const radio = i % 2 === 0 ? r : r * 0.42;
 			const angulo = (i * Math.PI) / 5 - Math.PI / 2;
-			puntos.push(`${(cx + radio * Math.cos(angulo)).toFixed(2)},${(cy + radio * Math.sin(angulo)).toFixed(2)}`);
+			puntos.push(
+				`${(cx + radio * Math.cos(angulo)).toFixed(2)},${(cy + radio * Math.sin(angulo)).toFixed(2)}`
+			);
 		}
 		return puntos.join(' ');
 	}

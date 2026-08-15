@@ -69,8 +69,8 @@
 	<div class="tarjeta">
 		<h3>Mientras tanto</h3>
 		<p style="margin:0 0 .8rem">
-			<strong>{futbolista.nombre}</strong>, {futbolista.edad} años, {futbolista.posicion}. Vos
-			jugás como <strong>{vista.rol}</strong>.
+			<strong>{futbolista.nombre}</strong>, {futbolista.edad} años, {futbolista.posicion}. Vos jugás
+			como <strong>{vista.rol}</strong>.
 		</p>
 		<ClubLinea clubId={futbolista.contrato.clubId} tamano={38} />
 	</div>

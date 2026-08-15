@@ -23,7 +23,7 @@
 >
 	<title>{nombre}</title>
 	<defs>
-		<clipPath id={id}>
+		<clipPath {id}>
 			<path d={CONTORNO} />
 		</clipPath>
 	</defs>
