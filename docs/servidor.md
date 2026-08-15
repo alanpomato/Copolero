@@ -133,7 +133,7 @@ Para activarlo, cargá tres secretos en el repositorio, en
 | `SERVIDOR_USUARIO` | `root`                                   |
 | `SERVIDOR_SSH_KEY` | el contenido de tu clave privada, entero |
 
-Para conseguir la clave privada, si no tenés uuna:
+Para generar la clave, si no tenés una:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/copolero_deploy -N ""
