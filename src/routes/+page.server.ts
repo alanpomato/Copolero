@@ -3,6 +3,7 @@ import { obtenerDb } from '$lib/server/db';
 import { crearPartida, ErrorDePartida } from '$lib/server/partidas';
 import { EDAD_INICIAL_POR_DEFECTO } from '$lib/engine/estado';
 import { POSICIONES, ROLES, type Posicion, type Rol } from '$lib/engine/tipos';
+import { esClubValido } from '$lib/ui/opciones';
 import type { Actions } from './$types';
 
 const EDAD_MINIMA = 15;
@@ -23,7 +24,7 @@ export const actions: Actions = {
 		const nombreFutbolista = texto(datos, 'nombreFutbolista');
 		const nacionalidad = texto(datos, 'nacionalidad', 40) || 'Argentina';
 		const posicion = texto(datos, 'posicion') as Posicion;
-		const club = texto(datos, 'club', 40);
+		const clubId = texto(datos, 'clubId', 40);
 		const edadInicial = Number(datos.get('edadInicial') ?? EDAD_INICIAL_POR_DEFECTO);
 
 		const problemas: string[] = [];
@@ -31,7 +32,7 @@ export const actions: Actions = {
 		if (!ROLES.includes(rol)) problemas.push('Elegí con qué rol querés jugar.');
 		if (!nombreFutbolista) problemas.push('Poné el nombre del futbolista.');
 		if (!POSICIONES.includes(posicion)) problemas.push('Elegí una posición.');
-		if (!club) problemas.push('Poné el club donde arranca.');
+		if (!esClubValido(clubId)) problemas.push('Elegí el club donde arranca.');
 		if (!Number.isInteger(edadInicial) || edadInicial < EDAD_MINIMA || edadInicial > EDAD_MAXIMA) {
 			problemas.push(`La edad inicial tiene que estar entre ${EDAD_MINIMA} y ${EDAD_MAXIMA}.`);
 		}
@@ -45,7 +46,7 @@ export const actions: Actions = {
 			creada = crearPartida(
 				obtenerDb(),
 				{
-					futbolista: { nombre: nombreFutbolista, nacionalidad, posicion, edadInicial, club },
+					futbolista: { nombre: nombreFutbolista, nacionalidad, posicion, edadInicial, clubId },
 					representante: { nombre: rol === 'representante' ? tuNombre : 'Sin representante' }
 				},
 				rol,

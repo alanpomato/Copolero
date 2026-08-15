@@ -1,5 +1,6 @@
 import { rngPara } from './rng';
 import { media } from './estado';
+import { club } from '../../../content/mundo';
 import { simularMercado, titulares } from './mercado';
 import {
 	MUNDO_SIN_CAMBIOS,
@@ -161,7 +162,7 @@ function cerrarTemporada(estado: Estado, semilla: string, log: EntradaLog[]): Es
 		log.push({
 			tipo: 'contrato',
 			visiblePara: 'ambos',
-			texto: `Se le vence el contrato con ${futbolista.contrato.club}.`
+			texto: `Se le vence el contrato con ${club(futbolista.contrato.clubId).nombre}.`
 		});
 	}
 

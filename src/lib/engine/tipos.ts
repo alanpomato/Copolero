@@ -47,7 +47,8 @@ export type Atributos = {
 };
 
 export type Contrato = {
-	club: string;
+	/** Id del club en `content/mundo`, no el nombre. */
+	clubId: string;
 	/** Salario mensual en USD. */
 	salarioMensual: number;
 	temporadasRestantes: number;

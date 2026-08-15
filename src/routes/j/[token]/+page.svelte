@@ -4,6 +4,9 @@
 	import { page } from '$app/state';
 	import { media } from '$lib/engine/estado';
 	import { NOMBRE_FASE } from '$lib/engine/tipos';
+	import Bandera from '$lib/ui/Bandera.svelte';
+	import ClubLinea from '$lib/ui/ClubLinea.svelte';
+	import Escudo from '$lib/ui/Escudo.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -64,20 +67,29 @@
 
 	<div class="tarjeta">
 		<h3>Mientras tanto</h3>
-		<p style="margin:0">
-			<strong>{futbolista.nombre}</strong>, {futbolista.edad} años, {futbolista.posicion} en
-			{futbolista.contrato.club}. Vos jugás como <strong>{vista.rol}</strong>.
+		<p style="margin:0 0 .8rem">
+			<strong>{futbolista.nombre}</strong>, {futbolista.edad} años, {futbolista.posicion}. Vos
+			jugás como <strong>{vista.rol}</strong>.
 		</p>
+		<ClubLinea clubId={futbolista.contrato.clubId} tamano={38} />
 	</div>
 
 	<p class="sutil">Esta pantalla se actualiza sola cuando entre.</p>
 {:else}
-	<h1>{futbolista.nombre}</h1>
-	<p class="bajada">
-		Temporada {estado.temporada} · {estado.anio} · {NOMBRE_FASE[estado.fase]}
-		<br />
-		Sos <strong>{vista.rol}</strong> · {vista.elOtro.nombre} es {vista.elOtro.rol}
-	</p>
+	<div class="encabezado">
+		<Escudo clubId={futbolista.contrato.clubId} tamano={54} />
+		<div>
+			<h1>
+				<Bandera nacionalidad={futbolista.nacionalidad} alto={18} />
+				{futbolista.nombre}
+			</h1>
+			<p class="bajada" style="margin:.25rem 0 0">
+				Temporada {estado.temporada} · {estado.anio} · {NOMBRE_FASE[estado.fase]}
+				<br />
+				Sos <strong>{vista.rol}</strong> · {vista.elOtro.nombre} es {vista.elOtro.rol}
+			</p>
+		</div>
+	</div>
 
 	{#if vista.sincronizacion === 'CAREER_OVER'}
 		<div class="tarjeta">
@@ -122,11 +134,10 @@
 
 		<div class="tarjeta">
 			<h3>Tu contrato</h3>
+			<div style="margin-bottom:.85rem">
+				<ClubLinea clubId={futbolista.contrato.clubId} tamano={40} />
+			</div>
 			<div class="cifras">
-				<div class="cifra">
-					<span class="valor" style="font-size:1.1rem">{futbolista.contrato.club}</span>
-					<span class="etiqueta">Club</span>
-				</div>
 				<div class="cifra">
 					<span class="valor" style="font-size:1.1rem"
 						>{plata(futbolista.contrato.salarioMensual)}</span
@@ -258,3 +269,20 @@
 		</div>
 	{/if}
 {/if}
+
+<style>
+	.encabezado {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.9rem;
+		margin-bottom: 1.6rem;
+	}
+	.encabezado h1 {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		font-size: clamp(1.5rem, 6.5vw, 2.1rem);
+	}
+</style>

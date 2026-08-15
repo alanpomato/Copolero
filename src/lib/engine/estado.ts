@@ -1,3 +1,4 @@
+import { salarioTipico } from '../../../content/mundo';
 import { MUNDO_SIN_CAMBIOS, type Atributos, type Estado, type Posicion, type Rol } from './tipos';
 import type { Rng } from './rng';
 
@@ -8,7 +9,7 @@ export type ConfigPartida = {
 		nacionalidad: string;
 		posicion: Posicion;
 		edadInicial: number;
-		club: string;
+		clubId: string;
 	};
 	representante: {
 		nombre: string;
@@ -51,6 +52,25 @@ export function media(atributos: Atributos, posicion: Posicion): number {
 		total += atributos[atributo as keyof Atributos] * (peso as number);
 	}
 	return Math.round(total);
+}
+
+/**
+ * El primer sueldo.
+ *
+ * Sale de lo que paga el club de verdad, con un descuento fuerte por ser el
+ * primer contrato de un pibe: nadie firma su debut por lo que vale el puesto.
+ * Es lo que hace que arrancar en el Ascenso duela y arrancar en un grande no
+ * sea lo mismo.
+ */
+function sueldoDeArranque(
+	clubId: string,
+	atributos: Atributos,
+	posicion: Posicion,
+	rng: Rng
+): number {
+	const tipico = salarioTipico(clubId, media(atributos, posicion));
+	const primerContrato = tipico * (rng.entero(18, 30) / 100);
+	return Math.max(600, Math.round(primerContrato / 50) * 50);
 }
 
 /** Un pibe de 16 en el Ascenso: todo bajo, y un techo que nadie conoce. */
@@ -105,8 +125,8 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 			prensa: 0,
 
 			contrato: {
-				club: futbolista.club,
-				salarioMensual: rng.entero(900, 1600),
+				clubId: futbolista.clubId,
+				salarioMensual: sueldoDeArranque(futbolista.clubId, atributos, futbolista.posicion, rng),
 				temporadasRestantes: 2,
 				clausula: 0
 			},

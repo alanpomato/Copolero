@@ -28,7 +28,7 @@ export const load: PageServerLoad = ({ params }) => {
 		anfitrion: presentes[0]?.nombre ?? null,
 		futbolista: {
 			nombre: estado.futbolista.nombre,
-			club: estado.futbolista.contrato.club,
+			clubId: estado.futbolista.contrato.clubId,
 			edad: estado.futbolista.edad,
 			posicion: estado.futbolista.posicion
 		}

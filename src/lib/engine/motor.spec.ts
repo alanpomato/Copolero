@@ -12,7 +12,7 @@ const CONFIG: ConfigPartida = {
 		nacionalidad: 'Argentina',
 		posicion: 'delantero',
 		edadInicial: 16,
-		club: 'Huracán'
+		clubId: 'ar-huracan'
 	},
 	representante: { nombre: 'Alan' }
 };
@@ -80,7 +80,7 @@ describe('estado inicial', () => {
 		const estado = nuevoEstado();
 		expect(estado.futbolista.nombre).toBe('Damián Correa');
 		expect(estado.futbolista.edad).toBe(16);
-		expect(estado.futbolista.contrato.club).toBe('Huracán');
+		expect(estado.futbolista.contrato.clubId).toBe('ar-huracan');
 	});
 
 	it('pondera la media según el puesto', () => {

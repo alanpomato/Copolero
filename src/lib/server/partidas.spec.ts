@@ -16,7 +16,7 @@ const CONFIG: ConfigPartida = {
 		nacionalidad: 'Argentina',
 		posicion: 'delantero',
 		edadInicial: 16,
-		club: 'Huracán'
+		clubId: 'ar-huracan'
 	},
 	representante: { nombre: 'Sin representante' }
 };

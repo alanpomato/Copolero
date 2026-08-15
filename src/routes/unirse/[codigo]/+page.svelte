@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -25,10 +26,11 @@
 
 <div class="tarjeta">
 	<h3>La carrera</h3>
-	<p style="margin:0">
+	<p style="margin:0 0 .8rem">
 		<strong>{data.futbolista.nombre}</strong>, {data.futbolista.edad} años,
-		{data.futbolista.posicion} en {data.futbolista.club}.
+		{data.futbolista.posicion}.
 	</p>
+	<ClubLinea clubId={data.futbolista.clubId} tamano={38} />
 </div>
 
 {#if data.rolLibre}

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { club } from '../../../content/mundo';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from './db/cliente';
 import { decisiones, jugadores, log, partidas, snapshots } from './db/schema';
@@ -90,7 +91,7 @@ export function crearPartida(
 				fase: 1,
 				tipo: 'partida_creada',
 				visiblePara: 'ambos',
-				texto: `Arranca la carrera de ${estado.futbolista.nombre} en ${estado.futbolista.contrato.club}.`
+				texto: `Arranca la carrera de ${estado.futbolista.nombre} en ${club(estado.futbolista.contrato.clubId).nombre}.`
 			})
 			.run();
 
