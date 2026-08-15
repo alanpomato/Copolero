@@ -1,7 +1,17 @@
 import { rngPara } from './rng';
 import { media } from './estado';
 import { club } from '../../../content/mundo';
+import {
+	INTENSIDAD_POR_DEFECTO,
+	PLAN_POR_DEFECTO,
+	entrenar,
+	type Intensidad
+} from './entrenamiento';
+import { resolverGestion } from './gestion';
 import { simularMercado, titulares } from './mercado';
+import { ocasionesDe, resolverOcasion } from './ocasiones';
+import { ofertasPara, resolverPase } from './pases';
+import { jugarTemporada } from './temporada';
 import {
 	MUNDO_SIN_CAMBIOS,
 	NOMBRE_FASE,
@@ -12,6 +22,7 @@ import {
 	type EstadoSincronizacion,
 	type Fase,
 	type ResultadoFase,
+	type ResumenTemporada,
 	type Rol
 } from './tipos';
 
@@ -71,18 +82,55 @@ export function resolverFase(
 	const log: EntradaLog[] = [];
 	let siguiente: Estado = estructurar(estado);
 
+	const delFutbolista = decisiones.find((d) => d.rol === 'futbolista')!;
+	const delRepresentante = decisiones.find((d) => d.rol === 'representante')!;
+
 	// Las notas son privadas mientras la fase está abierta y se revelan a los dos
-	// al cerrarla. En M0 son el único contenido; sirven para ver de punta a punta
-	// que la barrera y la proyección por rol funcionan.
+	// al cerrarla.
 	for (const rol of ROLES) {
-		const decision = decisiones.find((d) => d.rol === rol)!;
-		const nota = decision.nota.trim();
+		const nota = decisiones.find((d) => d.rol === rol)!.nota.trim();
 		if (nota.length > 0) {
-			log.push({
-				tipo: 'nota',
-				visiblePara: 'ambos',
-				texto: `${etiqueta(rol)}: ${nota}`
-			});
+			log.push({ tipo: 'nota', visiblePara: 'ambos', texto: `${etiqueta(rol)}: ${nota}` });
+		}
+	}
+
+	if (estado.fase === 1) {
+		// --- Pretemporada ------------------------------------------------------
+		const resultado = entrenar(
+			siguiente,
+			delFutbolista.entrenamiento ?? PLAN_POR_DEFECTO,
+			(delFutbolista.intensidad as Intensidad) ?? INTENSIDAD_POR_DEFECTO,
+			semilla
+		);
+		log.push({ tipo: 'entrenamiento', visiblePara: 'ambos', texto: resultado.texto });
+	} else if (estado.fase === 2) {
+		// --- La temporada ------------------------------------------------------
+		// Primero se resuelve la rueda de ocasión, después se juega el año con lo
+		// que esa rueda dejó en la moral y en la relación con el técnico.
+		const ocasiones = ocasionesDe(siguiente, semilla);
+		const elegidas = delFutbolista.ocasiones ?? [];
+		const resultados = ocasiones.map((ocasion, i) =>
+			resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i)
+		);
+
+		const temporada = jugarTemporada(siguiente, resultados, semilla);
+		siguiente.ultimaTemporada = temporada.resumen;
+
+		for (const jugada of temporada.jugadas) {
+			log.push({ tipo: jugada.tipo, visiblePara: 'ambos', texto: jugada.texto });
+		}
+		log.push({
+			tipo: 'temporada_jugada',
+			visiblePara: 'ambos',
+			texto: resumirTemporada(temporada.resumen, siguiente)
+		});
+	}
+
+	// El representante trabaja en las dos primeras fases. En la tercera manda el
+	// mercado, que se resuelve solo.
+	if (estado.fase === 1 || estado.fase === 2) {
+		for (const linea of resolverGestion(siguiente, delRepresentante.gestion, semilla)) {
+			log.push({ tipo: 'gestion', visiblePara: linea.visiblePara, texto: linea.texto });
 		}
 	}
 
@@ -93,12 +141,29 @@ export function resolverFase(
 	});
 
 	if (estado.fase === 3) {
-		siguiente = cerrarTemporada(siguiente, semilla, log);
+		siguiente = cerrarTemporada(siguiente, semilla, log, {
+			futbolista: delFutbolista.destino,
+			representante: delRepresentante.destino
+		});
 	} else {
 		siguiente.fase = faseSiguiente(estado.fase);
 	}
 
 	return { estado: siguiente, log };
+}
+
+/** La línea que resume el año en el diario. */
+function resumirTemporada(resumen: ResumenTemporada, estado: Estado): string {
+	const partes = [
+		`${resumen.partidos} partidos`,
+		`${resumen.goles} ${resumen.goles === 1 ? 'gol' : 'goles'}`,
+		`${resumen.asistencias} ${resumen.asistencias === 1 ? 'asistencia' : 'asistencias'}`
+	];
+	return (
+		`${estado.futbolista.nombre} cerró la temporada ${resumen.temporada} con ` +
+		`${partes.join(', ')}. ${club(resumen.clubId).nombre} terminó ${resumen.puesto}º ` +
+		`de ${resumen.equipos}. Nota del año: ${resumen.nota.toFixed(1)}.`
+	);
 }
 
 /**
@@ -108,7 +173,12 @@ export function resolverFase(
  * envejecer, desgastar, cobrar y recalcular la forma. La progresión de
  * atributos, los eventos y la economía completa llegan en M1 y M3.
  */
-function cerrarTemporada(estado: Estado, semilla: string, log: EntradaLog[]): Estado {
+function cerrarTemporada(
+	estado: Estado,
+	semilla: string,
+	log: EntradaLog[],
+	destinos: { futbolista?: string; representante?: string } = {}
+): Estado {
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
 		fase: 3,
@@ -142,16 +212,49 @@ function cerrarTemporada(estado: Estado, semilla: string, log: EntradaLog[]): Es
 			`y USD ${comisionSalario.toLocaleString('es-AR')} de comisión sobre el salario.`
 	});
 
+	// --- El mercado ----------------------------------------------------------
+	// Se resuelve después de cobrar el año, porque el sueldo que se cobró es el
+	// del club donde se jugó. El pase se hace solamente si los dos eligieron el
+	// mismo club: es la única decisión del juego que necesita que se hayan
+	// hablado antes de apretar el botón.
+	resolverPase(
+		estado,
+		ofertasPara(estado, semilla),
+		destinos.futbolista,
+		destinos.representante,
+		log
+	);
+
 	// --- El cuerpo -----------------------------------------------------------
 	futbolista.edad += 1;
-	const desgasteExtra = rng.entero(2, 5) + Math.max(0, futbolista.edad - 28);
+	const desgasteExtra = rng.entero(0, 1) + Math.max(0, futbolista.edad - 30);
 	futbolista.desgaste = Math.min(100, futbolista.desgaste + desgasteExtra);
 	futbolista.forma = acotar(rng.entero(45, 70) - Math.floor(futbolista.desgaste / 10), 1, 100);
 
+	// --- Lo que se va con la edad --------------------------------------------
+	// Después de los 30 el cuerpo devuelve menos de lo que se le pide. Primero
+	// se va la velocidad, después la potencia, y al final la resistencia. El
+	// pase y el liderazgo no se van nunca: por eso los veteranos se retrasan de
+	// puesto en vez de retirarse.
+	if (futbolista.edad >= 30) {
+		const caida = 1 + Math.floor((futbolista.edad - 30) / 2);
+		futbolista.atributos.velocidad = acotar(futbolista.atributos.velocidad - caida, 1, 99);
+		futbolista.atributos.potencia = acotar(
+			futbolista.atributos.potencia - Math.max(0, caida - 1),
+			1,
+			99
+		);
+		if (futbolista.edad >= 33) {
+			futbolista.atributos.resistencia = acotar(futbolista.atributos.resistencia - 1, 1, 99);
+		}
+		futbolista.atributos.liderazgo = acotar(futbolista.atributos.liderazgo + 1, 1, 99);
+	}
+
 	// --- La relación ---------------------------------------------------------
-	// Deriva natural: si nadie la trabaja, se enfría sola. En M0 no hay todavía
-	// acciones que la suban, así que baja siempre.
-	estado.confianza = acotar(estado.confianza - 2, 0, 100);
+	// Deriva natural: si nadie la trabaja, se enfría sola. Lo que la sostiene es
+	// que el representante elija estar, y eso le cuesta las gestiones que sí dan
+	// plata. Ésa es la decisión del juego.
+	estado.confianza = acotar(estado.confianza - 5, 0, 100);
 
 	// --- El contrato ---------------------------------------------------------
 	futbolista.contrato.temporadasRestantes = Math.max(

@@ -162,7 +162,8 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		},
 
 		// Arranca igual al contenido: el mundo todavía es el de la foto.
-		cambiosMundo: structuredClone(MUNDO_SIN_CAMBIOS)
+		cambiosMundo: structuredClone(MUNDO_SIN_CAMBIOS),
+		ultimaTemporada: null
 	};
 }
 

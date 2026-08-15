@@ -174,16 +174,43 @@ describe('avance de fases y temporadas', () => {
 		expect(estado.representante.dineroUsd).toBe(cajaPrevia + fijoEsperado + comisionEsperada);
 	});
 
-	it('el desgaste sube y la confianza se enfría sola', () => {
+	it('el desgaste sube al pasar la temporada', () => {
 		let estado = nuevoEstado();
-		const confianzaPrevia = estado.confianza;
 
 		for (let i = 0; i < 3; i++) {
 			estado = resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA).estado;
 		}
 
 		expect(estado.futbolista.desgaste).toBeGreaterThan(0);
-		expect(estado.confianza).toBe(confianzaPrevia - 2);
+	});
+
+	it('la confianza se enfría sola si el representante no la trabaja', () => {
+		let estado = nuevoEstado();
+		const confianzaPrevia = estado.confianza;
+
+		// El representante hace la gestión que más plata deja y menos acompaña.
+		const gestionEgoista = [
+			{ rol: 'futbolista' as const, nota: '' },
+			{ rol: 'representante' as const, nota: '', gestion: 'formarse' }
+		];
+		estado = resolverFase(estado, gestionEgoista, SEMILLA).estado;
+		expect(estado.confianza).toBeLessThan(confianzaPrevia);
+	});
+
+	it('la confianza sube si el representante elige estar', () => {
+		let estado = nuevoEstado();
+		const confianzaPrevia = estado.confianza;
+
+		estado = resolverFase(
+			estado,
+			[
+				{ rol: 'futbolista', nota: '' },
+				{ rol: 'representante', nota: '', gestion: 'acompanar' }
+			],
+			SEMILLA
+		).estado;
+
+		expect(estado.confianza).toBeGreaterThan(confianzaPrevia);
 	});
 
 	it('revela las notas de los dos al cerrar la fase', () => {

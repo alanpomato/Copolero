@@ -127,6 +127,23 @@ export type CambiosMundo = {
 
 export const MUNDO_SIN_CAMBIOS: CambiosMundo = { movidos: {} };
 
+/** Cómo le fue en la temporada que acaba de terminar. */
+export type ResumenTemporada = {
+	temporada: number;
+	clubId: string;
+	partidos: number;
+	goles: number;
+	asistencias: number;
+	minutos: number;
+	/** Puesto del equipo en la liga, y cuántos equipos había. */
+	puesto: number;
+	equipos: number;
+	/** Nota del año, 1–10. Es el número que mueve todo lo demás. */
+	nota: number;
+	lesionado: boolean;
+	campeon: boolean;
+};
+
 export type Estado = {
 	/** Versión del schema del estado, para migrar partidas viejas. */
 	version: 1;
@@ -145,18 +162,39 @@ export type Estado = {
 
 	/** Cómo se fue moviendo el mundo real desde que arrancó la partida. */
 	cambiosMundo: CambiosMundo;
+
+	/** La última temporada jugada. `null` hasta que se juegue la primera. */
+	ultimaTemporada: ResumenTemporada | null;
 };
 
 /**
  * Lo que manda un rol para cerrar su parte de la fase.
  *
- * En M0 no hay contenido de juego todavía: la única decisión es cerrar la fase,
- * con una nota opcional que queda privada hasta que la fase cierra. Sirve para
- * probar la barrera y la proyección por rol de punta a punta.
+ * Todos los campos de juego son opcionales: si alguien cierra la fase sin
+ * elegir nada, el motor toma la opción más conservadora. Una partida no se
+ * puede trabar porque uno de los dos no tocó un botón.
  */
 export type Decision = {
 	rol: Rol;
 	nota: string;
+
+	/** Futbolista, fase 1: qué plan de pretemporada y con cuánta intensidad. */
+	entrenamiento?: string;
+	intensidad?: string;
+
+	/** Futbolista, fase 2: qué eligió en cada ocasión marcada, en orden. */
+	ocasiones?: string[];
+
+	/** Representante, fases 1 y 2: qué gestión hace este tramo. */
+	gestion?: string;
+
+	/**
+	 * Los dos, fase 3: a qué club quiere ir, o `quedarse`.
+	 *
+	 * El pase se hace solo si los dos eligen lo mismo. Es la regla que obliga a
+	 * hablar antes de cerrar la fase.
+	 */
+	destino?: string;
 };
 
 export type VisiblePara = 'ambos' | Rol;
