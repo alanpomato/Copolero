@@ -26,3 +26,8 @@ vite.config.ts.timestamp-*
 
 # Sitio de progreso generado (ver scripts/construir-sitio.mjs)
 /sitio
+
+# Escudos propios: cada quien pone los suyos en su servidor. El repositorio no
+# distribuye imágenes de clubes. Ver static/escudos/LEEME.md.
+static/escudos/*
+!static/escudos/LEEME.md

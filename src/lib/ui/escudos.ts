@@ -14,6 +14,15 @@ import { club, contexto } from '../../../content/mundo';
 
 export type Patron = 'liso' | 'bandas' | 'mitades' | 'sash' | 'franjas' | 'aro';
 
+/**
+ * Formatos que se aceptan para un escudo propio, en orden de prueba.
+ *
+ * Si existe `static/escudos/<id-del-club>.png` se usa ese archivo en vez del
+ * dibujado. La carpeta no va al repositorio: lo que cada uno ponga en su
+ * servidor es cosa suya.
+ */
+export const EXTENSIONES_DE_ESCUDO = ['png', 'svg', 'webp'] as const;
+
 export type Escudo = {
 	principal: string;
 	secundario: string;
