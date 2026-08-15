@@ -13,7 +13,7 @@ export default defineConfig({
 			adapter: adapter(),
 			typescript: {
 				config: (config) => {
-					config.include.push('../drizzle.config.ts');
+					config.include.push('../drizzle.config.ts', '../content/**/*.ts');
 				}
 			}
 		})
@@ -26,7 +26,7 @@ export default defineConfig({
 				test: {
 					name: 'server',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
+					include: ['src/**/*.{test,spec}.{js,ts}', 'content/**/*.{test,spec}.{js,ts}'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
 				}
 			}
