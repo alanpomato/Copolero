@@ -260,12 +260,12 @@ No intentar construir todavía un juego completo. Un MVP que permita demostrar
 este ciclo:
 
 1. Crear futbolista. 2. Crear representante. 3. Vincularlos. 4. Jugar una primera
-temporada. 5. El futbolista toma decisiones. 6. El representante toma
-decisiones. 7. Aparece al menos una situación donde ambos tengan que
-interactuar. 8. Se simula la temporada. 9. Se genera un resumen narrativo.
-10. Ambos reciben progresión. 11. El representante puede comprar al menos un
-staff y un consumible. 12. El representante puede descubrir/incorporar un
-segundo jugador. 13. Comenzar la temporada 2.
+   temporada. 5. El futbolista toma decisiones. 6. El representante toma
+   decisiones. 7. Aparece al menos una situación donde ambos tengan que
+   interactuar. 8. Se simula la temporada. 9. Se genera un resumen narrativo.
+2. Ambos reciben progresión. 11. El representante puede comprar al menos un
+   staff y un consumible. 12. El representante puede descubrir/incorporar un
+   segundo jugador. 13. Comenzar la temporada 2.
 
 La prioridad absoluta es que la partida compartida funcione y que se sienta que
 estamos jugando dos carreras diferentes dentro del mismo universo.

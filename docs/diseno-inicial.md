@@ -54,11 +54,11 @@ paralelo y **la fase no avanza hasta que ambos cerraron sus decisiones**.
 
 **Fase 1 — Pretemporada**
 
-| Futbolista | Representante |
-|---|---|
-| Plan de entrenamiento | A qué clubes visita |
+| Futbolista                                      | Representante                      |
+| ----------------------------------------------- | ---------------------------------- |
+| Plan de entrenamiento                           | A qué clubes visita                |
 | Vida personal (tatuaje, fiestas, dieta, pareja) | Con qué dirigentes y colegas habla |
-| Objetivos declarados de la temporada | Qué exige al club actual |
+| Objetivos declarados de la temporada            | Qué exige al club actual           |
 
 **Fase 2 — Temporada**
 

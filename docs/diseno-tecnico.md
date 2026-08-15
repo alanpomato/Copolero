@@ -36,13 +36,13 @@ propio tiempo, y son plata y tiempo distintos.**
 
 Cobra un sueldo del club y paga su vida. Su plata se va en:
 
-| Contratación | Costo mensual (USD) | Qué hace |
-|---|---|---|
-| Preparador físico personal | 800 – 2.500 | Sube físico, baja riesgo de lesión |
-| Nutricionista | 400 – 1.200 | Sostiene la forma, retrasa el desgaste |
-| Psicólogo deportivo | 500 – 1.500 | Estabiliza la moral, mejora en partidos importantes |
-| Kinesiólogo | 600 – 2.000 | Acorta las lesiones, baja la reincidencia |
-| Cocinero | 700 – 2.000 | Efecto chico y constante sobre forma y desgaste |
+| Contratación               | Costo mensual (USD) | Qué hace                                            |
+| -------------------------- | ------------------- | --------------------------------------------------- |
+| Preparador físico personal | 800 – 2.500         | Sube físico, baja riesgo de lesión                  |
+| Nutricionista              | 400 – 1.200         | Sostiene la forma, retrasa el desgaste              |
+| Psicólogo deportivo        | 500 – 1.500         | Estabiliza la moral, mejora en partidos importantes |
+| Kinesiólogo                | 600 – 2.000         | Acorta las lesiones, baja la reincidencia           |
+| Cocinero                   | 700 – 2.000         | Efecto chico y constante sobre forma y desgaste     |
 
 Son **contratos de servicio**, no consumibles: se pagan todos los meses, se
 renuevan o se cortan. Ahí está el drama — con el primer contrato del Ascenso no
@@ -74,13 +74,13 @@ Vive de tres fuentes, y ninguna es la cartera:
 
 Su plata se va en la **agencia**:
 
-| Contratación | Costo mensual (USD) | Qué hace |
-|---|---|---|
-| Abogado deportivo | 2.000 – 6.000 | Mejores cláusulas, menos riesgo en negociaciones |
-| Scout | 1.500 – 4.000 | Encontrar juveniles, leer mejor el mercado |
-| Analista de datos | 1.500 – 3.500 | Ver qué clubes encajan, anticipar ofertas |
-| Jefe de prensa | 2.000 – 5.000 | Manejar la imagen del representado y la propia |
-| Contador | 800 – 2.000 | Optimiza ingresos, evita problemas fiscales |
+| Contratación      | Costo mensual (USD) | Qué hace                                         |
+| ----------------- | ------------------- | ------------------------------------------------ |
+| Abogado deportivo | 2.000 – 6.000       | Mejores cláusulas, menos riesgo en negociaciones |
+| Scout             | 1.500 – 4.000       | Encontrar juveniles, leer mejor el mercado       |
+| Analista de datos | 1.500 – 3.500       | Ver qué clubes encajan, anticipar ofertas        |
+| Jefe de prensa    | 2.000 – 5.000       | Manejar la imagen del representado y la propia   |
+| Contador          | 800 – 2.000         | Optimiza ingresos, evita problemas fiscales      |
 
 Y su **agenda**: a qué clubes viaja, con qué dirigentes come, a qué mercados va.
 La agenda tiene un techo por temporada. El límite no es un inventario, es que no
@@ -157,11 +157,11 @@ red de contactos por club y dirigente, historial de operaciones.
 
 Cada fase avanza solo cuando **los dos** cerraron sus decisiones.
 
-| Fase | Futbolista | Representante |
-|---|---|---|
-| **1 · Pretemporada** | Plan de entrenamiento, puntos de progresión, contratar/cortar entorno, objetivos declarados, vida personal | Repartir agenda (a qué clubes viaja, con quién habla), contratar/cortar staff, puntos de progresión, preparar negociaciones, buscar juveniles |
-| **2 · Temporada** | Bandeja de eventos + 3 o 4 ocasiones marcadas | Bandeja de eventos (sondeos, prensa, ofertas informales, contactos) |
-| **3 · Mercado y cierre** | Acepta o rechaza ofertas y renovaciones, expresa preferencias | Negocia con clubes, cierra el pase o la renovación, negocia su propio contrato de representación |
+| Fase                     | Futbolista                                                                                                 | Representante                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1 · Pretemporada**     | Plan de entrenamiento, puntos de progresión, contratar/cortar entorno, objetivos declarados, vida personal | Repartir agenda (a qué clubes viaja, con quién habla), contratar/cortar staff, puntos de progresión, preparar negociaciones, buscar juveniles |
+| **2 · Temporada**        | Bandeja de eventos + 3 o 4 ocasiones marcadas                                                              | Bandeja de eventos (sondeos, prensa, ofertas informales, contactos)                                                                           |
+| **3 · Mercado y cierre** | Acepta o rechaza ofertas y renovaciones, expresa preferencias                                              | Negocia con clubes, cierra el pase o la renovación, negocia su propio contrato de representación                                              |
 
 El resultado de la fase 3 es la **pantalla de periódico** (sección 8): resumen
 deportivo + resumen del representante + progresión + botón para arrancar la
@@ -229,29 +229,29 @@ validan con Zod al arrancar. Agregar un evento es editar un archivo.
 
 ```ts
 type Evento = {
-  id: string
-  rol: 'futbolista' | 'representante'
-  fase: 1 | 2 | 3
-  titulo: string
-  texto: string              // admite {club}, {rival}, {dt}, {companiero}
-  peso: number               // ponderación base en la bolsa
-  requisitos: Condicion[]    // sobre el estado; filtra la bolsa
-  cooldown: number           // temporadas antes de poder repetirse
-  unico?: boolean            // hitos: primer gol, primera lesión grave
-  opciones: Opcion[]
-}
+	id: string;
+	rol: 'futbolista' | 'representante';
+	fase: 1 | 2 | 3;
+	titulo: string;
+	texto: string; // admite {club}, {rival}, {dt}, {companiero}
+	peso: number; // ponderación base en la bolsa
+	requisitos: Condicion[]; // sobre el estado; filtra la bolsa
+	cooldown: number; // temporadas antes de poder repetirse
+	unico?: boolean; // hitos: primer gol, primera lesión grave
+	opciones: Opcion[];
+};
 
 type Opcion = {
-  texto: string
-  defecto?: boolean          // la que aplica el piloto automático (sección 11)
-  efectos: Efecto[]          // deltas deterministas sobre el estado
-  tirada?: {
-    exito: (e: Estado) => number   // 0..1, depende de atributos y contexto
-    siExito: Efecto[]
-    siFallo: Efecto[]
-  }
-  visibilidadParaElOtro: 'publica' | 'resumen' | 'oculta'
-}
+	texto: string;
+	defecto?: boolean; // la que aplica el piloto automático (sección 11)
+	efectos: Efecto[]; // deltas deterministas sobre el estado
+	tirada?: {
+		exito: (e: Estado) => number; // 0..1, depende de atributos y contexto
+		siExito: Efecto[];
+		siFallo: Efecto[];
+	};
+	visibilidadParaElOtro: 'publica' | 'resumen' | 'oculta';
+};
 ```
 
 ### 5.2 Selección
@@ -293,12 +293,12 @@ para depurar y testear.
 
 Variable compartida, 0–100, arranca en 60.
 
-| Rango | Efecto |
-|---|---|
-| > 80 | `+5` al rendimiento del futbolista, `+10 %` de margen en las negociaciones, las propuestas se aceptan sin tirada |
-| 40 – 80 | Normal |
-| < 40 | `−5` al rendimiento, el futbolista puede rechazar pases (tirada), aparecen eventos de malas declaraciones |
-| < 15 al cierre de la fase 3 | El futbolista **cambia de representante**. Game over del representante |
+| Rango                       | Efecto                                                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| > 80                        | `+5` al rendimiento del futbolista, `+10 %` de margen en las negociaciones, las propuestas se aceptan sin tirada |
+| 40 – 80                     | Normal                                                                                                           |
+| < 40                        | `−5` al rendimiento, el futbolista puede rechazar pases (tirada), aparecen eventos de malas declaraciones        |
+| < 15 al cierre de la fase 3 | El futbolista **cambia de representante**. Game over del representante                                           |
 
 Deriva natural: `−2` por temporada sin ninguna interacción positiva. La relación
 se enfría sola si nadie la trabaja.
@@ -316,12 +316,12 @@ se firma un contrato nuevo con un club.
 
 ```ts
 type ContratoRepresentacion = {
-  pctSalario: number        // 5–10
-  pctTransferencia: number  // 0–10
-  bonos: Bono[]             // por título, convocatoria, goles, reventa
-  duracionTemporadas: number // 1–5
-  clausulaSalida: number    // USD
-}
+	pctSalario: number; // 5–10
+	pctTransferencia: number; // 0–10
+	bonos: Bono[]; // por título, convocatoria, goles, reventa
+	duracionTemporadas: number; // 1–5
+	clausulaSalida: number; // USD
+};
 ```
 
 **Protocolo**:
@@ -349,8 +349,8 @@ El futbolista y el representante ven cosas distintas de la misma operación:
 - **El futbolista ve**: qué club es, qué liga, qué salario le queda a él, qué
   dice la prensa, y qué le transmite su representante.
 
-El futbolista expresa preferencias (*quiero aceptar / quiero quedarme / quiero
-otro club / quiero más salario / quiero jugar la Libertadores*). El representante
+El futbolista expresa preferencias (_quiero aceptar / quiero quedarme / quiero
+otro club / quiero más salario / quiero jugar la Libertadores_). El representante
 negocia. Con confianza alta, la preferencia del futbolista pesa poco en la
 tirada; con confianza baja, puede directamente vetar la operación.
 
@@ -392,8 +392,8 @@ internacional ×2.
 El multiplicador de permanencia es el que le da sentido a quedarse, y es el que
 choca de frente con la comisión por transferencia del representante.
 
-Al final se ubica el `PL` en una tabla de rangos y sale la comparación: *"tu
-carrera se parece a la de …"*.
+Al final se ubica el `PL` en una tabla de rangos y sale la comparación: _"tu
+carrera se parece a la de …"_.
 
 ### 7.2 Representante — Puntaje de Carrera
 
@@ -441,14 +441,14 @@ de números que ya decidió el motor.
 
 ### 9.1 Decisión
 
-| Pieza | Elección | Por qué |
-|---|---|---|
-| Lenguaje | **TypeScript** en todo | El motor, el servidor y la UI en un solo lenguaje; el motor se testea sin navegador |
-| Framework | **SvelteKit** (adapter-node) | Las *form actions* encajan exactamente con "mando mi decisión y se re-renderiza"; SSR por defecto, poco andamiaje |
-| Base | **SQLite** (`better-sqlite3`) + **Drizzle ORM** | Transacciones síncronas: la barrera de fase se hace bien y en una sola transacción. Schema tipado y migraciones |
-| Deploy | **Fly.io**, una máquina chica + volumen de 1 GB | Barato y con disco persistente. Alternativa igual de válida: cualquier VPS con Caddy adelante |
-| Contenido | Archivos TS/JSON en `content/`, validados con **Zod** | Agregar eventos sin tocar el motor |
-| Tests | **Vitest** | Incluye simular 1.000 carreras completas al azar buscando estados imposibles |
+| Pieza     | Elección                                              | Por qué                                                                                                           |
+| --------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Lenguaje  | **TypeScript** en todo                                | El motor, el servidor y la UI en un solo lenguaje; el motor se testea sin navegador                               |
+| Framework | **SvelteKit** (adapter-node)                          | Las _form actions_ encajan exactamente con "mando mi decisión y se re-renderiza"; SSR por defecto, poco andamiaje |
+| Base      | **SQLite** (`better-sqlite3`) + **Drizzle ORM**       | Transacciones síncronas: la barrera de fase se hace bien y en una sola transacción. Schema tipado y migraciones   |
+| Deploy    | **Fly.io**, una máquina chica + volumen de 1 GB       | Barato y con disco persistente. Alternativa igual de válida: cualquier VPS con Caddy adelante                     |
+| Contenido | Archivos TS/JSON en `content/`, validados con **Zod** | Agregar eventos sin tocar el motor                                                                                |
+| Tests     | **Vitest**                                            | Incluye simular 1.000 carreras completas al azar buscando estados imposibles                                      |
 
 Evito serverless a propósito: SQLite con volumen y el lock de la barrera piden un
 proceso con disco.
@@ -488,22 +488,20 @@ Bebo la pidió y entra, con tres candados.
 
 **Candado 1 — la IA no toca ningún número.** El motor resuelve todo y recién
 después se le pasan los resultados ya calculados. La respuesta se pide con
-*structured outputs* contra un schema que **solo tiene campos de texto**: no hay
+_structured outputs_ contra un schema que **solo tiene campos de texto**: no hay
 forma de que devuelva un valor que el motor vaya a leer.
 
 ```ts
 const response = await client.messages.create({
-  model: 'claude-opus-5',
-  max_tokens: 2000,
-  output_config: {
-    effort: 'low',
-    format: { type: 'json_schema', schema: resumenTemporadaSchema },
-  },
-  system: [
-    { type: 'text', text: MANUAL_DE_ESTILO, cache_control: { type: 'ephemeral' } },
-  ],
-  messages: [{ role: 'user', content: JSON.stringify(hechosDeLaTemporada) }],
-})
+	model: 'claude-opus-5',
+	max_tokens: 2000,
+	output_config: {
+		effort: 'low',
+		format: { type: 'json_schema', schema: resumenTemporadaSchema }
+	},
+	system: [{ type: 'text', text: MANUAL_DE_ESTILO, cache_control: { type: 'ephemeral' } }],
+	messages: [{ role: 'user', content: JSON.stringify(hechosDeLaTemporada) }]
+});
 ```
 
 **Candado 2 — todo texto generado se guarda en la base.** La partida es
@@ -548,16 +546,16 @@ La partida nunca se borra. El estado y el log quedan, y se puede retomar.
 
 ## 12. Cómo se construye
 
-| Hito | Qué tiene que andar |
-|---|---|
-| **M0** | Crear partida, código de invitación, dos roles, las tres fases con barrera, sin contenido |
-| **M1** | Motor puro + 10 eventos + progresión de atributos + la rueda de ocasión |
-| **M2** | Fase 3: ofertas, renovación y la negociación del contrato de representación |
+| Hito   | Qué tiene que andar                                                                                         |
+| ------ | ----------------------------------------------------------------------------------------------------------- |
+| **M0** | Crear partida, código de invitación, dos roles, las tres fases con barrera, sin contenido                   |
+| **M1** | Motor puro + 10 eventos + progresión de atributos + la rueda de ocasión                                     |
+| **M2** | Fase 3: ofertas, renovación y la negociación del contrato de representación                                 |
 | **M3** | Las dos economías: entorno del futbolista, staff y agenda del representante, y el gesto de pagar el entorno |
-| **M4** | Pantalla de fin de temporada con capa narrativa, y confianza andando de punta a punta |
-| **M5** | Retiro, los dos puntajes, comparación con figura histórica |
-| **M6** | Contenido: llegar a 120 eventos, mundo vivo, archirrival persistente |
-| **v2** | Acciones ocultas y filtraciones |
+| **M4** | Pantalla de fin de temporada con capa narrativa, y confianza andando de punta a punta                       |
+| **M5** | Retiro, los dos puntajes, comparación con figura histórica                                                  |
+| **M6** | Contenido: llegar a 120 eventos, mundo vivo, archirrival persistente                                        |
+| **v2** | Acciones ocultas y filtraciones                                                                             |
 
 El ciclo completo que pidió Bebo —crear los dos, vincularlos, jugar una
 temporada, que se crucen al menos una vez, resumen, progresión, empezar la
