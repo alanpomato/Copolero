@@ -4,7 +4,8 @@ import { resolverFase } from './fases';
 import { ofertasPara } from './pases';
 import { rngPara } from './rng';
 import { contexto } from '../../../content/mundo';
-import type { Decision, Estado, Posicion } from './tipos';
+import { PUESTOS, puesto } from './puestos';
+import type { Decision, Estado } from './tipos';
 
 /**
  * Carreras enteras, de punta a punta.
@@ -25,7 +26,7 @@ type Estrategia = {
 
 function correrCarrera(
 	semilla: string,
-	posicion: Posicion,
+	puestoId: string,
 	clubInicial: string,
 	estrategia: Estrategia
 ) {
@@ -34,7 +35,9 @@ function correrCarrera(
 			futbolista: {
 				nombre: 'Damián Correa',
 				nacionalidad: 'Argentina',
-				posicion,
+				puesto: puestoId,
+				numero: puesto(puestoId).numero,
+				pie: 'derecho',
 				edadInicial: 16,
 				clubId: clubInicial
 			},
@@ -86,7 +89,7 @@ const PRUDENTE: Estrategia = { intensidad: 'suave', mejoraMinima: 3, gestion: 'a
 
 describe('una carrera entera', () => {
 	it('termina sola, y ni muy corta ni eterna', () => {
-		const { estado, temporadas } = correrCarrera('c1', 'delantero', 'ar2-moron', AMBICIOSO);
+		const { estado, temporadas } = correrCarrera('c1', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 
 		expect(estado.carreraTerminada).toBe(true);
 		expect(temporadas).toBeGreaterThan(9);
@@ -96,15 +99,15 @@ describe('una carrera entera', () => {
 	});
 
 	it('el que se cuida dura más que el que se rompe', () => {
-		const roto = correrCarrera('c2', 'delantero', 'ar2-moron', AMBICIOSO);
-		const entero = correrCarrera('c2', 'delantero', 'ar2-moron', PRUDENTE);
+		const roto = correrCarrera('c2', 'centrodelantero', 'ar2-moron', AMBICIOSO);
+		const entero = correrCarrera('c2', 'centrodelantero', 'ar2-moron', PRUDENTE);
 
 		expect(entero.estado.futbolista.edad).toBeGreaterThan(roto.estado.futbolista.edad);
 	});
 
 	it('pero el que se rompe llega más arriba', () => {
-		const roto = correrCarrera('c2', 'delantero', 'ar2-moron', AMBICIOSO);
-		const entero = correrCarrera('c2', 'delantero', 'ar2-moron', PRUDENTE);
+		const roto = correrCarrera('c2', 'centrodelantero', 'ar2-moron', AMBICIOSO);
+		const entero = correrCarrera('c2', 'centrodelantero', 'ar2-moron', PRUDENTE);
 
 		const techo = (r: typeof roto) => Math.max(...r.clubes.map((c) => contexto(c).liga.fuerza));
 		expect(techo(roto)).toBeGreaterThanOrEqual(techo(entero));
@@ -112,27 +115,27 @@ describe('una carrera entera', () => {
 	});
 
 	it('el que arranca en el Ascenso puede terminar en otra liga', () => {
-		const { clubes } = correrCarrera('c3', 'delantero', 'ar2-moron', AMBICIOSO);
+		const { clubes } = correrCarrera('c3', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 		expect(clubes.length).toBeGreaterThan(1);
 		expect(contexto(clubes[clubes.length - 1]).liga.id).not.toBe('ar-2');
 	});
 
 	it('la media sube de joven y se frena de grande', () => {
-		const { estado } = correrCarrera('c4', 'mediocampista', 'ar2-moron', AMBICIOSO);
-		const final = media(estado.futbolista.atributos, 'mediocampista');
+		const { estado } = correrCarrera('c4', 'enganche', 'ar2-moron', AMBICIOSO);
+		const final = media(estado.futbolista.atributos, estado.futbolista.posicion);
 		expect(final).toBeGreaterThan(50);
 		// El potencial es un techo de verdad: nadie lo pasa por mucho.
 		expect(final).toBeLessThan(estado.futbolista.potencial + 12);
 	});
 
 	it('el representante termina con plata y con prestigio', () => {
-		const { estado } = correrCarrera('c5', 'delantero', 'ar2-moron', AMBICIOSO);
+		const { estado } = correrCarrera('c5', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 		expect(estado.representante.dineroUsd).toBeGreaterThan(50_000);
 		expect(estado.representante.prestigio).toBeGreaterThan(10);
 	});
 
 	it('las notas se mueven: no es siempre 5 ni siempre 9', () => {
-		const { notas } = correrCarrera('c6', 'delantero', 'ar2-moron', AMBICIOSO);
+		const { notas } = correrCarrera('c6', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 		expect(Math.max(...notas) - Math.min(...notas)).toBeGreaterThan(1.5);
 		for (const nota of notas) {
 			expect(nota).toBeGreaterThanOrEqual(1);
@@ -141,23 +144,18 @@ describe('una carrera entera', () => {
 	});
 
 	it('la misma semilla da la misma carrera', () => {
-		const a = correrCarrera('igual', 'defensor', 'ar2-ferro', AMBICIOSO);
-		const b = correrCarrera('igual', 'defensor', 'ar2-ferro', AMBICIOSO);
+		const a = correrCarrera('igual', 'central', 'ar2-ferro', AMBICIOSO);
+		const b = correrCarrera('igual', 'central', 'ar2-ferro', AMBICIOSO);
 		expect(a.clubes).toEqual(b.clubes);
 		expect(a.notas).toEqual(b.notas);
 		expect(a.estado).toEqual(b.estado);
 	});
 
-	it('los cuatro puestos llegan al final sin romperse', () => {
-		for (const posicion of ['arquero', 'defensor', 'mediocampista', 'delantero'] as const) {
-			const { estado, temporadas } = correrCarrera(
-				`p-${posicion}`,
-				posicion,
-				'ar2-moron',
-				AMBICIOSO
-			);
-			expect(estado.carreraTerminada, posicion).toBe(true);
-			expect(temporadas, posicion).toBeGreaterThan(6);
+	it('los once puestos llegan al final sin romperse', () => {
+		for (const p of PUESTOS) {
+			const { estado, temporadas } = correrCarrera(`p-${p.id}`, p.id, 'ar2-moron', AMBICIOSO);
+			expect(estado.carreraTerminada, p.nombre).toBe(true);
+			expect(temporadas, p.nombre).toBeGreaterThan(6);
 		}
 	});
 });

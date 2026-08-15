@@ -40,18 +40,18 @@ const DOCUMENTOS = [
 const HITOS = [
 	{
 		id: 'M0',
-		estado: 'en curso',
+		estado: 'listo',
 		que: 'Crear partida, código de invitación, dos roles, las tres fases con barrera'
 	},
 	{
 		id: 'M1',
-		estado: 'pendiente',
-		que: 'Motor de eventos, progresión de atributos y la rueda de ocasión'
+		estado: 'listo',
+		que: 'Temporada simulada, progresión de atributos y la rueda de ocasión'
 	},
 	{
 		id: 'M2',
-		estado: 'pendiente',
-		que: 'Ofertas, renovación y la negociación del contrato de representación'
+		estado: 'en curso',
+		que: 'Ofertas y pases (listo); falta renovación y el contrato de representación'
 	},
 	{
 		id: 'M3',
@@ -70,8 +70,8 @@ const HITOS = [
 	},
 	{
 		id: 'M6',
-		estado: 'pendiente',
-		que: 'Contenido: 120 eventos, mundo vivo, archirrival persistente'
+		estado: 'en curso',
+		que: 'Contenido: el mundo real y su mercado (listo); faltan los 120 eventos'
 	}
 ];
 
@@ -193,6 +193,22 @@ function claseDeEstado(estado) {
 	return 'pill-pendiente';
 }
 
+/**
+ * Lo que anda hoy, sacado del README.
+ *
+ * Se lee de ahí a propósito: es el texto que se actualiza cuando se agrega algo
+ * al juego, así que la página no puede quedar contando una versión vieja.
+ */
+async function queAndaHoy() {
+	const readme = await readFile(join(RAIZ, 'README.md'), 'utf8');
+	const desde = readme.indexOf('## Qué anda hoy');
+	if (desde === -1) return '';
+	const hasta = readme.indexOf('\n## ', desde + 5);
+	const trozo = readme.slice(desde, hasta === -1 ? undefined : hasta);
+	// El h2 del README pasa a ser el h2 de la página, con el mismo estilo.
+	return envolverTablas(marked.parse(trozo));
+}
+
 async function construirIndice(docsPresentes) {
 	const tarjetas = DOCUMENTOS.filter((d) => docsPresentes.has(d.archivo))
 		.map(
@@ -215,7 +231,9 @@ async function construirIndice(docsPresentes) {
 <p class="bajada">Juego de carrera de futbolista para dos personas: uno es el
 futbolista, el otro es su representante. Por turnos, asincrónico, en el navegador.</p>
 
-<h2>Estado del proyecto</h2>
+${await queAndaHoy()}
+
+<h2>Hitos</h2>
 <ul class="hitos">
 ${hitos}
 </ul>

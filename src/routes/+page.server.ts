@@ -2,7 +2,14 @@ import { fail, redirect } from '@sveltejs/kit';
 import { obtenerDb } from '$lib/server/db';
 import { crearPartida, ErrorDePartida } from '$lib/server/partidas';
 import { EDAD_INICIAL_POR_DEFECTO } from '$lib/engine/estado';
-import { POSICIONES, ROLES, type Posicion, type Rol } from '$lib/engine/tipos';
+import {
+	ATRIBUTOS,
+	esPieValido,
+	esPuestoValido,
+	repartoValido,
+	type Pie
+} from '$lib/engine/puestos';
+import { ROLES, type Atributos, type Rol } from '$lib/engine/tipos';
 import { esClubValido } from '$lib/ui/opciones';
 import type { Actions } from './$types';
 
@@ -15,6 +22,20 @@ function texto(datos: FormData, campo: string, largoMaximo = 60): string {
 		.slice(0, largoMaximo);
 }
 
+/**
+ * Los puntos que el jugador repartió a mano.
+ *
+ * Se vuelve a validar acá aunque el formulario ya lo controle: el que edita el
+ * HTML no puede darse doce puntos en cada atributo.
+ */
+function repartoDelFormulario(datos: FormData): Partial<Record<keyof Atributos, number>> {
+	const crudo: Partial<Record<keyof Atributos, number>> = {};
+	for (const atributo of ATRIBUTOS) {
+		crudo[atributo] = Number(datos.get(`reparto-${atributo}`) ?? 0);
+	}
+	return repartoValido(crudo).reparto;
+}
+
 export const actions: Actions = {
 	crear: async ({ request, cookies }) => {
 		const datos = await request.formData();
@@ -23,16 +44,22 @@ export const actions: Actions = {
 		const rol = texto(datos, 'rol') as Rol;
 		const nombreFutbolista = texto(datos, 'nombreFutbolista');
 		const nacionalidad = texto(datos, 'nacionalidad', 40) || 'Argentina';
-		const posicion = texto(datos, 'posicion') as Posicion;
+		const puesto = texto(datos, 'puesto', 40);
+		const pie = texto(datos, 'pie', 20) as Pie;
 		const clubId = texto(datos, 'clubId', 40);
 		const edadInicial = Number(datos.get('edadInicial') ?? EDAD_INICIAL_POR_DEFECTO);
+		const numero = Number(datos.get('numero') ?? 0);
 
 		const problemas: string[] = [];
 		if (!tuNombre) problemas.push('Poné tu nombre.');
 		if (!ROLES.includes(rol)) problemas.push('Elegí con qué rol querés jugar.');
 		if (!nombreFutbolista) problemas.push('Poné el nombre del futbolista.');
-		if (!POSICIONES.includes(posicion)) problemas.push('Elegí una posición.');
+		if (!esPuestoValido(puesto)) problemas.push('Elegí en qué puesto juega.');
+		if (!esPieValido(pie)) problemas.push('Elegí con qué pie juega.');
 		if (!esClubValido(clubId)) problemas.push('Elegí el club donde arranca.');
+		if (!Number.isInteger(numero) || numero < 1 || numero > 99) {
+			problemas.push('El número de camiseta va del 1 al 99.');
+		}
 		if (!Number.isInteger(edadInicial) || edadInicial < EDAD_MINIMA || edadInicial > EDAD_MAXIMA) {
 			problemas.push(`La edad inicial tiene que estar entre ${EDAD_MINIMA} y ${EDAD_MAXIMA}.`);
 		}
@@ -46,7 +73,16 @@ export const actions: Actions = {
 			creada = crearPartida(
 				obtenerDb(),
 				{
-					futbolista: { nombre: nombreFutbolista, nacionalidad, posicion, edadInicial, clubId },
+					futbolista: {
+						nombre: nombreFutbolista,
+						nacionalidad,
+						puesto,
+						numero,
+						pie,
+						edadInicial,
+						clubId,
+						reparto: repartoDelFormulario(datos)
+					},
 					representante: { nombre: rol === 'representante' ? tuNombre : 'Sin representante' }
 				},
 				rol,

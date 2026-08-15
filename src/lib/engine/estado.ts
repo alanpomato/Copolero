@@ -1,4 +1,5 @@
 import { salarioTipico } from '../../../content/mundo';
+import { puesto as puestoPorId, repartoValido, ventajaDePie, type Pie } from './puestos';
 import { MUNDO_SIN_CAMBIOS, type Atributos, type Estado, type Posicion, type Rol } from './tipos';
 import type { Rng } from './rng';
 
@@ -7,9 +8,14 @@ export type ConfigPartida = {
 	futbolista: {
 		nombre: string;
 		nacionalidad: string;
-		posicion: Posicion;
+		/** Id de `PUESTOS`. De ahí sale la posición con la que trabaja el motor. */
+		puesto: string;
+		numero: number;
+		pie: Pie;
 		edadInicial: number;
 		clubId: string;
+		/** Los puntos que el jugador repartió a mano. */
+		reparto?: Partial<Record<keyof Atributos, number>>;
 	};
 	representante: {
 		nombre: string;
@@ -73,8 +79,19 @@ function sueldoDeArranque(
 	return Math.max(600, Math.round(primerContrato / 50) * 50);
 }
 
-/** Un pibe de 16 en el Ascenso: todo bajo, y un techo que nadie conoce. */
-function atributosIniciales(rng: Rng, posicion: Posicion): Atributos {
+/**
+ * Un pibe de 16 en el Ascenso: todo bajo, y un techo que nadie conoce.
+ *
+ * Sale de tres cosas que se suman: lo que le tocó por azar, lo que pide el
+ * puesto que eligió, y los puntos que repartió a mano en la creación. Las tres
+ * cuentan, y ninguna alcanza sola.
+ */
+export function atributosIniciales(
+	rng: Rng,
+	puestoId: string,
+	pie: Pie,
+	reparto: Partial<Record<keyof Atributos, number>> = {}
+): Atributos {
 	const base = () => rng.entero(28, 45);
 	const atributos: Atributos = {
 		definicion: base(),
@@ -87,17 +104,40 @@ function atributosIniciales(rng: Rng, posicion: Posicion): Atributos {
 		liderazgo: rng.entero(20, 40)
 	};
 
-	// Un empujón chico en lo que pide el puesto, para que el pibe ya se parezca
-	// a algo desde el primer día.
-	for (const atributo of Object.keys(PESOS_MEDIA[posicion]) as (keyof Atributos)[]) {
-		atributos[atributo] = Math.min(60, atributos[atributo] + rng.entero(3, 10));
+	const p = puestoPorId(puestoId);
+
+	// Lo que pide el puesto: un lateral nace más rápido, un central más fuerte.
+	for (const [atributo, cuanto] of Object.entries(p.sesgo)) {
+		const clave = atributo as keyof Atributos;
+		atributos[clave] = Math.min(66, atributos[clave] + Math.round(cuanto * 0.7) + rng.entero(0, 3));
 	}
+
+	// El pie, que en las bandas pesa de verdad.
+	const ventaja = ventajaDePie(p, pie);
+	if (ventaja !== 0) {
+		atributos.regate = acotarAtributo(atributos.regate + ventaja);
+		atributos.pase = acotarAtributo(atributos.pase + ventaja);
+	}
+
+	// Y lo que el jugador eligió a mano.
+	const { reparto: puntos } = repartoValido(reparto);
+	for (const [atributo, cuanto] of Object.entries(puntos)) {
+		const clave = atributo as keyof Atributos;
+		atributos[clave] = acotarAtributo(atributos[clave] + cuanto);
+	}
+
 	return atributos;
+}
+
+function acotarAtributo(valor: number): number {
+	return Math.max(1, Math.min(70, valor));
 }
 
 export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Estado {
 	const { futbolista, representante } = config;
-	const atributos = atributosIniciales(rng, futbolista.posicion);
+	const elPuesto = puestoPorId(futbolista.puesto);
+	const posicion = elPuesto.posicion;
+	const atributos = atributosIniciales(rng, elPuesto.id, futbolista.pie, futbolista.reparto);
 
 	return {
 		version: 1,
@@ -109,7 +149,10 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		futbolista: {
 			nombre: futbolista.nombre,
 			nacionalidad: futbolista.nacionalidad,
-			posicion: futbolista.posicion,
+			posicion,
+			puesto: elPuesto.id,
+			numero: futbolista.numero,
+			pie: futbolista.pie,
 			edad: futbolista.edadInicial,
 
 			atributos,
@@ -126,7 +169,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 
 			contrato: {
 				clubId: futbolista.clubId,
-				salarioMensual: sueldoDeArranque(futbolista.clubId, atributos, futbolista.posicion, rng),
+				salarioMensual: sueldoDeArranque(futbolista.clubId, atributos, posicion, rng),
 				temporadasRestantes: 2,
 				clausula: 0
 			},

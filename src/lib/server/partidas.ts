@@ -6,6 +6,7 @@ import { decisiones, jugadores, log, partidas, snapshots } from './db/schema';
 import { estadoInicial, type ConfigPartida } from '$lib/engine/estado';
 import { estadoSincronizacion, resolverFase } from '$lib/engine/fases';
 import { opcionesDeFase, type OpcionesDeFase } from '$lib/engine/pantalla';
+import { puesto } from '$lib/engine/puestos';
 import { nuevaSemilla, rngPara } from '$lib/engine/rng';
 import {
 	ROLES,
@@ -92,7 +93,10 @@ export function crearPartida(
 				fase: 1,
 				tipo: 'partida_creada',
 				visiblePara: 'ambos',
-				texto: `Arranca la carrera de ${estado.futbolista.nombre} en ${club(estado.futbolista.contrato.clubId).nombre}.`
+				texto:
+					`Arranca la carrera de ${estado.futbolista.nombre}, ` +
+					`${puesto(estado.futbolista.puesto).nombre.toLowerCase()} con la ${estado.futbolista.numero}, ` +
+					`en ${club(estado.futbolista.contrato.clubId).nombre}.`
 			})
 			.run();
 

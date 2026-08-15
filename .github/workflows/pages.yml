@@ -10,6 +10,7 @@ on:
       - 'claude/**'
     paths:
       - 'docs/**'
+      - 'README.md'
       - 'scripts/construir-sitio.mjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:

@@ -30,7 +30,8 @@ export const load: PageServerLoad = ({ params }) => {
 			nombre: estado.futbolista.nombre,
 			clubId: estado.futbolista.contrato.clubId,
 			edad: estado.futbolista.edad,
-			posicion: estado.futbolista.posicion
+			puesto: estado.futbolista.puesto,
+			numero: estado.futbolista.numero
 		}
 	};
 };

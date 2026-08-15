@@ -67,7 +67,13 @@ export type ContratoRepresentacion = {
 export type Futbolista = {
 	nombre: string;
 	nacionalidad: string;
+	/** La posición con la que razona el motor: arquero, defensor, medio o 9. */
 	posicion: Posicion;
+	/** El puesto de verdad (ver `puestos.ts`): lateral izquierdo, enganche… */
+	puesto: string;
+	/** Número de camiseta, 1–99. */
+	numero: number;
+	pie: 'derecho' | 'izquierdo' | 'ambos';
 	edad: number;
 
 	atributos: Atributos;

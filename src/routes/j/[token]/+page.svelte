@@ -6,6 +6,7 @@
 	import { NOMBRE_FASE } from '$lib/engine/tipos';
 	import Bandera from '$lib/ui/Bandera.svelte';
 	import Decisiones from '$lib/ui/Decisiones.svelte';
+	import { puesto as puestoPorId } from '$lib/engine/puestos';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import Escudo from '$lib/ui/Escudo.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -15,6 +16,7 @@
 	const vista = $derived(data.vista);
 	const estado = $derived(vista.estado);
 	const futbolista = $derived(estado.futbolista);
+	const puesto = $derived(puestoPorId(futbolista.puesto));
 	const representante = $derived(estado.representante);
 
 	const esperandoAlOtro = $derived(
@@ -69,8 +71,8 @@
 	<div class="tarjeta">
 		<h3>Mientras tanto</h3>
 		<p style="margin:0 0 .8rem">
-			<strong>{futbolista.nombre}</strong>, {futbolista.edad} años, {futbolista.posicion}. Vos jugás
-			como <strong>{vista.rol}</strong>.
+			<strong>{futbolista.nombre}</strong>, {futbolista.edad} años, {puesto.nombre.toLowerCase()},
+			la {futbolista.numero}. Vos jugás como <strong>{vista.rol}</strong>.
 		</p>
 		<ClubLinea clubId={futbolista.contrato.clubId} tamano={38} />
 	</div>
@@ -105,6 +107,9 @@
 	{#if vista.rol === 'futbolista'}
 		<div class="tarjeta">
 			<h3>Vos en la cancha</h3>
+			<p class="sutil" style="margin:-.35rem 0 .85rem">
+				{puesto.nombre} · la {futbolista.numero} · pie {futbolista.pie}
+			</p>
 			<div class="cifras">
 				<div class="cifra">
 					<span class="valor">{media(futbolista.atributos, futbolista.posicion)}</span>
@@ -188,6 +193,9 @@
 
 		<div class="tarjeta">
 			<h3>Tu cliente</h3>
+			<p class="sutil" style="margin:-.35rem 0 .85rem">
+				{puesto.nombre} · la {futbolista.numero} · pie {futbolista.pie}
+			</p>
 			<div class="cifras">
 				<div class="cifra">
 					<span class="valor">{media(futbolista.atributos, futbolista.posicion)}</span>

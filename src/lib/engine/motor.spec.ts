@@ -10,7 +10,9 @@ const CONFIG: ConfigPartida = {
 	futbolista: {
 		nombre: 'Damián Correa',
 		nacionalidad: 'Argentina',
-		posicion: 'delantero',
+		puesto: 'centrodelantero',
+		numero: 9,
+		pie: 'derecho',
 		edadInicial: 16,
 		clubId: 'ar-huracan'
 	},

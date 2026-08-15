@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { puesto as puestoPorId } from '$lib/engine/puestos';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import type { ActionData, PageData } from './$types';
 
@@ -28,7 +29,7 @@
 	<h3>La carrera</h3>
 	<p style="margin:0 0 .8rem">
 		<strong>{data.futbolista.nombre}</strong>, {data.futbolista.edad} años,
-		{data.futbolista.posicion}.
+		{puestoPorId(data.futbolista.puesto).nombre.toLowerCase()}, la {data.futbolista.numero}.
 	</p>
 	<ClubLinea clubId={data.futbolista.clubId} tamano={38} />
 </div>
