@@ -53,6 +53,26 @@ else
 	DIRECTIVA_CADDY="$DOMINIO"
 fi
 
+paso "Revisando la memoria"
+# En un servidor de 1 GB sin swap, compilar se queda sin memoria y el sistema
+# mata el proceso sin decir gran cosa. Con 2 GB de swap alcanza y sobra.
+MEMORIA_MB=$(free -m | awk '/^Mem:/{print $2}')
+SWAP_MB=$(free -m | awk '/^Swap:/{print $2}')
+echo "  RAM ${MEMORIA_MB} MB · swap ${SWAP_MB} MB"
+
+if ((MEMORIA_MB + SWAP_MB < 2200)); then
+	if [[ -f /swapfile ]]; then
+		swapon /swapfile 2> /dev/null || true
+	else
+		echo "  Poca memoria para compilar: agrego 2 GB de swap"
+		fallocate -l 2G /swapfile 2> /dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+		chmod 600 /swapfile
+		mkswap /swapfile > /dev/null
+		swapon /swapfile
+		grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+	fi
+fi
+
 paso "Actualizando el sistema"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -91,8 +111,13 @@ else
 fi
 chown -R "$USUARIO:$USUARIO" "$DIR_CODIGO"
 
-paso "Compilando"
-sudo -u "$USUARIO" bash -c "cd '$DIR_CODIGO' && npm ci --silent && npm run build --silent"
+paso "Compilando (es el paso más lento, aguantá)"
+if ! sudo -u "$USUARIO" bash -c "cd '$DIR_CODIGO' && npm ci --silent && npm run build --silent"; then
+	rojo "Falló la compilación."
+	echo "Si el servidor tiene poca memoria, el sistema puede haber matado el proceso."
+	echo "Para confirmarlo:  dmesg | grep -i 'killed process' | tail -5"
+	exit 1
+fi
 
 paso "Escribiendo la configuración"
 # ORIGIN es obligatorio: sin eso SvelteKit rechaza los formularios por CSRF.
