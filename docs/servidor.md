@@ -114,8 +114,14 @@ código de invitación a la otra persona.
 ## 5. Actualizar cuando haya cambios
 
 ```bash
-ssh root@la.ip.del.servidor 'bash /opt/copolero/deploy/actualizar.sh'
+ssh root@la.ip.del.servidor "bash /opt/copolero/deploy/actualizar.sh"
 ```
+
+**Comillas dobles, no simples.** El CMD de Windows no saca las comillas simples:
+se las manda al servidor tal cual, y del otro lado bash termina buscando un
+archivo que se llama literalmente `bash /opt/copolero/deploy/actualizar.sh`. El
+error que da es `No such file or directory` y despista, porque el archivo está.
+Las dobles funcionan igual en Windows, en Linux y en Mac.
 
 Baja lo nuevo, compila y reinicia. Si la compilación falla **no reinicia**:
 vuelve a la versión anterior y te avisa, así el juego nunca queda caído por un
