@@ -1,6 +1,8 @@
 import { rngPara } from './rng';
 import { media } from './estado';
+import { simularMercado, titulares } from './mercado';
 import {
+	MUNDO_SIN_CAMBIOS,
 	NOMBRE_FASE,
 	ROLES,
 	type Decision,
@@ -161,6 +163,21 @@ function cerrarTemporada(estado: Estado, semilla: string, log: EntradaLog[]): Es
 			visiblePara: 'ambos',
 			texto: `Se le vence el contrato con ${futbolista.contrato.club}.`
 		});
+	}
+
+	// --- El mundo sigue sin vos ----------------------------------------------
+	// Los técnicos y los jugadores reales se mueven, se retiran y cambian de
+	// club. Es lo que hace que la foto de nombres con la que arranca la partida
+	// no quede vieja: a las tres temporadas el mundo ya es de esta partida.
+	const mercado = simularMercado(
+		estado.cambiosMundo ?? MUNDO_SIN_CAMBIOS,
+		semilla,
+		estado.temporada,
+		estado.anio
+	);
+	estado.cambiosMundo = mercado.cambios;
+	for (const movimiento of titulares(mercado.movimientos, 4)) {
+		log.push({ tipo: 'mercado', visiblePara: 'ambos', texto: movimiento.texto });
 	}
 
 	// --- ¿Sigue jugando? -----------------------------------------------------

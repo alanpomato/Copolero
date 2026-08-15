@@ -1,4 +1,4 @@
-import type { Atributos, Estado, Posicion, Rol } from './tipos';
+import { MUNDO_SIN_CAMBIOS, type Atributos, type Estado, type Posicion, type Rol } from './tipos';
 import type { Rng } from './rng';
 
 /** Lo que se elige en la pantalla de creación de partida. */
@@ -139,7 +139,10 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 			pctTransferencia: 5,
 			duracionTemporadas: 2,
 			clausulaSalida: 0
-		}
+		},
+
+		// Arranca igual al contenido: el mundo todavía es el de la foto.
+		cambiosMundo: structuredClone(MUNDO_SIN_CAMBIOS)
 	};
 }
 

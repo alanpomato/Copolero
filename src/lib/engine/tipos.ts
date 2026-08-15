@@ -111,6 +111,21 @@ export type Representante = {
 	representadosExtra: number;
 };
 
+/**
+ * Lo que cambió en el mundo respecto del contenido base de `content/mundo`.
+ *
+ * Se guardan solo las diferencias, no el mundo entero: una partida de veinte
+ * temporadas ocupa unas pocas líneas en vez de arrastrar las 135 personas en
+ * cada snapshot. `null` significa retirado.
+ *
+ * Vive acá y no en `mercado.ts` para que `Estado` no dependa del contenido.
+ */
+export type CambiosMundo = {
+	movidos: Record<string, string | null>;
+};
+
+export const MUNDO_SIN_CAMBIOS: CambiosMundo = { movidos: {} };
+
 export type Estado = {
 	/** Versión del schema del estado, para migrar partidas viejas. */
 	version: 1;
@@ -126,6 +141,9 @@ export type Estado = {
 	/** La variable que une a los dos. Arranca en 60. */
 	confianza: number;
 	contratoRepresentacion: ContratoRepresentacion;
+
+	/** Cómo se fue moviendo el mundo real desde que arrancó la partida. */
+	cambiosMundo: CambiosMundo;
 };
 
 /**
