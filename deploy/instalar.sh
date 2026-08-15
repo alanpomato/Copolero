@@ -76,7 +76,11 @@ fi
 paso "Actualizando el sistema"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https
+# build-essential y python3 hacen falta si alguna dependencia nativa
+# (better-sqlite3) no encuentra un binario precompilado para esta versión de
+# Node y tiene que compilarse acá.
+apt-get install -y -qq curl git ca-certificates gnupg debian-keyring debian-archive-keyring \
+	apt-transport-https build-essential python3
 
 paso "Instalando Node 22"
 if ! command -v node > /dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 22 ]]; then
@@ -117,10 +121,12 @@ fi
 chown -R "$USUARIO:$USUARIO" "$DIR_CODIGO"
 
 paso "Compilando (es el paso más lento, aguantá)"
-if ! sudo -u "$USUARIO" bash -c "cd '$DIR_CODIGO' && npm ci --silent && npm run build --silent"; then
-	rojo "Falló la compilación."
-	echo "Si el servidor tiene poca memoria, el sistema puede haber matado el proceso."
-	echo "Para confirmarlo:  dmesg | grep -i 'killed process' | tail -5"
+# Sin --silent a propósito: si falla, queremos ver por qué en pantalla.
+if ! sudo -u "$USUARIO" bash -c "cd '$DIR_CODIGO' && npm ci --no-audit --no-fund && npm run build"; then
+	rojo "
+Falló la compilación. El error de verdad está unas líneas más arriba."
+	echo "Si no dice nada claro, puede haber sido falta de memoria:"
+	echo "  dmesg | grep -i 'killed process' | tail -5"
 	exit 1
 fi
 
