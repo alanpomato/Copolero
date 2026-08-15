@@ -31,3 +31,6 @@ vite.config.ts.timestamp-*
 # distribuye imágenes de clubes. Ver static/escudos/LEEME.md.
 static/escudos/*
 !static/escudos/LEEME.md
+
+# Carpeta temporal de scripts/escudos.mjs --urls
+/.escudos-bajados

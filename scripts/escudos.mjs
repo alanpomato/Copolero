@@ -10,13 +10,14 @@
  *   node scripts/escudos.mjs ~/Descargas/logos          # copia lo que reconoce
  *   node scripts/escudos.mjs ~/Descargas/logos --probar # muestra sin copiar
  *   node scripts/escudos.mjs --faltan                   # qué clubes no tienen
+ *   node scripts/escudos.mjs --urls lista.txt           # baja de una lista de links
  *
  * Lo que no reconoce con confianza no lo toca y lo lista al final, así que
  * quedan diez o veinte para acomodar a mano en vez de doscientos sesenta y
  * ocho. Un club sin archivo no es un problema: sigue usando el dibujado.
  */
 
-import { copyFile, mkdir, readdir, readFile, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 
 const RAIZ = new URL('..', import.meta.url).pathname;
@@ -292,15 +293,102 @@ async function acomodar(origen, soloProbar) {
 	await listarLoQueFalta();
 }
 
+// --- Bajar de una lista de links --------------------------------------------
+
+/**
+ * Baja las imágenes de un archivo de texto con una URL por línea.
+ *
+ * Sirve cuando encontraste una página que las tiene todas: guardás la lista de
+ * links y esto las trae con el nombre que tengan en la web, que casi siempre es
+ * el del club. Después se acomodan igual que cualquier carpeta.
+ *
+ * Las líneas vacías y las que empiezan con # se ignoran, así se puede comentar
+ * la lista.
+ */
+async function bajarDeLista(listado) {
+	const texto = await readFile(listado, 'utf8').catch(() => null);
+	if (texto === null) {
+		console.error(`No pude leer la lista: ${listado}`);
+		process.exit(1);
+	}
+
+	const urls = texto
+		.split(/\r?\n/)
+		.map((l) => l.trim())
+		.filter((l) => l.length > 0 && !l.startsWith('#'));
+
+	if (urls.length === 0) {
+		console.error('La lista está vacía.');
+		process.exit(1);
+	}
+
+	const temporal = join(RAIZ, '.escudos-bajados');
+	await mkdir(temporal, { recursive: true });
+
+	console.log(`\nBajando ${urls.length} imágenes a ${temporal}\n`);
+
+	let bajadas = 0;
+	const fallidas = [];
+
+	for (const [i, url] of urls.entries()) {
+		// El nombre que tiene en la web, que casi siempre es el del club.
+		let nombre;
+		try {
+			nombre = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
+		} catch {
+			fallidas.push(`${url} (no es una URL válida)`);
+			continue;
+		}
+		if (!EXTENSIONES.has(extname(nombre).toLowerCase())) {
+			fallidas.push(`${url} (no termina en una extensión de imagen)`);
+			continue;
+		}
+
+		try {
+			const respuesta = await fetch(url);
+			if (!respuesta.ok) {
+				fallidas.push(`${url} (${respuesta.status})`);
+				continue;
+			}
+			const datos = Buffer.from(await respuesta.arrayBuffer());
+			await writeFile(join(temporal, nombre.replace(/[/\\]/g, '_')), datos);
+			bajadas++;
+			process.stdout.write(`\r  ${i + 1}/${urls.length}  ${nombre.slice(0, 48).padEnd(50)}`);
+		} catch (e) {
+			fallidas.push(`${url} (${e instanceof Error ? e.message : 'falló'})`);
+		}
+	}
+
+	console.log(`\r  Bajadas ${bajadas} de ${urls.length}.${' '.repeat(40)}`);
+	if (fallidas.length > 0) {
+		console.log(`\nNo pude bajar ${fallidas.length}:\n`);
+		for (const f of fallidas) console.log(`  · ${f}`);
+	}
+
+	if (bajadas === 0) process.exit(1);
+	return temporal;
+}
+
+// --- Correr -----------------------------------------------------------------
+
 const argumentos = process.argv.slice(2);
 const soloProbar = argumentos.includes('--probar');
-const origen = argumentos.find((a) => !a.startsWith('--'));
+const desdeUrls = argumentos.includes('--urls');
+const suelto = argumentos.find((a) => !a.startsWith('--'));
 
-if (argumentos.includes('--faltan') || !origen) {
+if (argumentos.includes('--faltan') || (!suelto && !desdeUrls)) {
 	await listarLoQueFalta();
-	if (!origen && !argumentos.includes('--faltan')) {
-		console.log('\nPara cargar una carpeta:  node scripts/escudos.mjs <carpeta>');
+	if (!suelto && !argumentos.includes('--faltan')) {
+		console.log('\nPara cargar una carpeta:      node scripts/escudos.mjs <carpeta>');
+		console.log('Para bajar de una lista:      node scripts/escudos.mjs --urls lista.txt');
 	}
+} else if (desdeUrls) {
+	if (!suelto) {
+		console.error('Falta el archivo con la lista: node scripts/escudos.mjs --urls lista.txt');
+		process.exit(1);
+	}
+	const carpeta = await bajarDeLista(suelto);
+	await acomodar(carpeta, soloProbar);
 } else {
-	await acomodar(origen, soloProbar);
+	await acomodar(suelto, soloProbar);
 }

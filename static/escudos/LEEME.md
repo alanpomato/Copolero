@@ -32,7 +32,12 @@ script que las acomoda solo:
 npm run escudos -- ~/Descargas/logos --probar   # muestra qué haría
 npm run escudos -- ~/Descargas/logos            # y esto lo hace
 npm run escudos -- --faltan                     # qué clubes siguen sin escudo
+npm run escudos -- --urls lista.txt             # baja de una lista de links
 ```
+
+El modo `--urls` toma un archivo de texto con una URL por línea (las vacías y
+las que empiezan con `#` se ignoran), baja cada imagen con el nombre que tenga
+en la web y después la acomoda igual que cualquier carpeta.
 
 Compara el nombre de cada archivo con el de cada club y copia lo que reconoce
 con confianza. Lo que no reconoce, o lo que es ambiguo —hay un Everton en
