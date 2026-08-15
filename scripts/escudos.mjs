@@ -1,0 +1,306 @@
+/**
+ * Acomoda una carpeta de imágenes en `static/escudos/`.
+ *
+ * El juego busca cada escudo por el id del club (`ar-boca.png`), y ninguna
+ * carpeta de imágenes del mundo viene nombrada así. Renombrar 268 archivos a
+ * mano es media tarde perdida, así que esto lo hace solo: mira el nombre de
+ * cada archivo, lo compara con los nombres de los clubes y copia lo que
+ * reconoce.
+ *
+ *   node scripts/escudos.mjs ~/Descargas/logos          # copia lo que reconoce
+ *   node scripts/escudos.mjs ~/Descargas/logos --probar # muestra sin copiar
+ *   node scripts/escudos.mjs --faltan                   # qué clubes no tienen
+ *
+ * Lo que no reconoce con confianza no lo toca y lo lista al final, así que
+ * quedan diez o veinte para acomodar a mano en vez de doscientos sesenta y
+ * ocho. Un club sin archivo no es un problema: sigue usando el dibujado.
+ */
+
+import { copyFile, mkdir, readdir, readFile, stat } from 'node:fs/promises';
+import { basename, extname, join } from 'node:path';
+
+const RAIZ = new URL('..', import.meta.url).pathname;
+const DESTINO = join(RAIZ, 'static', 'escudos');
+const EXTENSIONES = new Set(['.png', '.svg', '.webp', '.jpg', '.jpeg']);
+
+/**
+ * La lista de clubes, leída del contenido como texto.
+ *
+ * Se parsea en vez de importarse para que esto corra con `node` pelado, sin
+ * TypeScript ni dependencias: el que lo va a usar está en Windows y no tiene
+ * por qué instalar nada para acomodar una carpeta de imágenes.
+ */
+async function leerClubes() {
+	const fuente = await readFile(join(RAIZ, 'content', 'mundo', 'clubes.ts'), 'utf8');
+	const patron =
+		/\bc\(\s*'([^']+)'\s*,\s*'([^']+)'\s*,\s*(?:'([^']*)'|"([^"]*)")\s*,[^)]*?(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g;
+
+	const salida = [];
+	for (const m of fuente.matchAll(patron)) {
+		salida.push({ id: m[1], ligaId: m[2], nombre: m[3] ?? m[4], prestigio: Number(m[5]) });
+	}
+	if (salida.length === 0) {
+		throw new Error('No pude leer los clubes de content/mundo/clubes.ts');
+	}
+	return salida;
+}
+
+const clubes = await leerClubes();
+
+// --- Comparar nombres -------------------------------------------------------
+
+/**
+ * Deja un nombre en su mínima expresión comparable.
+ *
+ * "C.A. Boca Juniors (Argentina).png" y "boca-juniors" tienen que dar lo
+ * mismo, así que se saca todo lo que no distingue: acentos, puntuación, las
+ * siglas de siempre y las palabras que tienen la mitad de los clubes.
+ */
+const RUIDO = new Set([
+	'fc',
+	'cf',
+	'ca',
+	'cd',
+	'sc',
+	'ac',
+	'ss',
+	'as',
+	'us',
+	'sd',
+	'ud',
+	'rc',
+	'afc',
+	'club',
+	'atletico',
+	'deportivo',
+	'deportes',
+	'sporting',
+	'sport',
+	'futbol',
+	'football',
+	'de',
+	'del',
+	'la',
+	'las',
+	'los',
+	'el',
+	'y',
+	'do',
+	'da',
+	'of',
+	'and',
+	'logo',
+	'escudo',
+	'crest',
+	'badge'
+]);
+
+function normalizar(texto) {
+	return texto
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, ' ')
+		.split(' ')
+		.filter((p) => p.length > 0 && !RUIDO.has(p))
+		.join(' ')
+		.trim();
+}
+
+/** Parecido entre dos textos, 0 a 1, contando pares de letras en común. */
+function parecido(a, b) {
+	if (a === b) return 1;
+	if (a.length < 2 || b.length < 2) return 0;
+
+	const pares = (texto) => {
+		const sinEspacios = texto.replace(/ /g, '');
+		const salida = new Map();
+		for (let i = 0; i < sinEspacios.length - 1; i++) {
+			const par = sinEspacios.slice(i, i + 2);
+			salida.set(par, (salida.get(par) ?? 0) + 1);
+		}
+		return salida;
+	};
+
+	const unos = pares(a);
+	const otros = pares(b);
+	let comunes = 0;
+	let totalUnos = 0;
+	let totalOtros = 0;
+	for (const n of unos.values()) totalUnos += n;
+	for (const n of otros.values()) totalOtros += n;
+	for (const [par, n] of unos) comunes += Math.min(n, otros.get(par) ?? 0);
+
+	return (2 * comunes) / (totalUnos + totalOtros);
+}
+
+// --- Emparejar --------------------------------------------------------------
+
+/** Qué tan seguro hay que estar para copiar sin preguntar. */
+const UMBRAL = 0.78;
+/** Y a partir de acá se sugiere, pero no se copia. */
+const UMBRAL_DUDOSO = 0.6;
+/**
+ * Cuánto tiene que sacarle el primero al segundo para no considerarse empate.
+ *
+ * Hay Everton en Inglaterra y en Chile, Liverpool en Inglaterra y en Uruguay,
+ * River Plate en Argentina y en Uruguay, Nacional en Uruguay y en Portugal. Un
+ * archivo llamado "everton.png" es genuinamente ambiguo, y elegir uno de los dos
+ * en silencio es peor que preguntar.
+ */
+const MARGEN_MINIMO = 0.06;
+
+const candidatos = clubes.map((c) => ({
+	id: c.id,
+	nombre: c.nombre,
+	// Se compara contra el nombre y contra el id sin el prefijo del país: muchas
+	// carpetas nombran los archivos como "boca" a secas.
+	claves: [normalizar(c.nombre), normalizar(c.id.replace(/^[a-z]{2}\d?-/, ''))]
+}));
+
+function mejorClub(nombreDeArchivo) {
+	const buscado = normalizar(nombreDeArchivo);
+	if (!buscado) return null;
+
+	// El puntaje de un club es el mejor de sus claves.
+	const puntuados = candidatos
+		.map((club) => ({
+			club,
+			puntaje: Math.max(...club.claves.map((clave) => parecido(buscado, clave)))
+		}))
+		.sort((a, b) => b.puntaje - a.puntaje);
+
+	const primero = puntuados[0];
+	if (!primero || primero.puntaje === 0) return null;
+
+	const segundo = puntuados[1];
+	const empatado = segundo ? primero.puntaje - segundo.puntaje < MARGEN_MINIMO : false;
+
+	return {
+		club: primero.club,
+		puntaje: primero.puntaje,
+		empatado,
+		rival: empatado ? segundo.club : null
+	};
+}
+
+// --- Correr -----------------------------------------------------------------
+
+async function yaTienen() {
+	let archivos = [];
+	try {
+		archivos = await readdir(DESTINO);
+	} catch {
+		return new Set();
+	}
+	return new Set(
+		archivos
+			.filter((a) => EXTENSIONES.has(extname(a).toLowerCase()))
+			.map((a) => basename(a, extname(a)))
+	);
+}
+
+async function listarLoQueFalta() {
+	const puestos = await yaTienen();
+	const faltan = clubes.filter((c) => !puestos.has(c.id));
+
+	console.log(`\nTienen escudo propio: ${puestos.size} de ${clubes.length}`);
+	if (faltan.length === 0) {
+		console.log('No falta ninguno.');
+		return;
+	}
+
+	console.log(`\nFaltan ${faltan.length}. Los que más se ven van primero:\n`);
+	for (const c of [...faltan].sort((a, b) => b.prestigio - a.prestigio)) {
+		console.log(`  ${c.id.padEnd(26)} ${c.nombre}`);
+	}
+	console.log('\nLos que no estén siguen usando el escudo dibujado, que no molesta.');
+}
+
+async function acomodar(origen, soloProbar) {
+	const info = await stat(origen).catch(() => null);
+	if (!info?.isDirectory()) {
+		console.error(`No encuentro la carpeta: ${origen}`);
+		process.exit(1);
+	}
+
+	const archivos = (await readdir(origen)).filter((a) => EXTENSIONES.has(extname(a).toLowerCase()));
+	if (archivos.length === 0) {
+		console.error(`En ${origen} no hay imágenes (.png, .svg, .webp, .jpg).`);
+		process.exit(1);
+	}
+
+	await mkdir(DESTINO, { recursive: true });
+
+	const copiados = [];
+	const dudosos = [];
+	const perdidos = [];
+	// Si dos archivos apuntan al mismo club gana el que dio más puntaje.
+	const tomados = new Map();
+
+	for (const archivo of archivos) {
+		const encontrado = mejorClub(basename(archivo, extname(archivo)));
+
+		if (!encontrado || encontrado.puntaje < UMBRAL_DUDOSO) {
+			perdidos.push(archivo);
+			continue;
+		}
+		// Ni si no estoy seguro, ni si hay dos clubes que se llaman igual.
+		if (encontrado.puntaje < UMBRAL || encontrado.empatado) {
+			dudosos.push({ archivo, ...encontrado });
+			continue;
+		}
+
+		const previo = tomados.get(encontrado.club.id);
+		if (previo && previo.puntaje >= encontrado.puntaje) continue;
+		tomados.set(encontrado.club.id, { archivo, puntaje: encontrado.puntaje });
+	}
+
+	for (const [clubId, { archivo }] of tomados) {
+		const destino = join(DESTINO, clubId + extname(archivo).toLowerCase());
+		if (!soloProbar) await copyFile(join(origen, archivo), destino);
+		copiados.push({ archivo, clubId });
+	}
+
+	// --- Contar lo que pasó ---------------------------------------------------
+	console.log(
+		soloProbar
+			? `\nPrueba: no se copió nada.\n`
+			: `\nCopiados ${copiados.length} escudos a static/escudos/\n`
+	);
+
+	for (const { archivo, clubId } of copiados.sort((a, b) => a.clubId.localeCompare(b.clubId))) {
+		console.log(`  ✓ ${archivo.padEnd(38)} → ${clubId}`);
+	}
+
+	if (dudosos.length > 0) {
+		console.log(`\nEstos no los copié porque no estoy seguro. Miralos y renombralos a mano:\n`);
+		for (const { archivo, club, puntaje, rival } of dudosos) {
+			const cual = rival
+				? `¿${club.nombre} (${club.id}) o ${rival.nombre} (${rival.id})?`
+				: `¿${club.nombre}? → ${club.id}   [${Math.round(puntaje * 100)}%]`;
+			console.log(`  ? ${archivo.padEnd(38)} ${cual}`);
+		}
+	}
+
+	if (perdidos.length > 0) {
+		console.log(`\nEstos no se parecen a ningún club del mundo:\n`);
+		for (const archivo of perdidos) console.log(`  · ${archivo}`);
+	}
+
+	console.log('');
+	await listarLoQueFalta();
+}
+
+const argumentos = process.argv.slice(2);
+const soloProbar = argumentos.includes('--probar');
+const origen = argumentos.find((a) => !a.startsWith('--'));
+
+if (argumentos.includes('--faltan') || !origen) {
+	await listarLoQueFalta();
+	if (!origen && !argumentos.includes('--faltan')) {
+		console.log('\nPara cargar una carpeta:  node scripts/escudos.mjs <carpeta>');
+	}
+} else {
+	await acomodar(origen, soloProbar);
+}
