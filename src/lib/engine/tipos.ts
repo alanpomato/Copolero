@@ -150,6 +150,41 @@ export type ResumenTemporada = {
 	campeon: boolean;
 };
 
+/**
+ * Una temporada, comprimida a lo que hace falta para dibujarla.
+ *
+ * `ResumenTemporada` es la foto de un año; esto es la línea de tiempo entera.
+ * Guarda solo números —nada de textos— porque después de veinte temporadas
+ * tiene que seguir cabiendo cómodo en una fila de SQLite.
+ *
+ * De acá sale el gráfico de la carrera, que es la única pantalla donde se ve
+ * de un vistazo si el jugador está subiendo o ya empezó a bajar.
+ */
+export type HitoTemporada = {
+	temporada: number;
+	anio: number;
+	edad: number;
+	clubId: string;
+	/** Media general con la que jugó ese año. */
+	media: number;
+	/** Nota del año, 1–10. */
+	nota: number;
+	partidos: number;
+	goles: number;
+	asistencias: number;
+	fama: number;
+	valorUsd: number;
+	/** El club salió campeón ese año, haya jugado él o no. */
+	campeon: boolean;
+	/** Y el título es suyo: jugó lo suficiente como para contarlo. */
+	titulo: boolean;
+	lesionado: boolean;
+	/** Cómo le fue en el Mundial de ese año, si lo hubo y si fue. */
+	mundial: string | null;
+	/** Si al terminar la temporada lo transfirieron. */
+	seFue: boolean;
+};
+
 export type Estado = {
 	/** Versión del schema del estado, para migrar partidas viejas. */
 	version: 1;
@@ -171,6 +206,9 @@ export type Estado = {
 
 	/** La última temporada jugada. `null` hasta que se juegue la primera. */
 	ultimaTemporada: ResumenTemporada | null;
+
+	/** Todas las temporadas cerradas, en orden. Es la carrera dibujable. */
+	historial: HitoTemporada[];
 
 	/**
 	 * Cuántas temporadas jugó en cada club.

@@ -1,3 +1,4 @@
+import { alertaDe, type Alerta } from './alertas';
 import {
 	INTENSIDADES,
 	PLANES,
@@ -14,10 +15,11 @@ import {
 	tratosQuePuedePedir,
 	type Trato
 } from './representacion';
+import { portadaDe, type Portada } from './portada';
 import { resumirRetiro, type Retiro } from './retiro';
 import { chanceDeConvocatoria, loQueFalta, proximoMundial } from './seleccion';
 import { brechaCon } from './temporada';
-import type { Estado, Rol } from './tipos';
+import type { Estado, HitoTemporada, Rol } from './tipos';
 
 /**
  * Lo que hay para decidir en esta fase, para este rol.
@@ -54,6 +56,12 @@ export type OpcionesDeFase = {
 	/** Cuando vence el contrato entre los dos: los tratos sobre la mesa. */
 	tratos?: Trato[];
 	consejo?: string;
+	/** Lo que hay que decirle en la cara, si hay algo. Ver `alertas.ts`. */
+	alerta?: Alerta;
+	/** La tapa del diario del año que cerró. Solo en pretemporada. */
+	portada?: Portada;
+	/** La carrera entera, para dibujarla. */
+	historial?: HitoTemporada[];
 	/** El Mundial que viene y qué tan cerca está de jugarlo. */
 	mundial?: {
 		anio: number;
@@ -115,6 +123,22 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	// Cómo lo ve su club se muestra siempre, en las tres fases: es el número que
 	// explica por qué juega poco o por qué no le llegan ofertas.
 	opciones.situacion = comoLoVeSuClub(estado);
+
+	// Y si algo está yendo mal, se dice. Una sola cosa por vez.
+	const alerta = alertaDe(estado, rol);
+	if (alerta) opciones.alerta = alerta;
+
+	// La carrera dibujada va siempre: es donde se ve si está subiendo o bajando,
+	// y una curva de doce temporadas es lo que hace que uno quiera la trece.
+	opciones.historial = estado.historial ?? [];
+
+	// La tapa del año que cerró, solo en pretemporada. Es lo primero que se ve
+	// al abrir la temporada nueva y lo único que convierte "nota 8.1" en algo
+	// que se siente.
+	if (estado.fase === 1) {
+		const portada = portadaDe(estado);
+		if (portada) opciones.portada = portada;
+	}
 
 	// Y el Mundial, siempre también. Es lo único que se espera, y ver cuánto
 	// falta desde la primera temporada es la mitad de la gracia.

@@ -11,10 +11,10 @@ import { aplicarEvento, eventosDeLaTemporada } from './eventos';
 import { resolverGestion } from './gestion';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
-import { ofertasPara, resolverPase } from './pases';
+import { ofertasPara, resolverPase, valorDeMercado } from './pases';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
-import { aplicarSeleccion, jugarConLaSeleccion } from './seleccion';
-import { jugarTemporada } from './temporada';
+import { aplicarSeleccion, jugarConLaSeleccion, type Mundial } from './seleccion';
+import { PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO, jugarTemporada } from './temporada';
 import {
 	MUNDO_SIN_CAMBIOS,
 	NOMBRE_FASE,
@@ -249,6 +249,10 @@ function cerrarTemporada(
 	}
 
 	// --- El mercado ----------------------------------------------------------
+	// El club donde jugó el año, antes de que el mercado lo pueda mover: es el
+	// que va al historial, porque los goles los hizo con esa camiseta.
+	const clubDondeJugo = futbolista.contrato.clubId;
+
 	// Se resuelve después de cobrar el año, porque el sueldo que se cobró es el
 	// del club donde se jugó. El pase se hace solamente si los dos eligieron el
 	// mismo club: es la única decisión del juego que necesita que se hayan
@@ -260,6 +264,12 @@ function cerrarTemporada(
 		destinos.representante,
 		log
 	);
+
+	// --- La foto del año -----------------------------------------------------
+	// Se anota acá, con la temporada jugada, la selección resuelta y el pase ya
+	// hecho, pero antes de que el cuerpo envejezca: la media que se guarda es la
+	// que tuvo ese año, no la que le queda para el siguiente.
+	anotarEnElHistorial(estado, clubDondeJugo, novedad?.mundial ?? null);
 
 	// --- El cuerpo -----------------------------------------------------------
 	futbolista.edad += 1;
@@ -352,6 +362,45 @@ function cerrarTemporada(
 	});
 
 	return estado;
+}
+
+/**
+ * Anota la temporada que cerró en la línea de tiempo de la carrera.
+ *
+ * Una fila por año, siempre: también las que no jugó. Un hueco en el gráfico
+ * dice tanto como un pico, y si se saltearan las temporadas en blanco la curva
+ * mentiría sobre lo que costó llegar.
+ */
+function anotarEnElHistorial(
+	estado: Estado,
+	clubDondeJugo: string,
+	mundial: Mundial | null | undefined
+): void {
+	const f = estado.futbolista;
+	const t = estado.ultimaTemporada;
+
+	estado.historial = estado.historial ?? [];
+	estado.historial.push({
+		temporada: estado.temporada,
+		anio: estado.anio,
+		edad: f.edad,
+		clubId: clubDondeJugo,
+		media: media(f.atributos, f.posicion),
+		nota: t?.temporada === estado.temporada ? t.nota : 0,
+		partidos: t?.temporada === estado.temporada ? t.partidos : 0,
+		goles: t?.temporada === estado.temporada ? t.goles : 0,
+		asistencias: t?.temporada === estado.temporada ? t.asistencias : 0,
+		fama: f.fama,
+		valorUsd: valorDeMercado(estado),
+		campeon: t?.temporada === estado.temporada ? t.campeon : false,
+		titulo:
+			t?.temporada === estado.temporada &&
+			t.campeon &&
+			t.partidos >= PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO,
+		lesionado: t?.temporada === estado.temporada ? t.lesionado : false,
+		mundial: mundial?.resultado ?? null,
+		seFue: f.contrato.clubId !== clubDondeJugo
+	});
 }
 
 function etiqueta(rol: Rol): string {

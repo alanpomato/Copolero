@@ -163,6 +163,42 @@ describe('una carrera entera', () => {
 		expect(final).toBeLessThan(estado.futbolista.potencial + 12);
 	});
 
+	it('la carrera tiene forma: sube, hace pico y baja', () => {
+		const { estado } = correrCarrera('arco', 'centrodelantero', 'ar2-moron', BUSCA_JUGAR);
+		const h = estado.historial;
+		expect(h.length).toBeGreaterThan(10);
+
+		const inicial = h[0].media;
+		const pico = Math.max(...h.map((x) => x.media));
+		const final = h[h.length - 1].media;
+
+		// Sin esto la carrera es plana y no hay motivo para jugar la temporada
+		// doce: el jugador termina igual que como empezó.
+		expect(pico - inicial).toBeGreaterThan(12);
+		// Y el pico llega jugando, no de arranque.
+		const cuandoElPico = h.findIndex((x) => x.media === pico);
+		expect(cuandoElPico).toBeGreaterThan(3);
+		// Después de los 30 el cuerpo se lo lleva.
+		expect(final).toBeLessThan(pico);
+	});
+
+	it('el que juega mejora y el que mira desde el banco no', () => {
+		// Mismo jugador y misma semilla; lo único distinto es que a uno lo dejan
+		// jugar. Es la regla que le da peso al mercado: quedarse donde no entrás
+		// no cuesta solo minutos, cuesta la carrera entera.
+		const juega = correrCarrera('banco', 'centrodelantero', 'ar2-moron', BUSCA_JUGAR);
+		const mira = correrCarrera('banco', 'centrodelantero', 'en-mancity', {
+			...BUSCA_JUGAR,
+			priorizaJugar: false,
+			mejoraMinima: 99
+		});
+
+		const creció = (r: ReturnType<typeof correrCarrera>) =>
+			Math.max(...r.estado.historial.map((h) => h.media)) - r.estado.historial[0].media;
+
+		expect(creció(juega)).toBeGreaterThan(creció(mira));
+	});
+
 	it('el representante termina con plata y con prestigio', () => {
 		const { estado } = correrCarrera('c5', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 		expect(estado.representante.dineroUsd).toBeGreaterThan(50_000);

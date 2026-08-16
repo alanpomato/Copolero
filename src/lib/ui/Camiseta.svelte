@@ -29,7 +29,13 @@
 	const apellido = $derived(nombre.trim().split(/\s+/).slice(-1)[0].toUpperCase());
 </script>
 
-<svg class="camiseta" viewBox="0 0 100 118" height={alto} role="img" aria-label={`Camiseta ${numero}`}>
+<svg
+	class="camiseta"
+	viewBox="0 0 100 118"
+	height={alto}
+	role="img"
+	aria-label={`Camiseta ${numero}`}
+>
 	<defs>
 		<clipPath id={`recorte-${id}`}>
 			<path d={CONTORNO} />

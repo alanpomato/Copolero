@@ -21,12 +21,7 @@ export const ANIO_DEL_PRIMER_MUNDIAL = 2026;
 export const CADA_CUANTOS_ANIOS = 4;
 
 export type ResultadoDeMundial =
-	| 'campeon'
-	| 'final'
-	| 'semifinal'
-	| 'cuartos'
-	| 'fase-de-grupos'
-	| 'no-fue';
+	'campeon' | 'final' | 'semifinal' | 'cuartos' | 'fase-de-grupos' | 'no-fue';
 
 export type Mundial = {
 	anio: number;
@@ -202,7 +197,13 @@ export function jugarConLaSeleccion(estado: Estado, semilla: string): NovedadDeS
 function golesEnLaSeleccion(estado: Estado, partidos: number, suerte: number): number {
 	const f = estado.futbolista;
 	const factor =
-		f.posicion === 'delantero' ? 0.5 : f.posicion === 'mediocampista' ? 0.2 : f.posicion === 'defensor' ? 0.06 : 0;
+		f.posicion === 'delantero'
+			? 0.5
+			: f.posicion === 'mediocampista'
+				? 0.2
+				: f.posicion === 'defensor'
+					? 0.06
+					: 0;
 	const punteria = media(f.atributos, f.posicion) / 100;
 	return Math.round(partidos * factor * punteria * suerte);
 }

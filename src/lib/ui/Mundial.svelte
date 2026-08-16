@@ -19,9 +19,7 @@
 	const m = $derived(opciones.mundial);
 	const sel = $derived(estado.seleccion);
 
-	const tono = $derived(
-		!m ? '' : m.chance >= 60 ? 'bien' : m.chance >= 25 ? 'medio' : 'mal'
-	);
+	const tono = $derived(!m ? '' : m.chance >= 60 ? 'bien' : m.chance >= 25 ? 'medio' : 'mal');
 
 	const RESULTADO: Record<string, string> = {
 		campeon: 'Campeón',

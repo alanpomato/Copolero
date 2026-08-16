@@ -28,6 +28,8 @@
 		ingresos: '$',
 		contrato: '✎',
 		entrenamiento: '↑',
+		progreso: '⤒',
+		seleccion: '⚑',
 		gestion: '☎',
 		nota: '✉',
 		retiro: '■',

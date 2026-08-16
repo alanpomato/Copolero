@@ -102,9 +102,7 @@ export function puntajeDelFutbolista(estado: Estado): PuntajeFinal {
 		const campeon = seleccion.mundiales.filter((m) => m.resultado === 'campeon').length;
 		desglose.push({
 			concepto:
-				campeon > 0
-					? `Campeón del mundo`
-					: `${seleccion.partidos} partidos con la selección`,
+				campeon > 0 ? `Campeón del mundo` : `${seleccion.partidos} partidos con la selección`,
 			puntos: puntosDeSeleccion(estado)
 		});
 	}

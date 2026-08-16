@@ -344,7 +344,18 @@ async function listarLoQueFalta() {
 	const puestos = await yaTienen();
 	const faltan = clubes.filter((c) => !puestos.has(c.id));
 
-	console.log(`\nTienen escudo propio: ${puestos.size} de ${clubes.length}`);
+	// La carpeta se imprime siempre: cuando alguien dice "puse los escudos y
+	// sigo viendo los dibujados", casi siempre están en otra carpeta que la que
+	// el servidor lee.
+	console.log(`\nCarpeta que lee el juego: ${DESTINO}`);
+	console.log(`Tienen escudo propio: ${puestos.size} de ${clubes.length}`);
+	if (puestos.size === 0) {
+		console.log(
+			'\nNo hay ningún archivo ahí. Copiá los tuyos con:\n' +
+				'  npm run escudos -- /ruta/a/tus/logos\n' +
+				'No hace falta recompilar: el juego los lee del disco al pedirlos.'
+		);
+	}
 	if (faltan.length === 0) {
 		console.log('No falta ninguno.');
 		return;

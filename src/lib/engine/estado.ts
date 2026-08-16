@@ -207,6 +207,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		// Arranca igual al contenido: el mundo todavía es el de la foto.
 		cambiosMundo: structuredClone(MUNDO_SIN_CAMBIOS),
 		ultimaTemporada: null,
+		historial: [],
 		temporadasPorClub: {},
 		temporadasPerdidas: 0,
 		seleccion: { debuto: false, partidos: 0, goles: 0, mundiales: [] }

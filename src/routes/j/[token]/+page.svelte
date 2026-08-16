@@ -11,7 +11,10 @@
 	import Decisiones from '$lib/ui/Decisiones.svelte';
 	import Camiseta from '$lib/ui/Camiseta.svelte';
 	import Confianza from '$lib/ui/Confianza.svelte';
+	import Alerta from '$lib/ui/Alerta.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
+	import Portada from '$lib/ui/Portada.svelte';
+	import Trayectoria from '$lib/ui/Trayectoria.svelte';
 	import Diario from '$lib/ui/Diario.svelte';
 	import Retiro from '$lib/ui/Retiro.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -95,6 +98,14 @@
 	{/if}
 
 	{#if !vista.opciones.retiro}
+		{#if vista.opciones.alerta}
+			<Alerta alerta={vista.opciones.alerta} />
+		{/if}
+
+		{#if vista.opciones.portada}
+			<Portada portada={vista.opciones.portada} />
+		{/if}
+
 		<Confianza {estado} rol={vista.rol} />
 
 		<Mundial opciones={vista.opciones} {estado} />
@@ -246,51 +257,12 @@
 			</div>
 		{/if}
 
-		{#if estado.ultimaTemporada}
-			{@const t = estado.ultimaTemporada}
-			<div class="tarjeta">
-				<h3>La temporada {t.temporada}</h3>
-				<div class="cifras">
-					<div class="cifra">
-						<span class="valor">{t.nota.toFixed(1)}</span>
-						<span class="etiqueta">Nota</span>
-					</div>
-					<div class="cifra">
-						<span class="valor">{t.partidos}</span>
-						<span class="etiqueta">Partidos</span>
-					</div>
-					<div class="cifra">
-						<span class="valor">{t.goles}</span>
-						<span class="etiqueta">Goles</span>
-					</div>
-					<div class="cifra">
-						<span class="valor">{t.asistencias}</span>
-						<span class="etiqueta">Asistencias</span>
-					</div>
-					<div class="cifra">
-						<span class="valor">{t.puesto}º</span>
-						<span class="etiqueta">de {t.equipos}</span>
-					</div>
-				</div>
-				{#if t.campeon}
-					<p style="margin:.8rem 0 0"><span class="chip listo">Campeón</span></p>
-				{:else if t.lesionado}
-					<p style="margin:.8rem 0 0"><span class="chip espera">Se lesionó</span></p>
-				{/if}
-			</div>
-		{/if}
-
-		{#if vista.rol === 'futbolista'}
-			<div class="tarjeta">
-				<h3>La relación</h3>
-				<div class="cifras">
-					<div class="cifra">
-						<span class="valor">{estado.confianza}</span>
-						<span class="etiqueta">Confianza</span>
-					</div>
-				</div>
-			</div>
-		{/if}
+		<!--
+			La carrera entera reemplaza a la tarjeta de "la última temporada": muestra
+			los mismos números del año que cerró en el panel de abajo, y además dónde
+			queda ese año dentro de todo lo demás.
+		-->
+		<Trayectoria historial={vista.opciones.historial ?? []} />
 
 		{#if vista.sincronizacion !== 'CAREER_OVER'}
 			<h2>{NOMBRE_FASE[estado.fase]}</h2>

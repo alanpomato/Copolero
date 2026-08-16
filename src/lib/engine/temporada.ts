@@ -1,9 +1,10 @@
 import { club, clubesDe, contexto } from '../../../content/mundo';
+import { nombreAtributo, rindeDeLaEdad } from './entrenamiento';
 import { media } from './estado';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
 import type { Efecto, ResultadoDeOcasion } from './ocasiones';
-import type { Estado, Futbolista, Posicion, ResumenTemporada } from './tipos';
+import type { Atributos, Estado, Futbolista, Posicion, ResumenTemporada } from './tipos';
 
 /**
  * La temporada jugada.
@@ -20,9 +21,47 @@ import type { Estado, Futbolista, Posicion, ResumenTemporada } from './tipos';
 
 export const PARTIDOS_POR_TEMPORADA = 34;
 
+/**
+ * Partidos mínimos para que el título del club sea también suyo.
+ *
+ * El equipo puede salir campeón sin él. Que el club dé la vuelta es una cosa
+ * —va al diario— y que el título entre en su vitrina es otra. La diferencia
+ * importa: sin esta regla, un suplente eterno en un grande termina la carrera
+ * con más títulos que un ídolo de un club chico.
+ */
+export const PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO = 10;
+
+/**
+ * Qué parte de lo que le falta al techo se recorta en una temporada perfecta.
+ *
+ * Cerca del techo cada punto cuesta: el que ya está a cinco de su potencial
+ * sube de a poco por más que juegue todo.
+ */
+const VELOCIDAD_DE_CRECIMIENTO = 0.3;
+
+/**
+ * Y cuánta media se puede ganar en una sola temporada, como mucho.
+ *
+ * Sin este tope, un pibe con mucho futuro pasaba de 41 a 62 en un año, porque
+ * la fracción de una distancia enorme también es enorme. Nadie mejora veinte
+ * puntos en un verano; lo que pasa de verdad es que mejora cuatro o cinco cada
+ * año durante cinco años, y ésa es justamente la parte de la carrera que vale
+ * la pena jugar temporada por temporada.
+ */
+const TOPE_DE_CRECIMIENTO_POR_TEMPORADA = 4.5;
+
 /** Una jugada concreta, ya narrada, para el resumen y el diario. */
 export type Jugada = {
-	tipo: 'gol' | 'asistencia' | 'lesion' | 'roja' | 'tecnico' | 'prensa' | 'titulo' | 'ocasion';
+	tipo:
+		| 'gol'
+		| 'asistencia'
+		| 'lesion'
+		| 'roja'
+		| 'tecnico'
+		| 'prensa'
+		| 'titulo'
+		| 'ocasion'
+		| 'progreso';
 	texto: string;
 };
 
@@ -188,7 +227,7 @@ export function jugarTemporada(
 
 	// El título es del que jugó. Un pibe que miró la temporada entera desde el
 	// banco no sale campeón: sale en la foto.
-	if (campeon && partidos >= 10) {
+	if (campeon && partidos >= PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO) {
 		f.titulos += 1;
 		jugadas.push({
 			tipo: 'titulo',
@@ -217,6 +256,18 @@ export function jugarTemporada(
 	f.goles += goles;
 	f.asistencias += asistencias;
 	f.minutos += minutos;
+
+	// Jugar te hace mejor. Ver `crecerPorJugar`.
+	const crecio = crecerPorJugar(estado, { minutos, nota }, rng);
+	if (crecio.length > 0) {
+		jugadas.push({
+			tipo: 'progreso',
+			texto:
+				`Un año entero de competencia te dejó algo: ` +
+				crecio.map((c) => `${nombreAtributo(c.atributo)} +${c.puntos}`).join(', ') +
+				'.'
+		});
+	}
 
 	f.desgaste = Math.min(100, f.desgaste + Math.round(minutos / 1600) + rng.entero(0, 1));
 	f.moral = acotar(f.moral + Math.round((nota - 6) * 4), 0, 100);
@@ -250,6 +301,86 @@ export function jugarTemporada(
 		jugadas
 	};
 }
+
+/**
+ * Lo que se aprende jugando.
+ *
+ * Hasta acá lo único que subía atributos era la pretemporada: un plan al año,
+ * uno o dos atributos, dos o tres puntos. Con eso una carrera entera movía la
+ * media cuatro puntos y la curva de la trayectoria salía plana. Un juego donde
+ * el jugador no cambia en veinte temporadas no tiene por qué seguir jugándose.
+ *
+ * Jugar bien te hace mejor, que además es como funciona de verdad. Y cierra el
+ * lazo del juego: jugar te sube, subir te hace jugar más, y quedarte en un club
+ * donde no entrás te cuesta las dos cosas a la vez. Ese castigo es lo que le da
+ * peso a la decisión del mercado.
+ *
+ * Tres cosas lo limitan, y las tres son decisiones de alguien:
+ *  - los minutos, que dependen de dónde eligió jugar,
+ *  - la nota, que depende de cómo le fue,
+ *  - y la edad, con la misma curva que la pretemporada.
+ * El techo sigue siendo el potencial, que nadie ve.
+ */
+function crecerPorJugar(
+	estado: Estado,
+	anio: { minutos: number; nota: number },
+	rng: Rng
+): { atributo: keyof Atributos; puntos: number }[] {
+	const f = estado.futbolista;
+	const margen = f.potencial - media(f.atributos, f.posicion);
+	if (margen <= 0) return [];
+
+	// Una temporada completa son unos 2.400 minutos de titular. Media temporada
+	// rinde la mitad, y el que no entró nunca no aprende nada.
+	const cuantoJugo = Math.min(1, anio.minutos / 2400);
+	if (cuantoJugo <= 0) return [];
+
+	// La nota modula, no habilita: un año malo jugando todos los domingos
+	// también forma. Lo que no forma es no jugar.
+	const comoLeFue = Math.max(0.15, Math.min(1.4, (anio.nota - 3) / 3.5));
+
+	// La velocidad con la que se acorta la distancia al techo. El crecimiento se
+	// mide contra el potencial y no en puntos fijos: así un pibe con futuro
+	// pega el salto en tres temporadas y uno del montón se estanca donde está,
+	// que es lo que hace que el potencial oculto valga la pena de adivinar.
+	const acercarse =
+		Math.min(TOPE_DE_CRECIMIENTO_POR_TEMPORADA, margen * VELOCIDAD_DE_CRECIMIENTO) *
+		(rindeDeLaEdad(f.edad) / 1.6) *
+		cuantoJugo *
+		comoLeFue *
+		(rng.entero(80, 125) / 100);
+
+	// Los puntos se reparten entre los atributos del puesto, así que hacen falta
+	// tantos como atributos para mover la media un punto.
+	const orden = [...ATRIBUTOS_DEL_PUESTO[f.posicion]];
+	const puntos = Math.round(acercarse * orden.length);
+	if (puntos <= 0) return [];
+
+	// Se reparten entre lo que el puesto usa, empezando por lo que más pesa: un
+	// 9 que juega un año entero mejora la definición antes que la marca.
+	const subieron = new Map<keyof Atributos, number>();
+	for (let i = 0; i < puntos; i++) {
+		const atributo = orden[i % orden.length];
+		if (f.atributos[atributo] >= 99) continue;
+		f.atributos[atributo] = Math.min(99, f.atributos[atributo] + 1);
+		subieron.set(atributo, (subieron.get(atributo) ?? 0) + 1);
+	}
+
+	return [...subieron.entries()].map(([atributo, puntos]) => ({ atributo, puntos }));
+}
+
+/**
+ * Qué atributos usa cada puesto, del que más pesa al que menos.
+ *
+ * Es el mismo orden que los pesos de la media en `estado.ts`, escrito como una
+ * lista porque acá lo que hace falta es repartir puntos de a uno.
+ */
+const ATRIBUTOS_DEL_PUESTO: Record<Posicion, (keyof Atributos)[]> = {
+	arquero: ['potencia', 'defensa', 'resistencia', 'liderazgo', 'pase'],
+	defensor: ['defensa', 'potencia', 'resistencia', 'velocidad', 'pase', 'liderazgo'],
+	mediocampista: ['pase', 'regate', 'resistencia', 'definicion', 'defensa', 'liderazgo'],
+	delantero: ['definicion', 'velocidad', 'regate', 'potencia', 'pase']
+};
 
 /**
  * La nota del año, de 1 a 10.
