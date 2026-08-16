@@ -1,5 +1,6 @@
 import { club, contexto } from '../../../content/mundo';
 import { media } from './estado';
+import { comoVaElDuelo } from './rival';
 import type { Estado, HitoTemporada } from './tipos';
 
 /**
@@ -308,6 +309,12 @@ function notasDe(estado: Estado, hito: HitoTemporada, anterior: HitoTemporada | 
 		});
 	}
 
+	// El duelo con el otro de la camada. Va alto en la lista a propósito: es lo
+	// que le pone escala a los números propios. Doce goles no son muchos ni
+	// pocos; doce goles cuando el otro hizo diecinueve son pocos.
+	const duelo = comoVaElDuelo(estado);
+	if (duelo) notas.push({ titulo: 'El de la camada', texto: duelo });
+
 	if (estado.confianza < 30) {
 		notas.push({
 			titulo: 'La relación',
@@ -329,5 +336,5 @@ function notasDe(estado: Estado, hito: HitoTemporada, anterior: HitoTemporada | 
 		});
 	}
 
-	return notas.slice(0, 3);
+	return notas.slice(0, 4);
 }

@@ -90,6 +90,15 @@ export type OpcionesDeFase = {
 		plataUsd: number;
 		gastoAnualUsd: number;
 	};
+	/** El otro pibe de la camada y cómo va el duelo. Ver `rival.ts`. */
+	rival?: {
+		nombre: string;
+		clubId: string;
+		goles: number;
+		asistencias: number;
+		ganadasPorVos: number;
+		ganadasPorEl: number;
+	};
 	/** Lo que hay que decirle en la cara, si hay algo. Ver `alertas.ts`. */
 	alerta?: Alerta;
 	/** La tapa del diario del año que cerró. Solo en pretemporada. */
@@ -180,6 +189,19 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			tiene: loQueTiene(estado, rol),
 			plataUsd: rol === 'futbolista' ? estado.futbolista.dineroUsd : estado.representante.dineroUsd,
 			gastoAnualUsd: gastoAnual(estado, rol)
+		};
+	}
+
+	// El otro de la camada, siempre. Un rival del que no te acordás no es un
+	// rival: tiene que estar a la vista aunque no haya pasado nada este año.
+	if (estado.rival) {
+		opciones.rival = {
+			nombre: estado.rival.nombre,
+			clubId: estado.rival.clubId,
+			goles: estado.rival.goles,
+			asistencias: estado.rival.asistencias,
+			ganadasPorVos: estado.rival.ganadasPorVos,
+			ganadasPorEl: estado.rival.ganadasPorEl
 		};
 	}
 

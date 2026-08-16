@@ -1,6 +1,7 @@
 import { salarioTipico } from '../../../content/mundo';
 import { puesto as puestoPorId, repartoValido, ventajaDePie, type Pie } from './puestos';
 import { MUNDO_SIN_CAMBIOS, type Atributos, type Estado, type Posicion, type Rol } from './tipos';
+import { inventarRival } from './rival';
 import type { Rng } from './rng';
 
 /** Lo que se elige en la pantalla de creación de partida. */
@@ -139,7 +140,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 	const posicion = elPuesto.posicion;
 	const atributos = atributosIniciales(rng, elPuesto.id, futbolista.pie, futbolista.reparto);
 
-	return {
+	const estado: Estado = {
 		version: 1,
 		temporada: 1,
 		anio,
@@ -213,9 +214,15 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		intensidadDeLaPretemporada: 'firme',
 		atributosQueSubieron: [],
 		rasgo: null,
+		rival: null,
 		inversiones: { futbolista: [], representante: [] },
 		seleccion: { debuto: false, partidos: 0, goles: 0, mundiales: [] }
 	};
+
+	// El otro pibe de la camada. Se inventa al final porque necesita el club y
+	// la media del futbolista ya puestos.
+	estado.rival = inventarRival(estado, rng);
+	return estado;
 }
 
 /** El nombre con el que se muestra cada rol en pantalla. */

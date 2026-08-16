@@ -250,6 +250,27 @@ export type Estado = {
 	rasgo: string | null;
 
 	/**
+	 * El otro pibe de la camada. Ver `rival.ts`.
+	 *
+	 * El tipo vive allá porque el estado no depende del contenido; acá se
+	 * referencia por estructura, igual que la selección.
+	 */
+	rival: {
+		nombre: string;
+		clubId: string;
+		nivel: number;
+		potencial: number;
+		edad: number;
+		goles: number;
+		asistencias: number;
+		partidos: number;
+		titulos: number;
+		ganadasPorEl: number;
+		ganadasPorVos: number;
+		ultimaTemporada: { goles: number; asistencias: number; partidos: number } | null;
+	} | null;
+
+	/**
 	 * En qué gastó cada uno su plata. Ver `inversiones.ts`.
 	 *
 	 * Se guardan los ids y nada más: lo que hace cada una vive en el catálogo,

@@ -14,6 +14,7 @@ import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
+import { correrleElAnio } from './rival';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
 import {
 	clubDeUltimoRecurso,
@@ -337,6 +338,11 @@ function cerrarTemporada(
 	for (const linea of cobrarMantenimiento(estado)) {
 		log.push({ tipo: 'inversion', visiblePara: linea.visiblePara, texto: linea.texto });
 	}
+
+	// --- El otro pibe de la camada -------------------------------------------
+	// Después de la foto del año no: antes, para que el diario pueda comparar el
+	// año de los dos en la misma tapa.
+	correrleElAnio(estado, semilla);
 
 	// Lo que vale, al día. Es el número que los dos miran para decidir, así que
 	// no puede quedar viejo de un año para otro.

@@ -65,7 +65,7 @@
 				<span class="nombre">{f.nombre}</span>
 				<span class="dorsal">· la {f.numero}</span>
 			</h3>
-			<p class="linea">{donde.club.nombre} · {estado.anio} · {f.edad} años</p>
+			<p class="linea">{f.edad} años · {estado.anio} · {donde.club.nombre}</p>
 			<p class="linea liga">{donde.liga.nombre} · fama {f.fama}</p>
 		</div>
 
@@ -142,6 +142,22 @@
 				{/if}
 			</b>
 		</p>
+	{/if}
+
+	{#if opciones.rival}
+		{@const r = opciones.rival}
+		{@const vaGanando = r.ganadasPorVos > r.ganadasPorEl}
+		{@const empatados = r.ganadasPorVos === r.ganadasPorEl}
+		<div class="duelo">
+			<Escudo clubId={r.clubId} tamano={22} />
+			<span class="quienEs">
+				<b>{r.nombre}</b>
+				<i>El de tu camada · {r.goles}G {r.asistencias}A</i>
+			</span>
+			<span class="marcador" class:arriba={vaGanando} class:abajo={!vaGanando && !empatados}>
+				{r.ganadasPorVos}–{r.ganadasPorEl}
+			</span>
+		</div>
 	{/if}
 
 	{#if opciones.rasgoElegido}
@@ -382,6 +398,46 @@
 	}
 	.seleccion b.sin {
 		color: var(--tenue);
+	}
+
+	.duelo {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin-top: 0.85rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid var(--borde);
+	}
+	.duelo .quienEs {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		line-height: 1.2;
+	}
+	.duelo b {
+		font-size: 0.86rem;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+	.duelo i {
+		font-style: normal;
+		font-size: 0.68rem;
+		color: var(--tenue);
+	}
+	.duelo .marcador {
+		flex: none;
+		font-size: 1rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--tenue);
+	}
+	.marcador.arriba {
+		color: var(--acento);
+	}
+	.marcador.abajo {
+		color: var(--malo);
 	}
 
 	.rasgo {
