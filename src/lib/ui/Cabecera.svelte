@@ -62,8 +62,13 @@
 			</span>
 		</div>
 		<span class="fase">
-			<span class="temporada">T{estado.temporada}</span>
-			<span class="nombrefase">{NOMBRE_FASE[estado.fase]}</span>
+			{#if estado.carreraTerminada}
+				<span class="temporada">{estado.temporada - 1}</span>
+				<span class="nombrefase">temporadas</span>
+			{:else}
+				<span class="temporada">T{estado.temporada}</span>
+				<span class="nombrefase">{NOMBRE_FASE[estado.fase]}</span>
+			{/if}
 		</span>
 	</div>
 

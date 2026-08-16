@@ -186,7 +186,9 @@ export function jugarTemporada(
 	const equipos = clubesDe(contexto(clubId).liga.id).length;
 	const campeon = puesto === 1;
 
-	if (campeon) {
+	// El título es del que jugó. Un pibe que miró la temporada entera desde el
+	// banco no sale campeón: sale en la foto.
+	if (campeon && partidos >= 10) {
 		f.titulos += 1;
 		jugadas.push({
 			tipo: 'titulo',
@@ -201,6 +203,16 @@ export function jugarTemporada(
 	jugadas.push(...narrar(estado, { goles, asistencias, partidos, nota, puesto }, rng, semilla));
 
 	// --- Lo que deja en el cuerpo y en la cabeza -----------------------------
+	// Dónde jugó este año, para el multiplicador de permanencia del final.
+	estado.temporadasPorClub = {
+		...estado.temporadasPorClub,
+		[clubId]: (estado.temporadasPorClub?.[clubId] ?? 0) + 1
+	};
+	// Un año de banco o roto no cuenta como carrera. El corte es bajo a
+	// propósito: cinco partidos ya es haber estado, y el que rota no merece el
+	// castigo del que no jugó nunca.
+	if (partidos < 5) estado.temporadasPerdidas = (estado.temporadasPerdidas ?? 0) + 1;
+
 	f.partidos += partidos;
 	f.goles += goles;
 	f.asistencias += asistencias;

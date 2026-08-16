@@ -171,6 +171,18 @@ export type Estado = {
 
 	/** La última temporada jugada. `null` hasta que se juegue la primera. */
 	ultimaTemporada: ResumenTemporada | null;
+
+	/**
+	 * Cuántas temporadas jugó en cada club.
+	 *
+	 * De acá salen dos cosas del puntaje final: el multiplicador de permanencia
+	 * —quedarse paga— y en qué clubes quedó como ídolo. Es el número que choca de
+	 * frente con la comisión por transferencia del representante.
+	 */
+	temporadasPorClub: Record<string, number>;
+
+	/** Temporadas que se perdió entera: lesión larga o banco. Restan al final. */
+	temporadasPerdidas: number;
 };
 
 /**

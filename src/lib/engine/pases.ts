@@ -72,25 +72,47 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 		clave: 'ofertas'
 	});
 
-	// Un club se interesa si el jugador le sirve y le entra en el bolsillo.
+	/**
+	 * Si en su club no juega, el mercado cambia de forma.
+	 *
+	 * El que está en el banco no necesita que le paguen más: necesita jugar. En
+	 * la vida real ése es el que sale prestado o lo venden a un club más chico, y
+	 * sin eso una carrera mal empezada no tiene arreglo: te quedás quince años
+	 * mirando desde afuera sin que nadie te ofrezca nada. Con esto siempre hay
+	 * una salida hacia abajo, y elegirla es una decisión de verdad —el
+	 * representante cobra menos, el futbolista vuelve a jugar.
+	 */
+	const estaEnElBanco = brechaCon(f, f.contrato.clubId) < -6;
+
 	const interesados = clubes.filter((c) => {
 		if (c.id === f.contrato.clubId) return false;
 		if (c.prestigio > f.fama + 20) return false;
+
+		const brechaAlla = brechaCon(f, c.id);
+
+		if (estaEnElBanco) {
+			// Lo único que importa es que allá sea titular.
+			return brechaAlla > 3;
+		}
 
 		const sueldo = salarioTipico(c.id, suMedia);
 		if (sueldo < f.contrato.salarioMensual * 1.1) return false;
 
 		// Y sobre todo: nadie compra a alguien que no puede jugar en su liga. Es
 		// lo que hace que el salto a Europa haya que ganárselo y no elegirlo.
-		return brechaCon(f, c.id) > -7;
+		return brechaAlla > -7;
 	});
 
 	if (interesados.length === 0) return [];
 
 	// De los interesados se eligen tres, con preferencia por los que pagan más:
 	// el mercado no es justo, pero tampoco es azar puro.
-	const ordenados = [...interesados].sort(
-		(a, b) => salarioTipico(b.id, suMedia) - salarioTipico(a.id, suMedia)
+	// Si está en el banco, primero los clubes donde más va a jugar; si no, los
+	// que más pagan.
+	const ordenados = [...interesados].sort((a, b) =>
+		estaEnElBanco
+			? brechaCon(f, b.id) - brechaCon(f, a.id)
+			: salarioTipico(b.id, suMedia) - salarioTipico(a.id, suMedia)
 	);
 	const candidatos = ordenados.slice(0, Math.min(28, ordenados.length));
 
@@ -119,7 +141,8 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 			return {
 				clubId,
 				montoUsd: monto,
-				salarioMensual: Math.max(f.contrato.salarioMensual + 100, sueldo),
+				// El que sale del banco suele resignar plata para volver a jugar.
+				salarioMensual: estaEnElBanco ? sueldo : Math.max(f.contrato.salarioMensual + 100, sueldo),
 				temporadas: rng.entero(2, 4),
 				comisionUsd: Math.round((monto * estado.contratoRepresentacion.pctTransferencia) / 100),
 				brecha: Math.round(brecha),

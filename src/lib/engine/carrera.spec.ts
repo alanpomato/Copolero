@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { estadoInicial, media } from './estado';
 import { resolverFase } from './fases';
 import { ofertasPara } from './pases';
+import { resumirRetiro } from './retiro';
+import { brechaCon } from './temporada';
 import { rngPara } from './rng';
 import { contexto } from '../../../content/mundo';
 import { PUESTOS, puesto } from './puestos';
@@ -22,6 +24,8 @@ type Estrategia = {
 	/** Si acepta el mejor pase disponible, y con qué exigencia de mejora. */
 	mejoraMinima: number;
 	gestion: string;
+	/** Si prefiere jugar antes que cobrar. */
+	priorizaJugar?: boolean;
 };
 
 function correrCarrera(
@@ -55,14 +59,23 @@ function correrCarrera(
 		for (const fase of [1, 2, 3] as const) {
 			let destino = 'quedarse';
 			if (fase === 3) {
-				const mejor = ofertasPara(estado, semilla)
-					.filter((o) => o.brecha > -6)
-					.sort((a, b) => b.salarioMensual - a.salarioMensual)[0];
-				if (
-					mejor &&
-					mejor.salarioMensual > estado.futbolista.contrato.salarioMensual * estrategia.mejoraMinima
-				) {
-					destino = mejor.clubId;
+				const ofertas = ofertasPara(estado, semilla);
+				const enElBanco = brechaCon(estado.futbolista, estado.futbolista.contrato.clubId) < -6;
+
+				if (estrategia.priorizaJugar && enElBanco) {
+					const dondeJuega = [...ofertas].sort((a, b) => b.brecha - a.brecha)[0];
+					if (dondeJuega && dondeJuega.brecha > 0) destino = dondeJuega.clubId;
+				} else {
+					const mejor = ofertas
+						.filter((o) => o.brecha > -6)
+						.sort((a, b) => b.salarioMensual - a.salarioMensual)[0];
+					if (
+						mejor &&
+						mejor.salarioMensual >
+							estado.futbolista.contrato.salarioMensual * estrategia.mejoraMinima
+					) {
+						destino = mejor.clubId;
+					}
 				}
 			}
 
@@ -86,6 +99,13 @@ function correrCarrera(
 
 const AMBICIOSO: Estrategia = { intensidad: 'a-matar', mejoraMinima: 1.3, gestion: 'renovar' };
 const PRUDENTE: Estrategia = { intensidad: 'suave', mejoraMinima: 3, gestion: 'acompanar' };
+/** El que prioriza jugar por encima de la plata. */
+const BUSCA_JUGAR: Estrategia = {
+	intensidad: 'firme',
+	mejoraMinima: 1.3,
+	gestion: 'acompanar',
+	priorizaJugar: true
+};
 
 describe('una carrera entera', () => {
 	it('termina sola, y ni muy corta ni eterna', () => {
@@ -157,5 +177,98 @@ describe('una carrera entera', () => {
 			expect(estado.carreraTerminada, p.nombre).toBe(true);
 			expect(temporadas, p.nombre).toBeGreaterThan(6);
 		}
+	});
+});
+
+describe('el final de la carrera', () => {
+	it('el que se queda en un club puntúa más que el que se mueve siempre', () => {
+		const fiel = correrCarrera('fiel', 'centrodelantero', 'ar-huracan', PRUDENTE);
+		const trotamundos = correrCarrera('fiel', 'centrodelantero', 'ar-huracan', AMBICIOSO);
+
+		expect(fiel.clubes.length).toBeLessThan(trotamundos.clubes.length);
+
+		const suyo = resumirRetiro(fiel.estado);
+		const delOtro = resumirRetiro(trotamundos.estado);
+		// El multiplicador de permanencia es el que hace que quedarse valga.
+		expect(suyo.futbolista.multiplicador).toBeGreaterThan(delOtro.futbolista.multiplicador);
+	});
+
+	it('el representante cobra por mover, y ahí está el choque', () => {
+		const fiel = correrCarrera('choque', 'centrodelantero', 'ar-huracan', PRUDENTE);
+		const trotamundos = correrCarrera('choque', 'centrodelantero', 'ar-huracan', AMBICIOSO);
+
+		expect(trotamundos.estado.representante.dineroUsd).toBeGreaterThan(
+			fiel.estado.representante.dineroUsd
+		);
+	});
+
+	it('el puntaje tiene desglose y nunca es negativo', () => {
+		for (const semilla of ['r1', 'r2', 'r3']) {
+			const { estado } = correrCarrera(semilla, 'enganche', 'ar2-moron', AMBICIOSO);
+			const retiro = resumirRetiro(estado);
+
+			expect(retiro.futbolista.total, semilla).toBeGreaterThanOrEqual(0);
+			expect(retiro.representante.total, semilla).toBeGreaterThanOrEqual(0);
+			expect(retiro.futbolista.desglose.length, semilla).toBeGreaterThan(2);
+			expect(retiro.futbolista.rango.titulo.length, semilla).toBeGreaterThan(3);
+			expect(retiro.epitafio, semilla).toContain(estado.futbolista.nombre);
+		}
+	});
+
+	it('meter más goles puntúa más', () => {
+		const { estado } = correrCarrera('goles', 'centrodelantero', 'ar2-moron', AMBICIOSO);
+		const antes = resumirRetiro(estado).futbolista.total;
+
+		const conMas = structuredClone(estado);
+		conMas.futbolista.goles += 40;
+		expect(resumirRetiro(conMas).futbolista.total).toBeGreaterThan(antes);
+	});
+
+	it('el que no juega en su club recibe ofertas de clubes donde sí jugaría', () => {
+		// Sin esto una carrera mal empezada no tiene arreglo: un pibe de 16 en un
+		// club grande se queda quince años en el banco y nadie le ofrece nada,
+		// porque las ofertas exigían pagar más. Ahora siempre hay salida hacia
+		// abajo, y tomarla es una decisión: el futbolista vuelve a jugar y el
+		// representante cobra menos.
+		const estado = estadoInicial(
+			{
+				futbolista: {
+					nombre: 'Damián Correa',
+					nacionalidad: 'Argentina',
+					puesto: 'centrodelantero',
+					numero: 9,
+					pie: 'derecho',
+					edadInicial: 16,
+					clubId: 'ar-river'
+				},
+				representante: { nombre: 'Alan' }
+			},
+			rngPara('banco', { temporada: 0, fase: 1, clave: 'inicio' }),
+			2026
+		);
+
+		expect(brechaCon(estado.futbolista, 'ar-river')).toBeLessThan(-6);
+
+		const ofertas = ofertasPara(estado, 'banco');
+		expect(ofertas.length).toBeGreaterThan(0);
+		for (const oferta of ofertas) {
+			expect(oferta.brecha, `${oferta.clubId} lo sentaría igual`).toBeGreaterThan(0);
+		}
+	});
+
+	it('bajar para jugar salva una carrera que arrancó demasiado arriba', () => {
+		const seQueda = correrCarrera('grande', 'centrodelantero', 'ar-river', PRUDENTE);
+		const baja = correrCarrera('grande', 'centrodelantero', 'ar-river', BUSCA_JUGAR);
+
+		expect(baja.estado.futbolista.partidos).toBeGreaterThan(seQueda.estado.futbolista.partidos);
+		expect(resumirRetiro(baja.estado).futbolista.total).toBeGreaterThan(
+			resumirRetiro(seQueda.estado).futbolista.total
+		);
+	});
+
+	it('las temporadas por club suman lo que se jugó', () => {
+		const { estado, temporadas } = correrCarrera('conteo', 'central', 'ar2-ferro', AMBICIOSO);
+		const total = Object.values(estado.temporadasPorClub).reduce((a, b) => a + b, 0);
+		expect(total).toBe(temporadas);
 	});
 });

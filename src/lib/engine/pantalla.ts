@@ -7,6 +7,7 @@ import {
 import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
+import { resumirRetiro, type Retiro } from './retiro';
 import { brechaCon } from './temporada';
 import type { Estado, Rol } from './tipos';
 
@@ -38,10 +39,32 @@ export type OpcionesDeFase = {
 	valorDeMercadoUsd?: number;
 	/** Cuánto va a jugar donde está hoy. Se muestra para poder comparar. */
 	brechaActual?: number;
+	/** Cuando la carrera terminó, los dos puntajes y el cierre. */
+	retiro?: Retiro;
+	/** Cómo lo ve el club donde está. Se muestra siempre. */
+	situacion?: { brecha: number; texto: string; tono: string };
 };
 
+/**
+ * Cómo lo ve el club donde está: titular, suplente o figura.
+ *
+ * Es el número que explica todo lo demás —cuántos partidos juega, cuántos goles
+ * mete, si le llegan ofertas— y hasta ahora solo se veía en el mercado. Verlo
+ * siempre es lo que convierte "me fue mal" en "estoy grande para este club".
+ */
+export function comoLoVeSuClub(estado: Estado): { brecha: number; texto: string; tono: string } {
+	const brecha = Math.round(brechaCon(estado.futbolista, estado.futbolista.contrato.clubId));
+	if (brecha >= 12) return { brecha, texto: 'Sos la figura del equipo', tono: 'bien' };
+	if (brecha >= 4) return { brecha, texto: 'Titular indiscutido', tono: 'bien' };
+	if (brecha >= -3) return { brecha, texto: 'Peleás el puesto', tono: 'medio' };
+	if (brecha >= -12) return { brecha, texto: 'Entrás desde el banco', tono: 'mal' };
+	return { brecha, texto: 'Te quedó grande el club', tono: 'mal' };
+}
+
 export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): OpcionesDeFase {
-	if (estado.carreraTerminada) return {};
+	// Terminada la carrera no hay nada que decidir: lo único que queda es el
+	// final, que es la pantalla más importante del juego.
+	if (estado.carreraTerminada) return { retiro: resumirRetiro(estado) };
 
 	const opciones: OpcionesDeFase = {};
 
@@ -60,6 +83,10 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			probabilidad: a.probabilidad(estado)
 		}));
 	}
+
+	// Cómo lo ve su club se muestra siempre, en las tres fases: es el número que
+	// explica por qué juega poco o por qué no le llegan ofertas.
+	opciones.situacion = comoLoVeSuClub(estado);
 
 	// El mercado lo ven los dos, con exactamente los mismos números. Es a
 	// propósito: la regla es que tienen que elegir lo mismo, así que tienen que
