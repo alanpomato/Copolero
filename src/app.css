@@ -39,6 +39,12 @@
 
 html {
 	-webkit-text-size-adjust: 100%;
+	/*
+	 * La cabecera del jugador va pegada arriba, así que cualquier salto dentro
+	 * de la página aterriza debajo de ella. Con este margen, lo que se salta
+	 * queda visible en vez de esconderse atrás de la tarjeta.
+	 */
+	scroll-padding-top: 8.5rem;
 }
 
 body {
