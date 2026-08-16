@@ -13,6 +13,7 @@
 	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
 	import Opcion from './Opcion.svelte';
+	import Ruleta from './Ruleta.svelte';
 
 	/**
 	 * El cuerpo del formulario de la fase: cambia según la fase y el rol.
@@ -397,9 +398,16 @@
 	</p>
 
 	{#each opciones.ocasiones as ocasion, i (ocasion.id)}
+		{@const elegida = ocasion.opciones.find((o) => o.id === ocasiones[i]) ?? ocasion.opciones[0]}
 		<div class="tarjeta">
 			<h3>{i + 1} · {ocasion.titulo}</h3>
 			<p style="margin:0 0 .9rem">{ocasion.contexto}</p>
+
+			<Ruleta probabilidad={elegida.probabilidad} etiqueta={elegida.etiqueta} />
+			<p class="sutil" style="margin:.6rem 0 1rem; text-align:center">
+				{elegida.siSale}
+			</p>
+
 			{#each ocasion.opciones as opcion (opcion.id)}
 				<Opcion
 					grupo={`ocasion-${i}`}
