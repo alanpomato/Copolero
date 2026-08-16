@@ -47,6 +47,7 @@ export const actions: Actions = {
 		if (vista.rol === 'futbolista') {
 			decision.entrenamiento = campo(datos, 'entrenamiento');
 			decision.intensidad = campo(datos, 'intensidad');
+			decision.objetivo = campo(datos, 'objetivo');
 			// Una elección por ocasión, en el mismo orden en que se mostraron.
 			const cuantas = vista.opciones.ocasiones?.length ?? 0;
 			if (cuantas > 0) {

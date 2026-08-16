@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EVENTOS, aplicarEvento, eventosDeLaTemporada } from './eventos';
 import { estadoInicial } from './estado';
+import { techoDeFama } from './temporada';
 import { rngPara } from './rng';
 import type { Estado } from './tipos';
 
@@ -99,11 +100,31 @@ describe('los eventos', () => {
 		});
 		expect(estado.futbolista.desgaste).toBe(100);
 		expect(estado.futbolista.moral).toBe(0);
-		expect(estado.futbolista.fama).toBe(100);
+		// La fama no llega a 100 porque la limita el club donde juega, igual que en
+		// la temporada. Un evento no puede hacer conocido a alguien del Ascenso.
+		expect(estado.futbolista.fama).toBe(techoDeFama(estado.futbolista.contrato.clubId));
 		expect(estado.futbolista.dt).toBe(-100);
 		expect(estado.confianza).toBe(100);
 		expect(estado.futbolista.atributos.velocidad).toBe(1);
 		expect(estado.futbolista.atributos.pase).toBe(99);
+	});
+
+	it('un evento no puede hacer famoso al que juega donde no lo ve nadie', () => {
+		const enElAscenso = unEstado();
+		aplicarEvento(enElAscenso, { fama: 90 });
+
+		const enEuropa = unEstado();
+		enEuropa.futbolista.contrato.clubId = 'es-realmadrid';
+		aplicarEvento(enEuropa, { fama: 90 });
+
+		expect(enEuropa.futbolista.fama).toBeGreaterThan(enElAscenso.futbolista.fama);
+	});
+
+	it('pero tampoco le saca la fama al que ya la tiene y bajó de categoría', () => {
+		const e = unEstado();
+		e.futbolista.fama = 88;
+		aplicarEvento(e, { fama: 5 });
+		expect(e.futbolista.fama).toBe(88);
 	});
 
 	it('un atributo que no existe no rompe nada', () => {

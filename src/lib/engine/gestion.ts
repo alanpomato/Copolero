@@ -154,6 +154,39 @@ export const ACCIONES: AccionDeGestion[] = [
 		}
 	},
 	{
+		id: 'ojear',
+		nombre: 'Buscar el próximo',
+		detalle: 'Canchas de inferiores, viajes, informes. Si aparece alguien, tu agencia crece.',
+		fases: [1, 2],
+		probabilidad: (e) => chance(30, e.representante.atributos.scouting, 0.7),
+		aplicar: (e, salio) => {
+			if (!salio) {
+				e.confianza = acotar(e.confianza - 2, 0, 100);
+				return [
+					{
+						visiblePara: 'representante',
+						texto: 'Te comiste tres canchas de inferiores y no viste a nadie. Pasa seguido.'
+					}
+				];
+			}
+			e.representante.representadosExtra += 1;
+			e.representante.prestigio = acotar(e.representante.prestigio + 2, 0, 100);
+			e.confianza = acotar(e.confianza - 3, 0, 100);
+			return [
+				{
+					visiblePara: 'representante',
+					texto:
+						`Encontraste uno. Ya son ${e.representante.representadosExtra + 1} representados: ` +
+						`tu agencia deja de ser vos y un jugador.`
+				},
+				{
+					visiblePara: 'futbolista',
+					texto: 'Tu representante firmó a otro pibe. Vas a tener que compartirlo.'
+				}
+			];
+		}
+	},
+	{
 		id: 'acompanar',
 		nombre: 'Estar',
 		detalle: 'Ir a verlo, bancarlo, atender el teléfono. No mueve plata; mueve todo lo demás.',
@@ -174,32 +207,95 @@ export const ACCIONES: AccionDeGestion[] = [
 			];
 		}
 	},
-	{
-		id: 'formarse',
-		nombre: 'Trabajar tu agencia',
-		detalle: 'Cursos, contactos, papeles. Sube lo tuyo y no lo de él.',
+	...(
+		[
+			{
+				id: 'negociacion',
+				nombre: 'Estudiar a los que negocian',
+				detalle: 'Sentarte en mesas ajenas y mirar cómo cierran. Sube negociación.',
+				que: 'negociación'
+			},
+			{
+				id: 'scouting',
+				nombre: 'Ver fútbol todo el día',
+				detalle: 'Canchas, videos, informes. Sube scouting.',
+				que: 'scouting'
+			},
+			{
+				id: 'contactos',
+				nombre: 'Golpear puertas',
+				detalle: 'Dirigentes, técnicos, gente de club. Sube contactos.',
+				que: 'contactos'
+			}
+		] as const
+	).map((cual): AccionDeGestion => ({
+		id: `formarse-${cual.id}`,
+		nombre: cual.nombre,
+		detalle: `${cual.detalle} Es tuyo y no de él: esta temporada vas a estar menos encima.`,
 		fases: [1],
 		probabilidad: () => 100,
 		aplicar: (e, _salio, semilla) => {
 			const rng = rngPara(semilla, {
 				temporada: e.temporada,
 				fase: 1,
-				clave: 'gestion-formarse'
+				clave: `gestion-formarse-${cual.id}`
 			});
 			const a = e.representante.atributos;
-			const cual = rng.elegir(['negociacion', 'scouting', 'contactos'] as const);
-			const suma = rng.entero(2, 5);
-			a[cual] = acotar(a[cual] + suma, 0, 100);
+			// Lo que ya sabés hacer cuesta más mejorarlo. Es la misma curva que
+			// el potencial del futbolista, para que crecer se sienta igual de los
+			// dos lados de la mesa.
+			const suma = Math.max(1, Math.round(rng.entero(4, 7) * (1 - a[cual.id] / 130)));
+			a[cual.id] = acotar(a[cual.id] + suma, 0, 100);
 			e.confianza = acotar(e.confianza - 2, 0, 100);
 			return [
 				{
 					visiblePara: 'representante',
-					texto: `Le metiste a tu agencia: ${cual} +${suma}. Esta temporada estuviste menos encima.`
+					texto: `Le metiste a lo tuyo: ${cual.que} +${suma}. Esta temporada estuviste menos encima.`
 				}
 			];
 		}
-	}
+	}))
 ];
+
+/**
+ * Qué atributo entrena cada gestión con solo hacerla.
+ *
+ * Bebo lo dijo mirando sus números: "las stats del representante suben muy
+ * lento y es muy monótona la forma de progresión". Medido, tenía razón de
+ * sobra: la negociación iba de 30 a 34 en veinte temporadas, porque lo único
+ * que subía atributos era una gestión que además los elegía al azar.
+ *
+ * Ahora haciendo se aprende. Cada gestión entrena un poco lo que usa, salga o
+ * no salga —de las que salen mal se aprende más, que es como funciona—, y
+ * `formarse` pasó a ser tres opciones distintas para que elegir en qué
+ * convertirse sea una decisión y no una lotería.
+ */
+const LO_QUE_ENTRENA: Record<string, keyof Estado['representante']['atributos']> = {
+	sondear: 'contactos',
+	renovar: 'negociacion',
+	prensa: 'contactos',
+	ojear: 'scouting'
+};
+
+/**
+ * Lo que se aprende haciendo, una vez por gestión.
+ *
+ * Poco y constante: no reemplaza a formarse, lo acompaña. Veinte temporadas
+ * gestionando dejan unos veinte puntos, que es la diferencia entre un
+ * representante de barrio y uno al que le atienden el teléfono.
+ */
+export function aprenderHaciendo(estado: Estado, gestionId: string, salio: boolean): void {
+	const cual = LO_QUE_ENTRENA[gestionId];
+	if (!cual) return;
+	const a = estado.representante.atributos;
+	// Cerca del techo cuesta, igual que el potencial del futbolista.
+	const margen = 1 - a[cual] / 130;
+	a[cual] = acotar(
+		a[cual] + Math.max(salio ? 1 : 0, Math.round((salio ? 1.6 : 2.2) * margen)),
+		0,
+		100
+	);
+}
 
 export const GESTION_POR_DEFECTO = 'acompanar';
 
@@ -232,7 +328,11 @@ export function resolverGestion(
 	const probabilidad = accion.probabilidad(estado);
 	const salio = probabilidad >= 100 || rng.ocurre(probabilidad / 100);
 
-	return accion.aplicar(estado, salio, semilla);
+	const lineas = accion.aplicar(estado, salio, semilla);
+	// Haciendo se aprende, salga o no salga. Va después de aplicar para que lo
+	// que se aprendió este año no cambie la tirada de este mismo año.
+	aprenderHaciendo(estado, accion.id, salio);
+	return lineas;
 }
 
 /** Etiqueta para el diario. */

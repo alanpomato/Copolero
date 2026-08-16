@@ -223,6 +223,16 @@ export type Estado = {
 	temporadasPerdidas: number;
 
 	/**
+	 * Con cuánta intensidad hizo la pretemporada de esta temporada.
+	 *
+	 * Vive en el estado porque se elige en la fase 1 y se cobra en la fase 2, que
+	 * son dos resoluciones distintas. Sin esto, entrenar a matar terminaba
+	 * haciéndote peor: el desgaste te sacaba minutos, y los minutos son lo que te
+	 * hace crecer. El esfuerzo tiene que comprar algo.
+	 */
+	intensidadDeLaPretemporada: string;
+
+	/**
 	 * La selección y los mundiales.
 	 *
 	 * Es lo único del juego que se espera: llega solo, cada cuatro años, y no se
@@ -256,6 +266,9 @@ export type Decision = {
 	/** Futbolista, fase 1: qué plan de pretemporada y con cuánta intensidad. */
 	entrenamiento?: string;
 	intensidad?: string;
+
+	/** Futbolista, fase 2: cómo va a jugar el año. Ver `objetivos.ts`. */
+	objetivo?: string;
 
 	/** Futbolista, fase 2: qué eligió en cada ocasión marcada, en orden. */
 	ocasiones?: string[];

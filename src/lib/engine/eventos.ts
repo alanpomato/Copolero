@@ -2,6 +2,7 @@ import { club, contexto } from '../../../content/mundo';
 import { media } from './estado';
 import { dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
+import { techoDeFama } from './temporada';
 import type { Estado, VisiblePara } from './tipos';
 
 /**
@@ -238,6 +239,150 @@ export const EVENTOS: Evento[] = [
 			texto: `Lo llamaste tres veces a ${e.representante.nombre} y no te atendió ninguna.`
 		}),
 		efectos: () => ({ moral: -10, confianza: -6 })
+	},
+	{
+		id: 'el-clasico',
+		// El partido que se recuerda. Solo si juega: al que mira desde el banco no
+		// le pasa nada en el clásico, y ésa es media desgracia de estar afuera.
+		puedePasar: (e) => e.futbolista.edad >= 18 && e.futbolista.hinchada >= 10,
+		peso: () => 5,
+		contar: (e, rng) => ({
+			texto: rng.ocurre(0.6)
+				? `La metió en el clásico. En ${suClub(e)} eso no se olvida más.`
+				: `Erró un gol hecho en el clásico. Va a escuchar ese grito toda la temporada.`
+		}),
+		efectos: (e) => ({ hinchada: 10, moral: 6, fama: 4, prensa: 3 })
+	},
+	{
+		id: 'la-lesion-del-titular',
+		// La puerta que se abre por desgracia ajena, que es como se abren casi
+		// todas. Solo para el que está esperando el lugar.
+		puedePasar: (e) => e.futbolista.edad <= 26,
+		peso: () => 4,
+		contar: (e, rng) => {
+			const quien = unCompanero(e, rng);
+			return {
+				texto: quien
+					? `Se rompió ${quien} y le tocó entrar. Es la forma en que se entra casi siempre.`
+					: `Se rompió el titular del puesto y le tocó entrar. Así se entra casi siempre.`
+			};
+		},
+		efectos: () => ({ dt: 8, moral: 8, atributos: { liderazgo: 1 } })
+	},
+	{
+		id: 'el-video-viral',
+		puedePasar: (e) => e.futbolista.fama >= 20,
+		peso: () => 3,
+		contar: (e, rng) => ({
+			texto: rng.ocurre(0.55)
+				? `Un caño suyo dio la vuelta al mundo en un video de diez segundos.`
+				: `Se filtró un video suyo en un boliche a las cuatro de la mañana.`
+		}),
+		efectos: (e) => ({ fama: 8, prensa: e.futbolista.prensa >= 0 ? 4 : -6 })
+	},
+	{
+		id: 'el-preparador',
+		puedePasar: (e) => e.futbolista.edad >= 20 && e.futbolista.desgaste >= 20,
+		peso: () => 3,
+		contar: () => ({
+			visiblePara: 'futbolista',
+			texto: 'Se puso un preparador físico propio. Se le nota en cómo termina los partidos.'
+		}),
+		efectos: () => ({ desgaste: -4, atributos: { resistencia: 3, potencia: 2 } })
+	},
+	{
+		id: 'el-arreglo-del-vestuario',
+		puedePasar: (e) => e.futbolista.moral <= 40,
+		peso: () => 3,
+		contar: (e, rng) => {
+			const quien = unCompanero(e, rng);
+			return {
+				texto: quien
+					? `Se agarró con ${quien} en el vestuario. Lo arreglaron, pero quedó.`
+					: 'Hubo bardo en el vestuario y estuvo en el medio.'
+			};
+		},
+		efectos: () => ({ moral: -8, dt: -6, prensa: -4 })
+	},
+	{
+		id: 'la-nota-del-tecnico',
+		puedePasar: (e) => suTecnico(e) !== null,
+		peso: () => 3,
+		contar: (e, rng) => {
+			const dt = suTecnico(e)!;
+			return {
+				texto: rng.ocurre(0.6)
+					? `${dt} lo nombró en conferencia: "es de los que quiero tener".`
+					: `${dt} dijo en conferencia que "hay que trabajar mucho más". Todos entendieron por quién.`
+			};
+		},
+		efectos: (e) => ({ dt: e.futbolista.dt >= 0 ? 6 : -8, prensa: 2, moral: 3 })
+	},
+	{
+		id: 'el-sueldo-atrasado',
+		// El club que no paga. Pasa más en los clubes chicos, que es donde pasa.
+		puedePasar: (e) => contexto(e.futbolista.contrato.clubId).club.prestigio <= 45,
+		peso: () => 3,
+		contar: (e) => ({
+			texto: `En ${suClub(e)} deben tres meses. El plantel amagó con no entrenar.`
+		}),
+		efectos: () => ({ moral: -10, confianza: 3 })
+	},
+	{
+		id: 'la-gira',
+		puedePasar: (e) => contexto(e.futbolista.contrato.clubId).club.prestigio >= 60,
+		peso: () => 2,
+		contar: (e) => ({
+			texto: `${suClub(e)} se fue de gira a Asia. Volvió con jet lag y un contrato de botines.`
+		}),
+		efectos: () => ({ fama: 5, desgaste: 2, dineroFutbolista: 40_000 })
+	},
+	{
+		id: 'el-pibe-que-viene',
+		// El que le respira en la nuca. Le pasa al que ya tiene edad para que le
+		// pase, y es el aviso de que el puesto no es de nadie.
+		puedePasar: (e) => e.futbolista.edad >= 29,
+		peso: (e) => (e.futbolista.edad - 27) * 1.2,
+		contar: (e, rng) => {
+			const quien = unCompanero(e, rng);
+			return {
+				texto: quien
+					? `Subió un pibe de la reserva a pelearle el puesto. En el club dicen que es ${quien} de nuevo.`
+					: 'Subió un pibe de la reserva a pelearle el puesto. Todos hablan de él.'
+			};
+		},
+		efectos: () => ({ dt: -6, moral: -5 })
+	},
+	{
+		id: 'la-escuelita',
+		puedePasar: (e) => e.futbolista.dineroUsd >= 300_000 && e.futbolista.edad >= 26,
+		peso: () => 2,
+		contar: (e) => ({
+			texto: `Abrió una escuelita de fútbol en el barrio. Le puso su nombre y le da vergüenza.`
+		}),
+		efectos: () => ({ hinchada: 8, prensa: 5, dineroFutbolista: -60_000, moral: 6 })
+	},
+	{
+		id: 'el-dirigente',
+		puedePasar: (e) => e.representante.atributos.contactos >= 45,
+		peso: (e) => 2 + e.representante.atributos.contactos / 30,
+		contar: (e) => ({
+			visiblePara: 'representante',
+			texto: `Un dirigente de ${suClub(e)} te debe un favor. Guardátelo para cuando haga falta.`
+		}),
+		efectos: () => ({ prestigio: 3, dineroRepresentante: 15_000 })
+	},
+	{
+		id: 'la-clausula',
+		puedePasar: (e) => e.futbolista.contrato.clausula > 0 && e.futbolista.fama >= 45,
+		peso: () => 2,
+		contar: (e) => ({
+			visiblePara: 'representante',
+			texto:
+				`Preguntaron por la cláusula de USD ${e.futbolista.contrato.clausula.toLocaleString('es-AR')}. ` +
+				`No dijiste nada todavía.`
+		}),
+		efectos: () => ({ prestigio: 2 })
 	}
 ];
 
@@ -257,7 +402,14 @@ export type EventoOcurrido = {
  * versión gastaba tanto que las carreras terminaban a los 26 en vez de a los
  * 35. Un evento tiene que doler, no acortarte la carrera diez años.
  */
-const POR_TEMPORADA = 2;
+/**
+ * Cuántos eventos por temporada.
+ *
+ * Con dos, y con quince en el catálogo, una carrera de veinte temporadas veía
+ * casi siempre los mismos. Tres sobre veintisiete hace que dos partidas no se
+ * parezcan, que es lo que Bebo pedía cuando dijo que le faltaban eventos.
+ */
+const POR_TEMPORADA = 3;
 
 /**
  * Sortea los eventos del año.
@@ -310,7 +462,13 @@ export function aplicarEvento(estado: Estado, efectos: Efectos): void {
 
 	if (efectos.desgaste) f.desgaste = acotar(f.desgaste + efectos.desgaste);
 	if (efectos.moral) f.moral = acotar(f.moral + efectos.moral);
-	if (efectos.fama) f.fama = acotar(f.fama + efectos.fama);
+	if (efectos.fama) {
+		// Con el mismo techo que la temporada: un caño viral en la Primera Nacional
+		// no te hace conocido en el mundo. Sin esto, los eventos pasaban por arriba
+		// de la regla que hace que el pase exista.
+		const techo = Math.max(f.fama, techoDeFama(f.contrato.clubId));
+		f.fama = acotar(Math.min(f.fama + efectos.fama, techo));
+	}
 	if (efectos.hinchada) f.hinchada = acotar(f.hinchada + efectos.hinchada);
 	if (efectos.dt) f.dt = acotar(f.dt + efectos.dt, -100, 100);
 	if (efectos.prensa) f.prensa = acotar(f.prensa + efectos.prensa, -100, 100);

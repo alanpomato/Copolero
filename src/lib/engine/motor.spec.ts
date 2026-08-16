@@ -193,7 +193,7 @@ describe('avance de fases y temporadas', () => {
 		// El representante hace la gestión que más plata deja y menos acompaña.
 		const gestionEgoista = [
 			{ rol: 'futbolista' as const, nota: '' },
-			{ rol: 'representante' as const, nota: '', gestion: 'formarse' }
+			{ rol: 'representante' as const, nota: '', gestion: 'formarse-negociacion' }
 		];
 		estado = resolverFase(estado, gestionEgoista, SEMILLA).estado;
 		expect(estado.confianza).toBeLessThan(confianzaPrevia);

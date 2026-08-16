@@ -1,6 +1,7 @@
 import { club, clubesDe, contexto } from '../../../content/mundo';
-import { nombreAtributo, rindeDeLaEdad } from './entrenamiento';
+import { aprovechaDe, nombreAtributo, rindeDeLaEdad } from './entrenamiento';
 import { media } from './estado';
+import { objetivo as objetivoPorId } from './objetivos';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
 import type { Efecto, ResultadoDeOcasion } from './ocasiones';
@@ -91,6 +92,20 @@ export function brechaCon(futbolista: Futbolista, clubId: string): number {
 	return suyo - exigencia;
 }
 
+/**
+ * Hasta dónde te puede conocer la gente jugando donde jugás.
+ *
+ * Se puede ser el mejor del Ascenso y que no te conozca nadie: para que te
+ * conozcan hay que subir, y ése es el motivo por el que el pase existe. Es una
+ * de las reglas que sostienen el juego entero, así que vive acá y la respeta
+ * todo el que toque la fama —incluidos los eventos, que durante un rato la
+ * pasaban por arriba y dejaban a un jugador del Ascenso con fama de crack.
+ */
+export function techoDeFama(clubId: string): number {
+	const { club: c, liga } = contexto(clubId);
+	return Math.min(100, Math.round(liga.fuerza * 0.5 + c.prestigio * 0.5) + 10);
+}
+
 function porcentajeDeJuego(brecha: number): number {
 	return Math.max(4, Math.min(100, Math.round(52 + brecha * 2)));
 }
@@ -166,10 +181,15 @@ export type ResultadoTemporada = {
 export function jugarTemporada(
 	estado: Estado,
 	ocasiones: readonly ResultadoDeOcasion[],
-	semilla: string
+	semilla: string,
+	objetivoId?: string
 ): ResultadoTemporada {
 	const f = estado.futbolista;
 	const clubId = f.contrato.clubId;
+
+	// Cómo decidió jugar el año. Es la palanca que el futbolista tiene sobre la
+	// temporada: no cambia lo que es, cambia de dónde sale lo que hace.
+	const plan = objetivoPorId(objetivoId);
 	const rng = rngPara(semilla, { temporada: estado.temporada, fase: 2, clave: 'temporada' });
 	const jugadas: Jugada[] = [];
 
@@ -187,11 +207,11 @@ export function jugarTemporada(
 
 	// --- Minutos -------------------------------------------------------------
 	const brecha = brechaCon(f, clubId);
-	const porcentaje = porcentajeDeJuego(brecha);
+	const porcentaje = Math.max(4, Math.min(100, porcentajeDeJuego(brecha) + plan.minutos));
 
 	// La lesión se descuenta de los partidos, no del rendimiento: el que se
 	// rompe en agosto no juega mal, no juega.
-	const riesgoLesion = 0.07 + f.desgaste / 500 + Math.max(0, f.edad - 30) * 0.012;
+	const riesgoLesion = (0.07 + f.desgaste / 500 + Math.max(0, f.edad - 30) * 0.012) * plan.lesion;
 	const lesionado = rng.ocurre(Math.min(0.5, riesgoLesion));
 	const partidosPerdidos = lesionado ? rng.entero(4, 14) : 0;
 
@@ -215,12 +235,14 @@ export function jugarTemporada(
 	const suerte = () => rng.entero(70, 135) / 100;
 
 	const goles =
-		golesDeOcasion + Math.round(golesPor90(f) * noventas * ajuste * suerte() * (f.forma / 60));
+		golesDeOcasion +
+		Math.round(golesPor90(f) * noventas * ajuste * suerte() * (f.forma / 60) * plan.goles);
 	const asistencias =
-		asistenciasDeOcasion + Math.round(asistenciasPor90(f) * noventas * ajuste * suerte());
+		asistenciasDeOcasion +
+		Math.round(asistenciasPor90(f) * noventas * ajuste * suerte() * plan.asistencias);
 
 	// --- El equipo -----------------------------------------------------------
-	const aporte = (goles + asistencias) / 11 + Math.max(0, brecha) / 18;
+	const aporte = (goles + asistencias) / 11 + Math.max(0, brecha) / 18 + plan.equipo;
 	const puesto = puestoEnLaLiga(clubId, aporte, rng);
 	const equipos = clubesDe(contexto(clubId).liga.id).length;
 	const campeon = puesto === 1;
@@ -236,7 +258,17 @@ export function jugarTemporada(
 	}
 
 	// --- Nota de la temporada ------------------------------------------------
-	const nota = calificar(f, porcentaje, goles, asistencias, puesto, equipos, ajuste);
+	const nota = calificar(
+		f,
+		porcentaje,
+		goles,
+		asistencias,
+		puesto,
+		equipos,
+		ajuste,
+		brecha,
+		minutos
+	);
 
 	// --- Las jugadas que se recuerdan ----------------------------------------
 	jugadas.push(...narrar(estado, { goles, asistencias, partidos, nota, puesto }, rng, semilla));
@@ -269,20 +301,18 @@ export function jugarTemporada(
 		});
 	}
 
-	f.desgaste = Math.min(100, f.desgaste + Math.round(minutos / 1600) + rng.entero(0, 1));
+	f.desgaste = Math.max(
+		0,
+		Math.min(100, f.desgaste + Math.round(minutos / 1600) + rng.entero(0, 1) + plan.desgaste)
+	);
 	f.moral = acotar(f.moral + Math.round((nota - 6) * 4), 0, 100);
-	f.dt = acotar(f.dt + Math.round((nota - 6) * 3), -100, 100);
+	f.dt = acotar(f.dt + Math.round((nota - 6) * 3) + plan.dt, -100, 100);
 	f.hinchada = acotar(f.hinchada + Math.round((nota - 6) * 4 + goles), 0, 100);
 	f.prensa = acotar(f.prensa + Math.round((nota - 6) * 2), -100, 100);
-	// La fama la limita dónde jugás. Se puede ser el mejor del Ascenso y que no
-	// te conozca nadie: para que te conozcan hay que subir, y ése es el motivo
-	// por el que el pase existe.
-	const techoDeFama = Math.min(
-		100,
-		Math.round(contexto(clubId).liga.fuerza * 0.5 + contexto(clubId).club.prestigio * 0.5) + 10
-	);
+	// La fama la limita dónde jugás. Ver `techoDeFama`.
+	const techo = techoDeFama(clubId);
 	const subeFama = Math.round(goles * 0.7 + asistencias * 0.4 + (campeon ? 6 : 0) + (nota - 6) * 2);
-	f.fama = acotar(Math.min(f.fama + subeFama, Math.max(f.fama, techoDeFama)), 0, 100);
+	f.fama = acotar(Math.min(f.fama + subeFama, Math.max(f.fama, techo)), 0, 100);
 
 	return {
 		resumen: {
@@ -348,6 +378,9 @@ function crecerPorJugar(
 		(rindeDeLaEdad(f.edad) / 1.6) *
 		cuantoJugo *
 		comoLeFue *
+		// Lo que se hizo en el verano decide cuánto se aprovecha el año. Es lo que
+		// hace que entrenar a matar valga la pena a pesar del desgaste.
+		aprovechaDe(estado.intensidadDeLaPretemporada) *
 		(rng.entero(80, 125) / 100);
 
 	// Los puntos se reparten entre los atributos del puesto, así que hacen falta
@@ -396,14 +429,28 @@ function calificar(
 	asistencias: number,
 	puesto: number,
 	equipos: number,
-	ajuste: number
+	ajuste: number,
+	brecha: number,
+	minutos: number
 ): number {
 	const porMinutos = (porcentaje / 100) * 3;
 
-	// Lo que se le pide a un puesto, corregido por lo fácil que es convertir en
-	// esa liga: veinte goles en el Ascenso no son veinte goles en la Premier.
+	// Lo que se le pide a un puesto, corregido por tres cosas.
 	const base = f.posicion === 'delantero' ? 17 : f.posicion === 'mediocampista' ? 10 : 4;
-	const esperados = Math.max(2, base * ajuste);
+
+	// Una: lo fácil que es convertir en esa liga. Veinte goles en el Ascenso no
+	// son veinte goles en la Premier.
+	// Dos: cuánto se jugó. Al que estuvo media temporada afuera no se le puede
+	// pedir la producción de un año entero, y castigarlo por eso era contar dos
+	// veces lo mismo, porque los minutos ya puntúan aparte.
+	// Tres, y es la que faltaba: cuánto mejor es que la liga donde juega. A una
+	// figura se le exige más que a uno del montón, y sin esto un jugador que se
+	// quedaba en un club chico sacaba diez todos los años sin hacer nada. Una
+	// nota que siempre da diez no dice nada, y de paso hacía que irse a una liga
+	// más fuerte fuera puro castigo.
+	const temporadaCompleta = Math.max(0.3, Math.min(1, minutos / 2400));
+	const porSerFigura = 1 + Math.max(0, brecha) / 16;
+	const esperados = Math.max(1, base * ajuste * temporadaCompleta * porSerFigura);
 	const porProduccion = Math.min(4, ((goles + asistencias * 0.7) / esperados) * 4);
 
 	const porEquipo = (1 - (puesto - 1) / Math.max(1, equipos - 1)) * 2;

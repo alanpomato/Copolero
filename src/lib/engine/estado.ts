@@ -210,6 +210,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		historial: [],
 		temporadasPorClub: {},
 		temporadasPerdidas: 0,
+		intensidadDeLaPretemporada: 'firme',
 		seleccion: { debuto: false, partidos: 0, goles: 0, mundiales: [] }
 	};
 }

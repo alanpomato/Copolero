@@ -70,29 +70,34 @@ export type PerfilDeIntensidad = {
 	rinde: number;
 	/** Desgaste que deja en el cuerpo, por temporada. */
 	desgaste: number;
+	/** Cuánto multiplica lo que se aprende jugando el año siguiente. */
+	aprovecha: number;
 };
 
 export const INTENSIDADES: PerfilDeIntensidad[] = [
 	{
 		id: 'suave',
 		nombre: 'Suave',
-		detalle: 'Cuidarse. Sube poco y llegás entero a la temporada.',
+		detalle: 'Cuidarse. Subís poco, aprovechás menos el año y llegás entero.',
 		rinde: 0.55,
-		desgaste: 0
+		desgaste: 0,
+		aprovecha: 0.82
 	},
 	{
 		id: 'firme',
 		nombre: 'Firme',
 		detalle: 'Lo que hace todo el mundo.',
 		rinde: 1,
-		desgaste: 1
+		desgaste: 1,
+		aprovecha: 1
 	},
 	{
 		id: 'a-matar',
 		nombre: 'A matar',
-		detalle: 'Doble turno. Sube rápido y el cuerpo lo cobra.',
+		detalle: 'Doble turno. Subís rápido, el año te rinde más y el cuerpo lo cobra.',
 		rinde: 1.7,
-		desgaste: 3
+		desgaste: 3,
+		aprovecha: 1.28
 	}
 ];
 
@@ -106,6 +111,11 @@ export const INTENSIDAD_POR_DEFECTO: Intensidad = 'firme';
  * sostiene lo que ya hay. Es la curva que hace que la carrera tenga un momento
  * y que perderlo se pague.
  */
+/** Cuánto multiplica cada intensidad lo que se aprende jugando. */
+export function aprovechaDe(id: string | undefined): number {
+	return INTENSIDADES.find((i) => i.id === id)?.aprovecha ?? 1;
+}
+
 export function rindeDeLaEdad(edad: number): number {
 	if (edad <= 19) return 1.6;
 	if (edad <= 23) return 1.25;
@@ -142,6 +152,10 @@ export function entrenar(
 		fase: 1,
 		clave: `entrenamiento-${plan.id}`
 	});
+
+	// Queda anotado para la temporada: lo que se entrenó en el verano es lo que
+	// se aprovecha jugando (ver `crecerPorJugar`).
+	estado.intensidadDeLaPretemporada = intensidad.id;
 
 	const rinde = rindeDeLaEdad(f.edad) * intensidad.rinde;
 	const subieron: ResultadoEntrenamiento['subieron'] = [];

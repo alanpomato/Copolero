@@ -7,6 +7,7 @@ import {
 } from './entrenamiento';
 import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
+import { loQueVaAPasar, objetivosPara, type Objetivo } from './objetivos';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
 import {
 	TRATOS,
@@ -46,6 +47,9 @@ export type OpcionesDeFase = {
 	/** Futbolista, fase 1. */
 	planes?: PlanDeEntrenamiento[];
 	intensidades?: PerfilDeIntensidad[];
+	/** Futbolista, fase 2: cómo va a jugar el año, y qué dice de lo elegido. */
+	objetivos?: Objetivo[];
+	consejoDelObjetivo?: string;
 	/** Futbolista, fase 2. */
 	ocasiones?: Ocasion[];
 	/** Representante, fases 1 y 2. */
@@ -131,6 +135,8 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			opciones.planes = PLANES;
 			opciones.intensidades = INTENSIDADES;
 		} else if (estado.fase === 2) {
+			opciones.objetivos = objetivosPara(estado.futbolista.posicion);
+			opciones.consejoDelObjetivo = loQueVaAPasar(estado, undefined);
 			opciones.ocasiones = ocasionesDe(estado, semilla);
 		}
 	} else if (estado.fase === 1 || estado.fase === 2) {

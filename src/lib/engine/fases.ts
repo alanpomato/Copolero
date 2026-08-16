@@ -157,7 +157,7 @@ export function resolverFase(
 			resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i)
 		);
 
-		const temporada = jugarTemporada(siguiente, resultados, semilla);
+		const temporada = jugarTemporada(siguiente, resultados, semilla, delFutbolista.objetivo);
 		siguiente.ultimaTemporada = temporada.resumen;
 
 		for (const jugada of temporada.jugadas) {
@@ -460,6 +460,14 @@ function buscarEquipo(
 	if (apurado) {
 		estado.confianza = acotar(estado.confianza - 5, 0, 100);
 		f.moral = acotar(f.moral - 8, 0, 100);
+		// Y el costo que de verdad se siente: llega tarde, con la pretemporada
+		// empezada y como el que nadie quería. El técnico lo hace esperar, y
+		// esperar es menos minutos, menos goles y menos crecimiento.
+		//
+		// El descuento del sueldo solo no alcanzaba: el puntaje del futbolista no
+		// mira la plata, así que resignar plata no le costaba nada y no decidir
+		// terminaba rindiendo lo mismo que decidir.
+		f.dt = acotar(f.dt - 18, -100, 100);
 		log.push({
 			tipo: 'contrato',
 			visiblePara: 'ambos',

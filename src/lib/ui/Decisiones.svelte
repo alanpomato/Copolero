@@ -2,6 +2,7 @@
 	import { contexto } from '../../../content/mundo';
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
+	import { OBJETIVO_POR_DEFECTO } from '$lib/engine/objetivos';
 	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
 	import { SIN_TRATO } from '$lib/engine/representacion';
@@ -27,6 +28,7 @@
 	let destino = $state(QUEDARSE);
 	let acuerdo = $state('estandar');
 	let renovacion = $state(FIRMAR);
+	let objetivo = $state(OBJETIVO_POR_DEFECTO);
 	let ocasiones = $state<string[]>([]);
 
 	$effect(() => {
@@ -248,6 +250,37 @@
 		</p>
 		<AtributosLista atributos={estado.futbolista.atributos} destacados={queSube} />
 	</div>
+{/if}
+
+<!-- ---------- Fase 2: cómo va a jugar el año ---------- -->
+{#if opciones.objetivos}
+	<div class="tarjeta" data-tema="cancha">
+		<h3>Cómo vas a jugar el año</h3>
+		<p style="margin:0 0 .5rem">
+			Es la decisión que más mueve la temporada. Ninguna es mejor que otra: cada una sube una parte
+			y baja otra.
+		</p>
+		{#if opciones.consejoDelObjetivo}
+			<p class="sutil" style="margin:0">{opciones.consejoDelObjetivo}</p>
+		{/if}
+	</div>
+
+	{#each opciones.objetivos as o (o.id)}
+		<Opcion
+			grupo="objetivo"
+			valor={o.id}
+			titulo={o.nombre}
+			detalle={o.detalle}
+			bind:elegido={objetivo}
+		>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube gana">{o.sube}</span>
+					<span class="chip-sube pierde">{o.cuesta}</span>
+				</span>
+			{/snippet}
+		</Opcion>
+	{/each}
 {/if}
 
 <!-- ---------- Fase 2: la rueda de ocasión ---------- -->
