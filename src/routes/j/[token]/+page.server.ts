@@ -66,8 +66,15 @@ export const actions: Actions = {
 			decision.trato = campo(datos, 'trato');
 		}
 
+		// "Avanzar sin esperar": cierra también por el otro con lo que el motor
+		// toma por defecto. Está para poder probar una carrera entera de a uno, y
+		// para que una partida no quede muerta si el otro desaparece.
+		const sinEsperar = datos.get('sinEsperar') === 'si';
+
 		try {
-			const resultado = enviarDecision(obtenerDb(), params.token, decision);
+			const resultado = enviarDecision(obtenerDb(), params.token, decision, {
+				tambienPorElOtro: sinEsperar
+			});
 			return { faseCerrada: resultado.faseCerrada };
 		} catch (e) {
 			const mensaje = e instanceof ErrorDePartida ? e.message : 'No se pudo cerrar la fase.';

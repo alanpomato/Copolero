@@ -6,12 +6,19 @@
 	 * El escudo de un club.
 	 *
 	 * Por defecto es nuestro dibujo: fondo, patrón e iniciales, con los colores
-	 * del club. Pero si el que corre el servidor puso un archivo en
+	 * del club. Si el que corre el servidor puso un archivo en
 	 * `static/escudos/<id-del-club>.png` (o `.svg`, `.webp`), se usa ése.
 	 *
 	 * La carpeta está fuera de git a propósito: lo que cada uno ponga en su
 	 * servidor es cosa suya, y el repo —que es público— no distribuye nada. Ver
 	 * `static/escudos/LEEME.md`.
+	 *
+	 * El dibujado va debajo y la imagen encima. Si la imagen carga, tapa; si no,
+	 * se esconde sola y queda el dibujo. La búsqueda de extensiones se hace sobre
+	 * el propio elemento y no con estado de Svelte: cuando era estado, un
+	 * refresco de la página podía pisar el resultado de una carga que ya había
+	 * terminado, y el mismo club aparecía a veces con un escudo y a veces con el
+	 * otro.
 	 */
 	let { clubId, tamano = 32 }: { clubId: string; tamano?: number } = $props();
 
@@ -20,61 +27,34 @@
 
 	// Contorno del escudo, en una grilla de 32×36.
 	const CONTORNO = 'M2 2 H30 V19 C30 27.5 24.5 32.8 16 35 C7.5 32.8 2 27.5 2 19 Z';
-	const id = $derived(`recorte-${clubId}`);
+	const recorte = $derived(`recorte-${clubId}`);
 
-	/**
-	 * Se prueban las extensiones una por una y gana la primera que cargue. Si no
-	 * carga ninguna —que es lo normal— queda el dibujado, y no se nota nada:
-	 * el nuestro se muestra desde el principio y el propio lo tapa recién cuando
-	 * está listo.
-	 */
-	let intento = $state(0);
-	let hayPropio = $state(false);
+	const primera = $derived(`/escudos/${clubId}.${EXTENSIONES_DE_ESCUDO[0]}`);
 
-	const candidato = $derived(
-		intento < EXTENSIONES_DE_ESCUDO.length
-			? `/escudos/${clubId}.${EXTENSIONES_DE_ESCUDO[intento]}`
-			: null
-	);
+	/** Prueba la extensión siguiente; si no queda ninguna, se rinde y se esconde. */
+	function siguiente(evento: Event) {
+		const img = evento.currentTarget as HTMLImageElement;
+		const actual = img.src.slice(img.src.lastIndexOf('.') + 1);
+		const proxima = EXTENSIONES_DE_ESCUDO[EXTENSIONES_DE_ESCUDO.indexOf(actual as never) + 1];
 
-	// Cambiar de club vuelve a empezar la búsqueda.
-	$effect(() => {
-		void clubId;
-		intento = 0;
-		hayPropio = false;
-	});
+		if (proxima) {
+			img.src = `/escudos/${clubId}.${proxima}`;
+		} else {
+			img.style.display = 'none';
+		}
+	}
 </script>
 
-{#if candidato}
-	<img
-		class="propio"
-		src={candidato}
-		alt={nombre}
-		width={tamano}
-		height={tamano * 1.125}
-		style:display={hayPropio ? 'inline-block' : 'none'}
-		onload={() => (hayPropio = true)}
-		onerror={() => (intento += 1)}
-	/>
-{/if}
-
-{#if !hayPropio}
-	<svg
-		class="escudo"
-		viewBox="0 0 32 36"
-		width={tamano}
-		height={tamano * 1.125}
-		role="img"
-		aria-label={nombre}
-	>
+<span class="marco" style="width:{tamano}px; height:{tamano * 1.125}px">
+	<svg class="escudo" viewBox="0 0 32 36" role="img" aria-label={nombre}>
 		<title>{nombre}</title>
 		<defs>
-			<clipPath {id}>
+			<clipPath id={recorte}>
 				<path d={CONTORNO} />
 			</clipPath>
 		</defs>
 
-		<g clip-path="url(#{id})">
+		<g clip-path="url(#{recorte})">
 			<rect x="0" y="0" width="32" height="36" fill={escudo.principal} />
 
 			{#if escudo.patron === 'bandas'}
@@ -116,20 +96,31 @@
 			{escudo.iniciales}
 		</text>
 	</svg>
-{/if}
+
+	{#key clubId}
+		<img class="propio" src={primera} alt="" aria-hidden="true" onerror={siguiente} />
+	{/key}
+</span>
 
 <style>
-	.propio {
+	.marco {
+		position: relative;
 		display: inline-block;
 		vertical-align: middle;
 		flex: none;
-		object-fit: contain;
-		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+	}
+	.escudo,
+	.propio {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
 	}
 	.escudo {
-		display: inline-block;
-		vertical-align: middle;
-		flex: none;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+	}
+	.propio {
+		object-fit: contain;
 		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 	}
 </style>

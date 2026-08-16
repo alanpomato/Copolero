@@ -267,7 +267,12 @@ export type ResultadoEnvio = { faseCerrada: boolean; sincronizacion: EstadoSincr
  * Es idempotente por `(partida, temporada, fase, rol)`: reenviar el formulario
  * o apretar dos veces no duplica la decisión ni vuelve a resolver la fase.
  */
-export function enviarDecision(db: Db, token: string, payload: Decision): ResultadoEnvio {
+export function enviarDecision(
+	db: Db,
+	token: string,
+	payload: Decision,
+	opciones: { tambienPorElOtro?: boolean } = {}
+): ResultadoEnvio {
 	return db.transaction(
 		(tx) => {
 			const jugador = tx.select().from(jugadores).where(eq(jugadores.token, token)).get();
@@ -310,6 +315,34 @@ export function enviarDecision(db: Db, token: string, payload: Decision): Result
 				})
 				.onConflictDoNothing()
 				.run();
+
+			// Avanzar sin el otro: se cierra también por él, con lo que el motor
+			// toma por defecto. Queda anotado en el diario, porque una fase que
+			// avanzó sin que el otro la jugara tiene que poder verse.
+			if (opciones.tambienPorElOtro) {
+				const otro = elOtroRol(jugador.rol);
+				tx.insert(decisiones)
+					.values({
+						partidaId: partida.id,
+						temporada,
+						fase,
+						rol: otro,
+						payloadJson: JSON.stringify({ rol: otro, nota: '' } satisfies Decision)
+					})
+					.onConflictDoNothing()
+					.run();
+
+				tx.insert(log)
+					.values({
+						partidaId: partida.id,
+						temporada,
+						fase,
+						tipo: 'avance_forzado',
+						visiblePara: 'ambos',
+						texto: `${jugador.nombre} avanzó la fase sin esperar. Las decisiones de ${otro} quedaron en lo que el juego toma por defecto.`
+					})
+					.run();
+			}
 
 			const filas = tx
 				.select()

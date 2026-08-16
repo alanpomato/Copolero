@@ -9,6 +9,7 @@
 	import Cabecera from '$lib/ui/Cabecera.svelte';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import Decisiones from '$lib/ui/Decisiones.svelte';
+	import Confianza from '$lib/ui/Confianza.svelte';
 	import Diario from '$lib/ui/Diario.svelte';
 	import Retiro from '$lib/ui/Retiro.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -92,8 +93,10 @@
 	{/if}
 
 	{#if !vista.opciones.retiro}
+		<Confianza {estado} rol={vista.rol} />
+
 		{#if vista.rol === 'futbolista'}
-			<div class="tarjeta">
+			<div class="tarjeta" data-tema="cancha">
 				<h3>Lo que sabés hacer</h3>
 				<p class="sutil" style="margin:-.35rem 0 .85rem">
 					{puesto.nombre} · pie {futbolista.pie} · media {media(
@@ -104,7 +107,7 @@
 				<AtributosLista atributos={futbolista.atributos} />
 			</div>
 
-			<div class="tarjeta">
+			<div class="tarjeta" data-tema="cancha">
 				<h3>Cómo te ven</h3>
 				<div class="cifras">
 					<div class="cifra">
@@ -126,7 +129,7 @@
 				</div>
 			</div>
 
-			<div class="tarjeta">
+			<div class="tarjeta" data-tema="plata">
 				<h3>Tu contrato</h3>
 				<div style="margin-bottom:.7rem">
 					<ClubLinea clubId={futbolista.contrato.clubId} tamano={40} />
@@ -156,7 +159,7 @@
 				</div>
 			</div>
 		{:else}
-			<div class="tarjeta">
+			<div class="tarjeta" data-tema="plata">
 				<h3>Tu agencia</h3>
 				<div class="cifras">
 					<div class="cifra">
@@ -186,7 +189,7 @@
 				</div>
 			</div>
 
-			<div class="tarjeta">
+			<div class="tarjeta" data-tema="cancha">
 				<h3>Tu cliente</h3>
 				<div style="margin-bottom:.85rem">
 					<ClubLinea clubId={futbolista.contrato.clubId} tamano={38} />
@@ -279,6 +282,12 @@
 						Ya cerraste tu parte. La fase avanza cuando {vista.elOtro.nombre} cierre la suya.
 					</p>
 					<p class="sutil" style="margin:.5rem 0 0">Esta pantalla se actualiza sola.</p>
+
+					<form method="POST" action="?/cerrarFase" use:enhance style="margin-top:1rem">
+						<button type="submit" name="sinEsperar" value="si" class="secundario">
+							Avanzar sin esperar a {vista.elOtro.nombre}
+						</button>
+					</form>
 				</div>
 			{:else}
 				<form method="POST" action="?/cerrarFase" use:enhance>
@@ -296,6 +305,20 @@
 					</div>
 
 					<button type="submit">Cerrar mi parte de la fase</button>
+
+					<button
+						type="submit"
+						name="sinEsperar"
+						value="si"
+						class="secundario"
+						style="margin-top:.6rem"
+					>
+						Avanzar sin esperar a {vista.elOtro.nombre}
+					</button>
+					<p class="sutil" style="margin:.5rem 0 0; text-align:center">
+						Cierra también por {vista.elOtro.nombre}, con lo que el juego toma por defecto. Queda
+						anotado en el diario.
+					</p>
 				</form>
 			{/if}
 		{/if}

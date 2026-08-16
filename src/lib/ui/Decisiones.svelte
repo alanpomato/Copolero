@@ -60,7 +60,7 @@
 
 <!-- ---------- Cuando vence el contrato entre los dos ---------- -->
 {#if opciones.tratos}
-	<div class="tarjeta">
+	<div class="tarjeta" data-tema="relacion">
 		<h3>La mesa</h3>
 		<p style="margin:0 0 .5rem">Se venció el contrato entre ustedes. Hay que firmar de nuevo.</p>
 		<p class="sutil" style="margin:0">
@@ -76,7 +76,7 @@
 	</div>
 
 	{#if opciones.consejo}
-		<div class="tarjeta consejo">
+		<div class="tarjeta consejo" data-tema="relacion">
 			<p style="margin:0">{opciones.consejo}</p>
 		</div>
 	{/if}
@@ -118,7 +118,7 @@
 
 <!-- ---------- Fase 1: pretemporada ---------- -->
 {#if opciones.planes}
-	<div class="tarjeta">
+	<div class="tarjeta" data-tema="cancha">
 		<h3>Qué entrenás</h3>
 		{#each opciones.planes as p (p.id)}
 			<Opcion
@@ -142,7 +142,7 @@
 		{/each}
 	</div>
 
-	<div class="tarjeta">
+	<div class="tarjeta" data-tema="cancha">
 		<h3>Con cuánta intensidad</h3>
 		<p class="sutil" style="margin:-.35rem 0 .8rem">
 			Tenés {estado.futbolista.edad} años y {estado.futbolista.desgaste} de desgaste. Lo que ganás de
@@ -168,7 +168,7 @@
 		{/each}
 	</div>
 
-	<div class="tarjeta">
+	<div class="tarjeta" data-tema="cancha">
 		<h3>Cómo estás hoy</h3>
 		<p class="sutil" style="margin:-.35rem 0 .85rem">
 			Lo verde es lo que va a subir con <strong>{subeDe(plan).toLowerCase()}</strong>.
@@ -204,7 +204,7 @@
 
 <!-- ---------- Fases 1 y 2: la gestión del representante ---------- -->
 {#if opciones.gestiones}
-	<div class="tarjeta">
+	<div class="tarjeta" data-tema="plata">
 		<h3>Qué hacés esta fase</h3>
 		<p class="sutil" style="margin:-.35rem 0 .8rem">
 			Una sola. Las probabilidades salen de tu negociación, tu scouting y tus contactos.
@@ -224,7 +224,7 @@
 
 <!-- ---------- Fase 3: el mercado ---------- -->
 {#if opciones.ofertas}
-	<div class="tarjeta">
+	<div class="tarjeta" data-tema="mercado">
 		<h3>El mercado</h3>
 		<p style="margin:0 0 .5rem">
 			Hoy vale <strong>{plata(opciones.valorDeMercadoUsd ?? 0)}</strong>.

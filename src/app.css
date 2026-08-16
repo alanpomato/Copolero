@@ -17,6 +17,18 @@
 	--espera: #fbbf24;
 	--malo: #f87171;
 
+	/*
+	 * Un color por tema. Las tarjetas eran todas del mismo gris y se leían como
+	 * un bloque solo: no se veía dónde terminaba una cosa y empezaba otra. Cada
+	 * sección lleva ahora una franja de su color a la izquierda, y con eso
+	 * alcanza para barrer la pantalla sin leer.
+	 */
+	--cancha: #4ade80;
+	--plata: #e0b83a;
+	--relacion: #6ab6e0;
+	--mercado: #a78bfa;
+	--historia: #9aa7b4;
+
 	--radio: 14px;
 	--ancho: 34rem;
 }
@@ -60,7 +72,9 @@ h2 {
 	font-size: 1.15rem;
 	font-weight: 700;
 	letter-spacing: -0.01em;
-	margin: 2rem 0 0.75rem;
+	margin: 2.5rem 0 0.85rem;
+	padding-top: 1.1rem;
+	border-top: 1px solid var(--borde);
 }
 
 .bajada {
@@ -71,11 +85,46 @@ h2 {
 /* --- Tarjetas ------------------------------------------------------------ */
 
 .tarjeta {
+	position: relative;
 	background: var(--tarjeta);
 	border: 1px solid var(--borde);
 	border-radius: var(--radio);
 	padding: 1.1rem 1.2rem;
 	margin-bottom: 1rem;
+	overflow: hidden;
+}
+
+/* La franja de color que dice de qué habla la tarjeta. */
+.tarjeta[data-tema]::before {
+	content: '';
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 3px;
+	background: var(--tema, var(--borde));
+}
+.tarjeta[data-tema='cancha'] {
+	--tema: var(--cancha);
+}
+.tarjeta[data-tema='plata'] {
+	--tema: var(--plata);
+}
+.tarjeta[data-tema='relacion'] {
+	--tema: var(--relacion);
+}
+.tarjeta[data-tema='mercado'] {
+	--tema: var(--mercado);
+}
+.tarjeta[data-tema='historia'] {
+	--tema: var(--historia);
+}
+
+/*
+ * La tarjeta de la que depende todo lo demás. Hay una sola por pantalla: si
+ * hubiera tres, no destacaría ninguna.
+ */
+.tarjeta.destacada {
+	background: linear-gradient(180deg, rgba(106, 182, 224, 0.1), rgba(106, 182, 224, 0.03));
+	border-color: rgba(106, 182, 224, 0.35);
 }
 
 .tarjeta h3 {
