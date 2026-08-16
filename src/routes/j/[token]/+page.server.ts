@@ -61,6 +61,10 @@ export const actions: Actions = {
 		if (vista.estado.fase === 3) {
 			decision.destino = campo(datos, 'destino');
 		}
+		// La mesa la juegan los dos: los dos mandan `trato`.
+		if (vista.opciones.tratos) {
+			decision.trato = campo(datos, 'trato');
+		}
 
 		try {
 			const resultado = enviarDecision(obtenerDb(), params.token, decision);

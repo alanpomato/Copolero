@@ -3,6 +3,7 @@
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
+	import { SIN_TRATO } from '$lib/engine/representacion';
 	import type { OpcionesDeFase } from '$lib/engine/pantalla';
 	import type { Atributos, Estado, Rol } from '$lib/engine/tipos';
 	import AtributosLista from './Atributos.svelte';
@@ -23,6 +24,7 @@
 	let intensidad = $state('firme');
 	let gestion = $state('acompanar');
 	let destino = $state(QUEDARSE);
+	let acuerdo = $state('estandar');
 	let ocasiones = $state<string[]>([]);
 
 	$effect(() => {
@@ -55,6 +57,64 @@
 		return 'Te sentás en el banco';
 	}
 </script>
+
+<!-- ---------- Cuando vence el contrato entre los dos ---------- -->
+{#if opciones.tratos}
+	<div class="tarjeta">
+		<h3>La mesa</h3>
+		<p style="margin:0 0 .5rem">Se venció el contrato entre ustedes. Hay que firmar de nuevo.</p>
+		<p class="sutil" style="margin:0">
+			{#if rol === 'futbolista'}
+				Elegí <strong>hasta dónde estás dispuesto a llegar</strong>. Si él pide menos o lo mismo,
+				hay trato al número que pidió. Si pide más, no hay acuerdo y siguen con lo de antes un año
+				más, con la relación golpeada.
+			{:else}
+				Elegí <strong>cuánto pedís</strong>. Si él llega hasta ahí o más, firman a tu número. Si te
+				pasás, no hay acuerdo. Lo que podés pedir depende de tu prestigio y tu negociación.
+			{/if}
+		</p>
+	</div>
+
+	{#if opciones.consejo}
+		<div class="tarjeta consejo">
+			<p style="margin:0">{opciones.consejo}</p>
+		</div>
+	{/if}
+
+	{#each opciones.tratos as t (t.id)}
+		<Opcion grupo="trato" valor={t.id} titulo={t.nombre} detalle={t.detalle} bind:elegido={acuerdo}>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube">{t.duracionTemporadas} temporadas</span>
+					{#if rol === 'representante'}
+						<span class="chip-sube gana">
+							Hoy serían {plata(
+								Math.round((estado.futbolista.contrato.salarioMensual * 12 * t.pctSalario) / 100)
+							)} por año
+						</span>
+					{:else}
+						<span class="chip-sube pierde">
+							Te cuesta {plata(
+								Math.round((estado.futbolista.contrato.salarioMensual * 12 * t.pctSalario) / 100)
+							)} por año
+						</span>
+					{/if}
+				</span>
+				<span class="acambio">{t.acambio}</span>
+			{/snippet}
+		</Opcion>
+	{/each}
+
+	{#if rol === 'futbolista'}
+		<Opcion
+			grupo="trato"
+			valor={SIN_TRATO}
+			titulo="No firmar"
+			detalle="No te ata a nada. Siguen juntos un año más, por inercia."
+			bind:elegido={acuerdo}
+		/>
+	{/if}
+{/if}
 
 <!-- ---------- Fase 1: pretemporada ---------- -->
 {#if opciones.planes}
@@ -260,5 +320,16 @@
 	.chip-sube.pierde {
 		background: rgba(248, 113, 113, 0.14);
 		color: var(--malo);
+	}
+	.acambio {
+		display: block;
+		margin-top: 0.5rem;
+		font-size: 0.82rem;
+		font-style: italic;
+		color: var(--tenue);
+	}
+	.consejo {
+		border-color: rgba(74, 222, 128, 0.3);
+		background: rgba(74, 222, 128, 0.07);
 	}
 </style>

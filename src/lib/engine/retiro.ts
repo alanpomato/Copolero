@@ -84,7 +84,10 @@ export function puntajeDelFutbolista(estado: Estado): PuntajeFinal {
 		{ concepto: `${f.goles} goles`, puntos: Math.round(10 * f.goles * pesoDeLosGoles) },
 		{ concepto: `${f.asistencias} asistencias`, puntos: 6 * f.asistencias },
 		{ concepto: `${f.titulos} títulos`, puntos: 150 * f.titulos },
-		{ concepto: `${f.minutos.toLocaleString('es-AR')} minutos`, puntos: Math.round(0.05 * f.minutos) },
+		{
+			concepto: `${f.minutos.toLocaleString('es-AR')} minutos`,
+			puntos: Math.round(0.05 * f.minutos)
+		},
 		{
 			concepto: idolo.length === 1 ? 'Ídolo de un club' : `Ídolo de ${idolo.length} clubes`,
 			puntos: 250 * idolo.length

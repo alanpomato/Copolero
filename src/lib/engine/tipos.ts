@@ -207,6 +207,14 @@ export type Decision = {
 	gestion?: string;
 
 	/**
+	 * Los dos, fase 1, cuando vence el contrato de representación.
+	 *
+	 * El futbolista elige hasta dónde está dispuesto a llegar y el representante
+	 * cuánto pide. Hay trato si el pedido entra en el techo.
+	 */
+	trato?: string;
+
+	/**
 	 * Los dos, fase 3: a qué club quiere ir, o `quedarse`.
 	 *
 	 * El pase se hace solo si los dos eligen lo mismo. Es la regla que obliga a

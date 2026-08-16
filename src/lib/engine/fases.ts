@@ -11,6 +11,7 @@ import { resolverGestion } from './gestion';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { ofertasPara, resolverPase } from './pases';
+import { resolverNegociacion, tocaRenegociar } from './representacion';
 import { jugarTemporada } from './temporada';
 import {
 	MUNDO_SIN_CAMBIOS,
@@ -91,6 +92,21 @@ export function resolverFase(
 		const nota = decisiones.find((d) => d.rol === rol)!.nota.trim();
 		if (nota.length > 0) {
 			log.push({ tipo: 'nota', visiblePara: 'ambos', texto: `${etiqueta(rol)}: ${nota}` });
+		}
+	}
+
+	// --- La mesa -------------------------------------------------------------
+	// Si el contrato entre los dos venció, la pretemporada arranca sentándose a
+	// hablar. Se resuelve antes que nada porque cambia lo que el representante
+	// cobra el resto del año.
+	if (estado.fase === 1 && tocaRenegociar(estado)) {
+		const negociacion = resolverNegociacion(siguiente, delFutbolista.trato, delRepresentante.trato);
+		siguiente.contratoRepresentacion = negociacion.contrato;
+		if (!negociacion.hubo) {
+			siguiente.confianza = acotar(siguiente.confianza - 6, 0, 100);
+		}
+		for (const linea of negociacion.lineas) {
+			log.push({ tipo: 'representacion', visiblePara: linea.visiblePara, texto: linea.texto });
 		}
 	}
 
@@ -256,10 +272,16 @@ function cerrarTemporada(
 	// plata. Ésa es la decisión del juego.
 	estado.confianza = acotar(estado.confianza - 5, 0, 100);
 
-	// --- El contrato ---------------------------------------------------------
+	// --- Los contratos -------------------------------------------------------
 	futbolista.contrato.temporadasRestantes = Math.max(
 		0,
 		futbolista.contrato.temporadasRestantes - 1
+	);
+	// El de representación también vence, y cuando llega a cero la pretemporada
+	// siguiente es la de sentarse a hablar.
+	estado.contratoRepresentacion.duracionTemporadas = Math.max(
+		0,
+		estado.contratoRepresentacion.duracionTemporadas - 1
 	);
 	if (futbolista.contrato.temporadasRestantes === 0) {
 		log.push({

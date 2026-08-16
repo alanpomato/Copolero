@@ -7,6 +7,13 @@ import {
 import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
+import {
+	TRATOS,
+	loQueLeConviene,
+	tocaRenegociar,
+	tratosQuePuedePedir,
+	type Trato
+} from './representacion';
 import { resumirRetiro, type Retiro } from './retiro';
 import { brechaCon } from './temporada';
 import type { Estado, Rol } from './tipos';
@@ -43,6 +50,9 @@ export type OpcionesDeFase = {
 	retiro?: Retiro;
 	/** Cómo lo ve el club donde está. Se muestra siempre. */
 	situacion?: { brecha: number; texto: string; tono: string };
+	/** Cuando vence el contrato entre los dos: los tratos sobre la mesa. */
+	tratos?: Trato[];
+	consejo?: string;
 };
 
 /**
@@ -67,6 +77,14 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	if (estado.carreraTerminada) return { retiro: resumirRetiro(estado) };
 
 	const opciones: OpcionesDeFase = {};
+
+	// Cuando vence el contrato entre los dos, la pretemporada es la mesa. El
+	// futbolista ve todos los tratos —elige su techo— y el representante solo
+	// los que su prestigio le permite pedir.
+	if (estado.fase === 1 && tocaRenegociar(estado)) {
+		opciones.tratos = rol === 'futbolista' ? TRATOS : tratosQuePuedePedir(estado);
+		opciones.consejo = rol === 'futbolista' ? loQueLeConviene(estado) : undefined;
+	}
 
 	if (rol === 'futbolista') {
 		if (estado.fase === 1) {

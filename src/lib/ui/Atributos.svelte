@@ -12,10 +12,8 @@
 	 * Se pueden marcar algunos para destacarlos: es lo que hace la pantalla de
 	 * pretemporada con los que el plan elegido va a subir.
 	 */
-	let {
-		atributos,
-		destacados = []
-	}: { atributos: Atributos; destacados?: (keyof Atributos)[] } = $props();
+	let { atributos, destacados = [] }: { atributos: Atributos; destacados?: (keyof Atributos)[] } =
+		$props();
 
 	function tono(valor: number): string {
 		if (valor >= 70) return 'bien';
