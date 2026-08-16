@@ -1,4 +1,5 @@
 import { club, contexto } from '../../../content/mundo';
+import { puntosDeSeleccion } from './seleccion';
 import type { Estado } from './tipos';
 
 /**
@@ -94,6 +95,19 @@ export function puntajeDelFutbolista(estado: Estado): PuntajeFinal {
 		},
 		{ concepto: `Fama final ${f.fama}`, puntos: 3 * f.fama }
 	];
+
+	// La selección, que para muchas carreras es la mitad de lo que quedó.
+	const seleccion = estado.seleccion;
+	if (seleccion?.debuto) {
+		const campeon = seleccion.mundiales.filter((m) => m.resultado === 'campeon').length;
+		desglose.push({
+			concepto:
+				campeon > 0
+					? `Campeón del mundo`
+					: `${seleccion.partidos} partidos con la selección`,
+			puntos: puntosDeSeleccion(estado)
+		});
+	}
 
 	if (estado.temporadasPerdidas > 0) {
 		desglose.push({

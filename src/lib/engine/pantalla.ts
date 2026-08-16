@@ -15,6 +15,7 @@ import {
 	type Trato
 } from './representacion';
 import { resumirRetiro, type Retiro } from './retiro';
+import { chanceDeConvocatoria, loQueFalta, proximoMundial } from './seleccion';
 import { brechaCon } from './temporada';
 import type { Estado, Rol } from './tipos';
 
@@ -53,6 +54,15 @@ export type OpcionesDeFase = {
 	/** Cuando vence el contrato entre los dos: los tratos sobre la mesa. */
 	tratos?: Trato[];
 	consejo?: string;
+	/** El Mundial que viene y qué tan cerca está de jugarlo. */
+	mundial?: {
+		anio: number;
+		faltan: number;
+		chance: number;
+		queFalta: string;
+		yaJugados: number;
+		campeon: boolean;
+	};
 };
 
 /**
@@ -105,6 +115,18 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	// Cómo lo ve su club se muestra siempre, en las tres fases: es el número que
 	// explica por qué juega poco o por qué no le llegan ofertas.
 	opciones.situacion = comoLoVeSuClub(estado);
+
+	// Y el Mundial, siempre también. Es lo único que se espera, y ver cuánto
+	// falta desde la primera temporada es la mitad de la gracia.
+	const anioDelMundial = proximoMundial(estado.anio);
+	opciones.mundial = {
+		anio: anioDelMundial,
+		faltan: anioDelMundial - estado.anio,
+		chance: chanceDeConvocatoria(estado),
+		queFalta: loQueFalta(estado),
+		yaJugados: estado.seleccion?.mundiales.length ?? 0,
+		campeon: (estado.seleccion?.mundiales ?? []).some((m) => m.resultado === 'campeon')
+	};
 
 	// El mercado lo ven los dos, con exactamente los mismos números. Es a
 	// propósito: la regla es que tienen que elegir lo mismo, así que tienen que

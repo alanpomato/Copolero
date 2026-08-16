@@ -9,7 +9,9 @@
 	import Cabecera from '$lib/ui/Cabecera.svelte';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import Decisiones from '$lib/ui/Decisiones.svelte';
+	import Camiseta from '$lib/ui/Camiseta.svelte';
 	import Confianza from '$lib/ui/Confianza.svelte';
+	import Mundial from '$lib/ui/Mundial.svelte';
 	import Diario from '$lib/ui/Diario.svelte';
 	import Retiro from '$lib/ui/Retiro.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -95,7 +97,31 @@
 	{#if !vista.opciones.retiro}
 		<Confianza {estado} rol={vista.rol} />
 
+		<Mundial opciones={vista.opciones} {estado} />
+
 		{#if vista.rol === 'futbolista'}
+			<div class="tarjeta" data-tema="cancha">
+				<h3>Vos</h3>
+				<div class="conCamiseta">
+					<Camiseta
+						clubId={futbolista.contrato.clubId}
+						numero={futbolista.numero}
+						nombre={futbolista.nombre}
+						alto={140}
+					/>
+					<div class="alLado">
+						<ClubLinea clubId={futbolista.contrato.clubId} tamano={34} />
+						{#if vista.opciones.situacion}
+							<p style="margin:.6rem 0 0">
+								<span class="chip {vista.opciones.situacion.tono === 'bien' ? 'listo' : 'espera'}"
+									>{vista.opciones.situacion.texto}</span
+								>
+							</p>
+						{/if}
+					</div>
+				</div>
+			</div>
+
 			<div class="tarjeta" data-tema="cancha">
 				<h3>Lo que sabés hacer</h3>
 				<p class="sutil" style="margin:-.35rem 0 .85rem">
@@ -326,3 +352,15 @@
 
 	<Diario entradas={vista.diario} />
 {/if}
+
+<style>
+	.conCamiseta {
+		display: flex;
+		align-items: center;
+		gap: 1.1rem;
+	}
+	.alLado {
+		min-width: 0;
+		flex: 1;
+	}
+</style>

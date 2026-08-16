@@ -208,7 +208,8 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		cambiosMundo: structuredClone(MUNDO_SIN_CAMBIOS),
 		ultimaTemporada: null,
 		temporadasPorClub: {},
-		temporadasPerdidas: 0
+		temporadasPerdidas: 0,
+		seleccion: { debuto: false, partidos: 0, goles: 0, mundiales: [] }
 	};
 }
 

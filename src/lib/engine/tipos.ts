@@ -183,6 +183,25 @@ export type Estado = {
 
 	/** Temporadas que se perdió entera: lesión larga o banco. Restan al final. */
 	temporadasPerdidas: number;
+
+	/**
+	 * La selección y los mundiales.
+	 *
+	 * Es lo único del juego que se espera: llega solo, cada cuatro años, y no se
+	 * puede apurar. Ver el `import type` de `seleccion.ts` sería circular, así
+	 * que el tipo vive allá y acá se referencia por estructura.
+	 */
+	seleccion: {
+		debuto: boolean;
+		partidos: number;
+		goles: number;
+		mundiales: {
+			anio: number;
+			resultado: 'campeon' | 'final' | 'semifinal' | 'cuartos' | 'fase-de-grupos' | 'no-fue';
+			partidos: number;
+			goles: number;
+		}[];
+	};
 };
 
 /**

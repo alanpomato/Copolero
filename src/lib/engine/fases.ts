@@ -13,6 +13,7 @@ import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { ofertasPara, resolverPase } from './pases';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
+import { aplicarSeleccion, jugarConLaSeleccion } from './seleccion';
 import { jugarTemporada } from './temporada';
 import {
 	MUNDO_SIN_CAMBIOS,
@@ -237,6 +238,15 @@ function cerrarTemporada(
 			`Ingresos de la temporada: USD ${fijoAnual.toLocaleString('es-AR')} de fijo ` +
 			`y USD ${comisionSalario.toLocaleString('es-AR')} de comisión sobre el salario.`
 	});
+
+	// --- La selección --------------------------------------------------------
+	// Antes del mercado a propósito: un Mundial cambia lo que valés, y los clubes
+	// compran justo después de verte jugarlo.
+	const novedad = jugarConLaSeleccion(estado, semilla);
+	if (novedad) {
+		aplicarSeleccion(estado, novedad);
+		log.push({ tipo: 'seleccion', visiblePara: 'ambos', texto: novedad.texto });
+	}
 
 	// --- El mercado ----------------------------------------------------------
 	// Se resuelve después de cobrar el año, porque el sueldo que se cobró es el
