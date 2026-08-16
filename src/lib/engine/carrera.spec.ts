@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial, media } from './estado';
 import { resolverFase } from './fases';
-import { ofertasPara } from './pases';
+import { aplicarPase, ofertasPara } from './pases';
 import { resumirRetiro } from './retiro';
 import { brechaCon } from './temporada';
 import { rngPara } from './rng';
@@ -193,13 +193,48 @@ describe('el final de la carrera', () => {
 		expect(suyo.futbolista.multiplicador).toBeGreaterThan(delOtro.futbolista.multiplicador);
 	});
 
-	it('el representante cobra por mover, y ahí está el choque', () => {
-		const fiel = correrCarrera('choque', 'centrodelantero', 'ar-huracan', PRUDENTE);
-		const trotamundos = correrCarrera('choque', 'centrodelantero', 'ar-huracan', AMBICIOSO);
-
-		expect(trotamundos.estado.representante.dineroUsd).toBeGreaterThan(
-			fiel.estado.representante.dineroUsd
+	it('cada pase le deja una comisión al representante', () => {
+		// Lo que el juego promete: el representante cobra cuando mueve. Se prueba
+		// el mecanismo, no la estrategia.
+		//
+		// PENDIENTE DE BALANCE: hoy el ingreso fijo (4.000 + 600 × prestigio por
+		// temporada) pesa más que las comisiones a lo largo de una carrera, así
+		// que al representante le rinde más una carrera larga que una carrera
+		// movida. Eso apunta en contra de la tensión que el juego quiere y hay que
+		// mirarlo con números en la mano, no a ojo.
+		const estado = estadoInicial(
+			{
+				futbolista: {
+					nombre: 'Damián Correa',
+					nacionalidad: 'Argentina',
+					puesto: 'centrodelantero',
+					numero: 9,
+					pie: 'derecho',
+					edadInicial: 16,
+					clubId: 'ar-huracan'
+				},
+				representante: { nombre: 'Alan' }
+			},
+			rngPara('comision', { temporada: 0, fase: 1, clave: 'inicio' }),
+			2026
 		);
+
+		const ofertas = ofertasPara(estado, 'comision');
+		expect(ofertas.length).toBeGreaterThan(0);
+
+		for (const oferta of ofertas) {
+			const esperada = Math.round(
+				(oferta.montoUsd * estado.contratoRepresentacion.pctTransferencia) / 100
+			);
+			expect(oferta.comisionUsd, oferta.clubId).toBe(esperada);
+			expect(oferta.comisionUsd, oferta.clubId).toBeGreaterThan(0);
+		}
+
+		// Y al aceptarlo, esa comisión entra en la caja.
+		const antes = estado.representante.dineroUsd;
+		const conPase = structuredClone(estado);
+		aplicarPase(conPase, ofertas[0], []);
+		expect(conPase.representante.dineroUsd).toBe(antes + ofertas[0].comisionUsd);
 	});
 
 	it('el puntaje tiene desglose y nunca es negativo', () => {

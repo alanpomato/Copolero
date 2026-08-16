@@ -7,6 +7,7 @@ import {
 	entrenar,
 	type Intensidad
 } from './entrenamiento';
+import { aplicarEvento, eventosDeLaTemporada } from './eventos';
 import { resolverGestion } from './gestion';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
@@ -134,6 +135,15 @@ export function resolverFase(
 
 		for (const jugada of temporada.jugadas) {
 			log.push({ tipo: jugada.tipo, visiblePara: 'ambos', texto: jugada.texto });
+		}
+
+		// --- Lo que pasó fuera de la cancha ------------------------------------
+		// Se sortea después de jugar, con el año ya cerrado: los eventos miran el
+		// estado real —el desgaste que quedó, la relación con el técnico— y no una
+		// foto de antes de empezar.
+		for (const evento of eventosDeLaTemporada(siguiente, semilla)) {
+			aplicarEvento(siguiente, evento.efectos);
+			log.push({ tipo: 'evento', visiblePara: evento.visiblePara, texto: evento.texto });
 		}
 		log.push({
 			tipo: 'temporada_jugada',
