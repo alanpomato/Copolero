@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { contexto } from '../../../content/mundo';
+	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
+	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
 	import type { OpcionesDeFase } from '$lib/engine/pantalla';
-	import type { Estado, Rol } from '$lib/engine/tipos';
+	import type { Atributos, Estado, Rol } from '$lib/engine/tipos';
+	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
 	import Opcion from './Opcion.svelte';
 
@@ -34,6 +37,17 @@
 		return `USD ${usd.toLocaleString('es-AR')}`;
 	}
 
+	/** Qué sube el plan elegido y hasta cuánto, con la intensidad elegida. */
+	const promesa = $derived(opciones.planes ? loQuePromete(estado, plan, intensidad as never) : []);
+	const queSube = $derived(promesa.map((p) => p.atributo) as (keyof Atributos)[]);
+
+	/** Lo mismo pero para cualquier plan, para poder mostrarlo en cada tarjeta. */
+	function subeDe(planId: string): string {
+		const p = opciones.planes?.find((x) => x.id === planId);
+		if (!p) return '';
+		return p.atributos.map((a) => NOMBRE_ATRIBUTO[a]).join(' + ');
+	}
+
 	function comoJuega(brecha: number): string {
 		if (brecha >= 10) return 'Sos la figura';
 		if (brecha >= 2) return 'Titular';
@@ -53,25 +67,53 @@
 				titulo={p.nombre}
 				detalle={p.detalle}
 				bind:elegido={plan}
-			/>
+			>
+				{#snippet extra()}
+					<span class="sube">
+						{#each p.atributos as a (a)}
+							<span class="chip-sube">
+								{NOMBRE_ATRIBUTO[a]}
+								<b>{estado.futbolista.atributos[a]}</b>
+							</span>
+						{/each}
+					</span>
+				{/snippet}
+			</Opcion>
 		{/each}
 	</div>
 
 	<div class="tarjeta">
 		<h3>Con cuánta intensidad</h3>
 		<p class="sutil" style="margin:-.35rem 0 .8rem">
-			A los {estado.futbolista.edad} años, con {estado.futbolista.desgaste} de desgaste. Lo que ganás
-			de más lo paga el cuerpo.
+			Tenés {estado.futbolista.edad} años y {estado.futbolista.desgaste} de desgaste. Lo que ganás de
+			más lo paga el cuerpo, y después de los 30 esa cuenta deja de cerrar.
 		</p>
 		{#each opciones.intensidades ?? [] as i (i.id)}
 			<Opcion
 				grupo="intensidad"
 				valor={i.id}
 				titulo={i.nombre}
-				detalle={`${i.detalle} Desgaste +${i.desgaste}.`}
+				detalle={i.detalle}
 				bind:elegido={intensidad}
-			/>
+			>
+				{#snippet extra()}
+					<span class="sube">
+						{#each loQuePromete(estado, plan, i.id) as p (p.atributo)}
+							<span class="chip-sube gana">{p.nombre} hasta +{p.hasta}</span>
+						{/each}
+						<span class="chip-sube pierde">Desgaste +{i.desgaste}</span>
+					</span>
+				{/snippet}
+			</Opcion>
 		{/each}
+	</div>
+
+	<div class="tarjeta">
+		<h3>Cómo estás hoy</h3>
+		<p class="sutil" style="margin:-.35rem 0 .85rem">
+			Lo verde es lo que va a subir con <strong>{subeDe(plan).toLowerCase()}</strong>.
+		</p>
+		<AtributosLista atributos={estado.futbolista.atributos} destacados={queSube} />
 	</div>
 {/if}
 
@@ -193,5 +235,30 @@
 	}
 	.numeros b {
 		color: var(--texto);
+	}
+	.sube {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem 0.4rem;
+		margin-top: 0.55rem;
+	}
+	.chip-sube {
+		font-size: 0.74rem;
+		background: rgba(255, 255, 255, 0.06);
+		border-radius: 999px;
+		padding: 0.12rem 0.5rem;
+		color: var(--tenue);
+	}
+	.chip-sube b {
+		color: var(--texto);
+		font-variant-numeric: tabular-nums;
+	}
+	.chip-sube.gana {
+		background: rgba(74, 222, 128, 0.14);
+		color: var(--acento);
+	}
+	.chip-sube.pierde {
+		background: rgba(248, 113, 113, 0.14);
+		color: var(--malo);
 	}
 </style>

@@ -177,6 +177,45 @@ export function entrenar(
 	return { subieron, desgaste, texto };
 }
 
+/**
+ * Lo que un plan promete, antes de entrenarlo.
+ *
+ * Sirve para que la pantalla pueda decir "Potencia 41, hasta +4" en vez de
+ * "Físico". Es el techo optimista: no descuenta el freno por potencial, que es
+ * información oculta. Que a los 28 entrenes para +4 y subas +1 es exactamente
+ * la señal de que estás llegando a tu techo, y descubrirla jugando es parte de
+ * lo que el juego quiere.
+ */
+export type PromesaDeEntrenamiento = {
+	atributo: keyof Atributos;
+	nombre: string;
+	actual: number;
+	/** Lo máximo que podría subir, con suerte y sin techo. */
+	hasta: number;
+};
+
+export function loQuePromete(
+	estado: Estado,
+	planId: string,
+	intensidadId: Intensidad
+): PromesaDeEntrenamiento[] {
+	const f = estado.futbolista;
+	const plan =
+		PLANES.find((p) => p.id === planId) ?? PLANES.find((p) => p.id === PLAN_POR_DEFECTO)!;
+	const intensidad =
+		INTENSIDADES.find((i) => i.id === intensidadId) ??
+		INTENSIDADES.find((i) => i.id === INTENSIDAD_POR_DEFECTO)!;
+
+	const rinde = rindeDeLaEdad(f.edad) * intensidad.rinde;
+
+	return plan.atributos.map((atributo) => ({
+		atributo,
+		nombre: nombreAtributo(atributo),
+		actual: f.atributos[atributo],
+		hasta: Math.max(1, Math.round(4 * rinde))
+	}));
+}
+
 export function nombreAtributo(atributo: keyof Atributos): string {
 	const nombres: Record<keyof Atributos, string> = {
 		definicion: 'definición',

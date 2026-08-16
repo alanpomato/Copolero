@@ -4,11 +4,11 @@
 	import { page } from '$app/state';
 	import { media } from '$lib/engine/estado';
 	import { NOMBRE_FASE } from '$lib/engine/tipos';
-	import Bandera from '$lib/ui/Bandera.svelte';
-	import Decisiones from '$lib/ui/Decisiones.svelte';
 	import { puesto as puestoPorId } from '$lib/engine/puestos';
+	import AtributosLista from '$lib/ui/Atributos.svelte';
+	import Cabecera from '$lib/ui/Cabecera.svelte';
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
-	import Escudo from '$lib/ui/Escudo.svelte';
+	import Decisiones from '$lib/ui/Decisiones.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -79,20 +79,11 @@
 
 	<p class="sutil">Esta pantalla se actualiza sola cuando entre.</p>
 {:else}
-	<div class="encabezado">
-		<Escudo clubId={futbolista.contrato.clubId} tamano={54} />
-		<div>
-			<h1>
-				<Bandera nacionalidad={futbolista.nacionalidad} alto={18} />
-				{futbolista.nombre}
-			</h1>
-			<p class="bajada" style="margin:.25rem 0 0">
-				Temporada {estado.temporada} · {estado.anio} · {NOMBRE_FASE[estado.fase]}
-				<br />
-				Sos <strong>{vista.rol}</strong> · {vista.elOtro.nombre} es {vista.elOtro.rol}
-			</p>
-		</div>
-	</div>
+	<Cabecera {estado} rol={vista.rol} />
+
+	<p class="sutil" style="margin:-.5rem 0 1.25rem">
+		{estado.anio} · Sos <strong>{vista.rol}</strong> y {vista.elOtro.nombre} es {vista.elOtro.rol}.
+	</p>
 
 	{#if vista.sincronizacion === 'CAREER_OVER'}
 		<div class="tarjeta">
@@ -106,34 +97,34 @@
 
 	{#if vista.rol === 'futbolista'}
 		<div class="tarjeta">
-			<h3>Vos en la cancha</h3>
+			<h3>Lo que sabés hacer</h3>
 			<p class="sutil" style="margin:-.35rem 0 .85rem">
-				{puesto.nombre} · la {futbolista.numero} · pie {futbolista.pie}
+				{puesto.nombre} · pie {futbolista.pie} · media {media(
+					futbolista.atributos,
+					futbolista.posicion
+				)}
 			</p>
+			<AtributosLista atributos={futbolista.atributos} />
+		</div>
+
+		<div class="tarjeta">
+			<h3>Cómo te ven</h3>
 			<div class="cifras">
-				<div class="cifra">
-					<span class="valor">{media(futbolista.atributos, futbolista.posicion)}</span>
-					<span class="etiqueta">Media</span>
-				</div>
-				<div class="cifra">
-					<span class="valor">{futbolista.edad}</span>
-					<span class="etiqueta">Edad</span>
-				</div>
-				<div class="cifra">
-					<span class="valor">{futbolista.forma}</span>
-					<span class="etiqueta">Forma</span>
-				</div>
-				<div class="cifra">
-					<span class="valor">{futbolista.moral}</span>
-					<span class="etiqueta">Moral</span>
-				</div>
-				<div class="cifra">
-					<span class="valor">{futbolista.desgaste}</span>
-					<span class="etiqueta">Desgaste</span>
-				</div>
 				<div class="cifra">
 					<span class="valor">{futbolista.fama}</span>
 					<span class="etiqueta">Fama</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{futbolista.hinchada}</span>
+					<span class="etiqueta">Hinchada</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{futbolista.dt}</span>
+					<span class="etiqueta">El técnico</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{futbolista.prensa}</span>
+					<span class="etiqueta">Prensa</span>
 				</div>
 			</div>
 		</div>
@@ -193,26 +184,31 @@
 
 		<div class="tarjeta">
 			<h3>Tu cliente</h3>
-			<p class="sutil" style="margin:-.35rem 0 .85rem">
-				{puesto.nombre} · la {futbolista.numero} · pie {futbolista.pie}
-			</p>
+			<div style="margin-bottom:.85rem">
+				<ClubLinea clubId={futbolista.contrato.clubId} tamano={38} />
+			</div>
 			<div class="cifras">
-				<div class="cifra">
-					<span class="valor">{media(futbolista.atributos, futbolista.posicion)}</span>
-					<span class="etiqueta">Media</span>
-				</div>
-				<div class="cifra">
-					<span class="valor">{futbolista.edad}</span>
-					<span class="etiqueta">Edad</span>
-				</div>
 				<div class="cifra">
 					<span class="valor" style="font-size:1.1rem">{plata(futbolista.valorMercadoUsd)}</span>
 					<span class="etiqueta">Valor</span>
 				</div>
 				<div class="cifra">
-					<span class="valor">{estado.contratoRepresentacion.pctSalario}%</span>
-					<span class="etiqueta">Del salario</span>
+					<span class="valor" style="font-size:1.1rem"
+						>{plata(futbolista.contrato.salarioMensual)}</span
+					>
+					<span class="etiqueta">Su sueldo</span>
 				</div>
+				<div class="cifra">
+					<span class="valor">{estado.contratoRepresentacion.pctSalario}%</span>
+					<span class="etiqueta">Tu parte</span>
+				</div>
+				<div class="cifra">
+					<span class="valor">{estado.contratoRepresentacion.pctTransferencia}%</span>
+					<span class="etiqueta">Del pase</span>
+				</div>
+			</div>
+			<div style="margin-top:.9rem">
+				<AtributosLista atributos={futbolista.atributos} />
 			</div>
 		</div>
 	{/if}
@@ -251,15 +247,17 @@
 		</div>
 	{/if}
 
-	<div class="tarjeta">
-		<h3>La relación</h3>
-		<div class="cifras">
-			<div class="cifra">
-				<span class="valor">{estado.confianza}</span>
-				<span class="etiqueta">Confianza</span>
+	{#if vista.rol === 'futbolista'}
+		<div class="tarjeta">
+			<h3>La relación</h3>
+			<div class="cifras">
+				<div class="cifra">
+					<span class="valor">{estado.confianza}</span>
+					<span class="etiqueta">Confianza</span>
+				</div>
 			</div>
 		</div>
-	</div>
+	{/if}
 
 	{#if vista.sincronizacion !== 'CAREER_OVER'}
 		<h2>{NOMBRE_FASE[estado.fase]}</h2>
@@ -314,20 +312,3 @@
 		</div>
 	{/if}
 {/if}
-
-<style>
-	.encabezado {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.9rem;
-		margin-bottom: 1.6rem;
-	}
-	.encabezado h1 {
-		margin: 0;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-		font-size: clamp(1.5rem, 6.5vw, 2.1rem);
-	}
-</style>
