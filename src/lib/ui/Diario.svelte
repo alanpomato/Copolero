@@ -28,6 +28,8 @@
 		ingresos: '$',
 		inversion: '◈',
 		rasgo: '✦',
+		sueno: '✧',
+		sueno_cumplido: '✧',
 		contrato: '✎',
 		entrenamiento: '↑',
 		progreso: '⤒',

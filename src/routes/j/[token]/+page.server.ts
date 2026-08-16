@@ -73,6 +73,12 @@ export const actions: Actions = {
 		if (vista.opciones.inversiones) {
 			decision.inversion = campo(datos, 'inversion');
 		}
+		// Para qué juega cada uno: lo eligen los dos, cada uno el suyo, y solo la
+		// primera pretemporada. El motor verifica que ese id sea uno de los que le
+		// corresponden a ese rol.
+		if (vista.opciones.suenos) {
+			decision.sueno = campo(datos, 'sueno');
+		}
 		if (vista.opciones.renovacion?.oferta) {
 			decision.renovacion = campo(datos, 'renovacion');
 		}

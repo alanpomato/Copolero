@@ -14,6 +14,7 @@ import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
+import { elegirSueno, revisarSuenos } from './suenos';
 import { correrleElAnio } from './rival';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
 import {
@@ -148,6 +149,27 @@ export function resolverFase(
 	if (estado.fase === 1 && tocaElegirRasgo(siguiente)) {
 		const elegido = elegirRasgo(siguiente, semilla, delFutbolista.rasgo);
 		if (elegido) log.push({ tipo: 'rasgo', visiblePara: 'ambos', texto: elegido });
+	}
+
+	// --- Para qué está jugando cada uno --------------------------------------
+	// También en la primera pretemporada, y también una sola vez. No cambia nada
+	// del año que empieza: cambia qué se está mirando durante los quince que
+	// vienen. Se anuncia a los dos, porque saber para dónde tira el otro es la
+	// mitad de lo que hace que las charlas del mercado tengan filo.
+	if (estado.fase === 1) {
+		for (const [rol, decision] of [
+			['futbolista', delFutbolista],
+			['representante', delRepresentante]
+		] as const) {
+			const eligio = elegirSueno(siguiente, rol, decision.sueno);
+			if (eligio) {
+				log.push({
+					tipo: 'sueno',
+					visiblePara: 'ambos',
+					texto: `${etiqueta(rol)} juega por una sola cosa. ${eligio}`
+				});
+			}
+		}
 	}
 
 	// --- En qué gastan la plata ----------------------------------------------
@@ -353,6 +375,14 @@ function cerrarTemporada(
 	// hecho, pero antes de que el cuerpo envejezca: la media que se guarda es la
 	// que tuvo ese año, no la que le queda para el siguiente.
 	anotarEnElHistorial(estado, clubDondeJugo, novedad?.mundial ?? null);
+
+	// --- ¿Alguno llegó? ------------------------------------------------------
+	// Lo último de la temporada, con todo ya contado: los goles del año, el
+	// Mundial, el pase, la plata y la fila del historial recién escrita. Si uno
+	// de los dos tocó su número, se dice acá y una sola vez en toda la partida.
+	for (const cumplido of revisarSuenos(estado)) {
+		log.push({ tipo: 'sueno_cumplido', visiblePara: 'ambos', texto: cumplido.texto });
+	}
 
 	// --- El cuerpo -----------------------------------------------------------
 	futbolista.edad += 1;

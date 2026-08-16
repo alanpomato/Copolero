@@ -1,6 +1,8 @@
 import { club } from '../../../content/mundo';
 import { media } from './estado';
 import { PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO } from './temporada';
+import { TEMPORADAS_MAXIMAS } from './fases';
+import { comoVaElSueno, sueno } from './suenos';
 import type { Estado, Rol } from './tipos';
 
 /**
@@ -97,6 +99,59 @@ export function alertaDe(estado: Estado, rol: Rol): Alerta | null {
 					: 'Dejá de sacarle plata una fase y acompañalo. La confianza sube estando.',
 			gravedad: 'roja'
 		};
+	}
+
+	// --- Lo que se juega en este mercado --------------------------------------
+	// El que va por las diez temporadas en la misma camiseta y lleva seis tiene
+	// que saber, antes de mirar las ofertas, que aceptar una lo devuelve a cero.
+	// Es la advertencia más importante del juego, porque es la única decisión que
+	// borra de un saque el trabajo de media carrera, y encima es la decisión donde
+	// el representante cobra comisión: los dos tienen que ver el mismo número.
+	const casa = sueno('el-de-la-casa');
+	if (estado.fase === 3 && estado.suenos?.futbolista === 'el-de-la-casa' && casa) {
+		const acumuladas = estado.temporadasPorClub?.[f.contrato.clubId] ?? 0;
+		if (acumuladas >= 4 && acumuladas < casa.meta) {
+			return {
+				id: 'sueno-se-va',
+				titulo: `Se juega ${acumuladas} ${acumuladas === 1 ? 'temporada' : 'temporadas'} en este mercado`,
+				texto:
+					`Lleva ${acumuladas} temporadas en ${donde} y su sueño son ${casa.meta} en el mismo club. ` +
+					`Si acepta un pase, la cuenta vuelve a cero y ya no le da el tiempo para empezarla ` +
+					`de nuevo en otro lado.`,
+				salida:
+					rol === 'futbolista'
+						? 'Si querés el sueño, este mercado se cierra con "quedarse", por más que la oferta sea buena.'
+						: 'Sabelo antes de empujar el pase: la comisión la cobrás una vez y el sueño de él se pierde para siempre. Habláchenlo.',
+				gravedad: 'amarilla'
+			};
+		}
+	}
+
+	// --- No le va a dar el tiempo ---------------------------------------------
+	// Al ritmo que viene y con las temporadas que le quedan, no llega. Se dice una
+	// sola vez y tarde —recién pasada la mitad de la carrera—, porque avisarle en
+	// la cuarta temporada que le faltan noventa goles no es información, es
+	// desánimo. Dicho a tiempo, en cambio, todavía se puede corregir: subir de
+	// liga, elegir el objetivo del año que empuja para ese lado, jugar más.
+	const suSueno = comoVaElSueno(estado, rol);
+	if (suSueno && !suSueno.cumplido && estado.temporada >= 9) {
+		const quedan = Math.max(0, TEMPORADAS_MAXIMAS - estado.temporada);
+		const ritmo = suSueno.cuanto / Math.max(1, estado.temporada - 1);
+		const alcanzaria = suSueno.cuanto + ritmo * quedan;
+		if (quedan >= 2 && alcanzaria < suSueno.meta * 0.85) {
+			return {
+				id: 'sueno-no-llega',
+				titulo: 'Al ritmo de ahora no llega',
+				texto:
+					`${suSueno.falta} para ${suSueno.nombre.toLowerCase()}, y quedan unas ${quedan} temporadas. ` +
+					`Con lo que viene haciendo por año no da: hace falta que cambie algo.`,
+				salida:
+					rol === 'futbolista'
+						? 'Elegí el objetivo del año que empuje para ese lado y buscá un club donde juegues todo. Los minutos son lo único que mueve todos los números a la vez.'
+						: 'Es el momento de mover el pase que le cambie el año, no de estirar el contrato que ya tiene.',
+				gravedad: 'amarilla'
+			};
+		}
 	}
 
 	// --- Estancado ------------------------------------------------------------

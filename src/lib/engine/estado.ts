@@ -214,6 +214,12 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		intensidadDeLaPretemporada: 'firme',
 		atributosQueSubieron: [],
 		rasgo: null,
+		suenos: {
+			futbolista: null,
+			representante: null,
+			cumplidos: [],
+			tope: { futbolista: 0, representante: 0 }
+		},
 		rival: null,
 		inversiones: { futbolista: [], representante: [] },
 		seleccion: { debuto: false, partidos: 0, goles: 0, mundiales: [] }

@@ -10,6 +10,14 @@ import { ocasionesDe, type Ocasion } from './ocasiones';
 import { gastoAnual, loQuePuedeComprar, loQueTiene, type EnLaVidriera } from './inversiones';
 import { loQueVaAPasar, objetivosPara, type Objetivo } from './objetivos';
 import { rasgo, rasgosQueLeTocaron, tocaElegirRasgo, type Rasgo } from './rasgos';
+import {
+	comoVaElSueno,
+	paraLaPantalla,
+	suenosPara,
+	tocaElegirSueno,
+	type Progreso,
+	type SuenoOfrecido
+} from './suenos';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
 import {
 	TRATOS,
@@ -28,6 +36,7 @@ import {
 import { resumirRetiro, type Retiro } from './retiro';
 import { chanceDeConvocatoria, loQueFalta, proximoMundial } from './seleccion';
 import { brechaCon } from './temporada';
+import { elOtroRol } from './estado';
 import type { Estado, HitoTemporada, Rol } from './tipos';
 
 /**
@@ -57,6 +66,17 @@ export type OpcionesDeFase = {
 	 */
 	rasgos?: Rasgo[];
 	rasgoElegido?: Rasgo;
+	/**
+	 * Para qué está jugando. Ver `suenos.ts`.
+	 *
+	 * `suenos` son los que puede elegir, solo la primera pretemporada.
+	 * `miSueno` es cómo va el suyo y va siempre: es el número que hace volver.
+	 * `elSuenoDelOtro` va siempre también, y a propósito: saber para dónde tira
+	 * el otro es lo que hace que la charla del mercado tenga de qué agarrarse.
+	 */
+	suenos?: SuenoOfrecido[];
+	miSueno?: Progreso;
+	elSuenoDelOtro?: Progreso & { deQuien: string };
 	/** Futbolista, fase 2: cómo va a jugar el año, y qué dice de lo elegido. */
 	objetivos?: Objetivo[];
 	consejoDelObjetivo?: string;
@@ -159,6 +179,23 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	// Lo que es, que se muestra siempre una vez elegido.
 	const suRasgo = rasgo(estado.rasgo);
 	if (suRasgo) opciones.rasgoElegido = suRasgo;
+
+	// Para qué está jugando. Se elige una vez y después se mira todas las fases
+	// hasta el final de la partida.
+	if (estado.fase === 1 && tocaElegirSueno(estado, rol)) {
+		opciones.suenos = suenosPara(estado, rol).map(paraLaPantalla);
+	}
+	const miSueno = comoVaElSueno(estado, rol);
+	if (miSueno) opciones.miSueno = miSueno;
+
+	const otro = elOtroRol(rol);
+	const delOtro = comoVaElSueno(estado, otro);
+	if (delOtro) {
+		opciones.elSuenoDelOtro = {
+			...delOtro,
+			deQuien: otro === 'futbolista' ? estado.futbolista.nombre : estado.representante.nombre
+		};
+	}
 
 	if (rol === 'futbolista') {
 		if (estado.fase === 1 && tocaElegirRasgo(estado)) {

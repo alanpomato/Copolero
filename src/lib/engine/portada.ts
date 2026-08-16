@@ -1,6 +1,7 @@
 import { club, contexto } from '../../../content/mundo';
 import { media } from './estado';
 import { comoVaElDuelo } from './rival';
+import { comoVaElSueno, elQueSeCumplioEn } from './suenos';
 import type { Estado, HitoTemporada } from './tipos';
 
 /**
@@ -124,6 +125,24 @@ function titularDe(
 	const f = estado.futbolista;
 	const nombreClub = club(hito.clubId).nombre;
 	const gentilicio = contexto(hito.clubId).pais.gentilicio;
+
+	// --- El sueño ------------------------------------------------------------
+	// Arriba del Mundial y arriba del título, que es la única vez que algo va
+	// arriba del Mundial. Un campeonato es la mejor noticia del año; llegar a lo
+	// que uno se propuso en la primera pretemporada es la mejor noticia de la
+	// carrera, y estaba anunciada desde el primer día.
+	//
+	// El del futbolista nada más: la tapa cuenta lo que pasó en la cancha, y los
+	// diez millones del representante no son noticia de diario deportivo.
+	const cumplido = elQueSeCumplioEn(estado, hito.temporada);
+	if (cumplido && cumplido.rol === 'futbolista') {
+		return {
+			titular: `${apellido} LLEGÓ`,
+			bajada: `${cumplido.alCumplirlo} Se lo había propuesto a los ${estado.historial?.[0]?.edad ?? 16}, cuando no lo conocía nadie.`,
+			tono: 'gloria',
+			foto: hito.mundial === 'campeon' ? 'mundial' : hito.titulo ? 'copa' : 'gol'
+		};
+	}
 
 	// --- El Mundial ----------------------------------------------------------
 	if (hito.mundial === 'campeon') {
@@ -312,6 +331,20 @@ function notasDe(estado: Estado, hito: HitoTemporada, anterior: HitoTemporada | 
 	// El duelo con el otro de la camada. Va alto en la lista a propósito: es lo
 	// que le pone escala a los números propios. Doce goles no son muchos ni
 	// pocos; doce goles cuando el otro hizo diecinueve son pocos.
+	// Cuánto le falta para lo que se propuso, cuando ya está a la vista. Antes del
+	// 60% no se dice: recordarle todos los años que le faltan noventa goles no
+	// entusiasma a nadie. Después del 60%, va arriba del duelo, que es el otro que
+	// aparece casi siempre. La diferencia es que el duelo cuenta lo que pasó y
+	// esto cuenta lo que puede pasar el año que viene, y en la tapa que cierra una
+	// temporada eso es lo que hace abrir la siguiente.
+	const suSueno = comoVaElSueno(estado, 'futbolista');
+	if (suSueno && !suSueno.cumplido && suSueno.pct >= 60) {
+		notas.push({
+			titulo: suSueno.pct >= 90 ? 'A un paso' : 'Lo que le falta',
+			texto: `${suSueno.falta} para ${suSueno.nombre.toLowerCase()}. ${suSueno.comoVa}`
+		});
+	}
+
 	const duelo = comoVaElDuelo(estado);
 	if (duelo) notas.push({ titulo: 'El de la camada', texto: duelo });
 
@@ -336,5 +369,8 @@ function notasDe(estado: Estado, hito: HitoTemporada, anterior: HitoTemporada | 
 		});
 	}
 
-	return notas.slice(0, 4);
+	// Tres y no más. Una tapa con cuatro columnitas al costado deja de ser una
+	// tapa y pasa a ser una lista, y lo que hace que esta pantalla funcione es
+	// justamente que hay una noticia grande y unas pocas chicas.
+	return notas.slice(0, 3);
 }

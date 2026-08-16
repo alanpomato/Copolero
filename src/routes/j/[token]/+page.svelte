@@ -13,6 +13,7 @@
 	import TarjetaJugador from '$lib/ui/TarjetaJugador.svelte';
 	import Confianza from '$lib/ui/Confianza.svelte';
 	import Alerta from '$lib/ui/Alerta.svelte';
+	import Sueno from '$lib/ui/Sueno.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
 	import Portada from '$lib/ui/Portada.svelte';
 	import Trayectoria from '$lib/ui/Trayectoria.svelte';
@@ -105,6 +106,14 @@
 
 		{#if vista.opciones.portada}
 			<Portada portada={vista.opciones.portada} />
+		{/if}
+
+		<!--
+			Arriba de todo lo demás: es lo que contesta "¿por qué estoy abriendo
+			esto otra vez?". Los números del año vienen después.
+		-->
+		{#if vista.opciones.miSueno}
+			<Sueno mio={vista.opciones.miSueno} delOtro={vista.opciones.elSuenoDelOtro} />
 		{/if}
 
 		<Confianza {estado} rol={vista.rol} />

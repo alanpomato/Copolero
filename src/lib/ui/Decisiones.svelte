@@ -34,10 +34,15 @@
 	let objetivo = $state(OBJETIVO_POR_DEFECTO);
 	let compra = $state(NADA);
 	let rasgo = $state('');
+	let sueno = $state('');
 
 	$effect(() => {
 		const tres = opciones.rasgos ?? [];
 		if (tres.length > 0 && !tres.some((r) => r.id === rasgo)) rasgo = tres[0].id;
+	});
+	$effect(() => {
+		const posibles = opciones.suenos ?? [];
+		if (posibles.length > 0 && !posibles.some((s) => s.id === sueno)) sueno = posibles[0].id;
 	});
 	let ocasiones = $state<string[]>([]);
 
@@ -94,6 +99,31 @@
 				<span class="sube">
 					<span class="chip-sube gana">+{r.cuanto} {ATRIBUTO[r.atributo]}</span>
 					<span class="chip-sube">{r.siempre}</span>
+				</span>
+			{/snippet}
+		</Opcion>
+	{/each}
+{/if}
+
+<!-- ---------- Para qué vas a jugar ---------- -->
+{#if opciones.suenos && opciones.suenos.length > 0}
+	<div class="tarjeta" data-tema="oro">
+		<h3>¿Para qué vas a jugar?</h3>
+		<p style="margin:0 0 .5rem">
+			Elegí una sola cosa. No se cambia, no se puede apurar y no se cumple en una temporada:
+			<strong>es adónde va a haber llegado esta carrera cuando termine</strong>.
+		</p>
+		<p class="sutil" style="margin:0">
+			{estado.futbolista.nombre} tiene {estado.futbolista.edad} años. Lo que elijas acá se va a ver en
+			todas las pantallas hasta el último día.
+		</p>
+	</div>
+
+	{#each opciones.suenos as s (s.id)}
+		<Opcion grupo="sueno" valor={s.id} titulo={s.nombre} detalle={s.detalle} bind:elegido={sueno}>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube gana">{s.meta}</span>
 				</span>
 			{/snippet}
 		</Opcion>

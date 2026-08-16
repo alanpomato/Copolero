@@ -65,6 +65,30 @@
 	</div>
 </div>
 
+<!--
+	El veredicto de los sueños va antes que cualquier otra cosa del final.
+	Todo lo demás cuenta lo que pasó; esto cuenta si pasó lo que se habían
+	propuesto quince temporadas atrás, que es la única pregunta que quedaba
+	abierta desde la primera pretemporada.
+-->
+{#if retiro.suenos.length > 0}
+	<div class="tarjeta" data-tema="oro">
+		<h3>Lo que se habían propuesto</h3>
+		{#each retiro.suenos as s (s.rol)}
+			<div class="veredicto" class:logrado={s.cumplido}>
+				<div class="encabezado">
+					<span class="deQuien">{s.deQuien}</span>
+					<span class="marca">{s.cumplido ? '✔ Cumplido' : `${s.pct}%`}</span>
+				</div>
+				<strong class="queria">{s.nombre}</strong>
+				<span class="barraFinal"><span class="rellenoFinal" style="width:{s.pct}%"></span></span>
+				<span class="numeros">{s.lleva}</span>
+				<p class="cierre">{s.cierre}</p>
+			</div>
+		{/each}
+	</div>
+{/if}
+
 {#if retiro.rasgo || retiro.seleccion}
 	<div class="tarjeta" data-tema="cancha">
 		<h3>Lo que fue</h3>
@@ -225,6 +249,73 @@
 		letter-spacing: 0.04em;
 		color: var(--tenue);
 		margin-top: 0.15rem;
+	}
+
+	/* El veredicto de cada sueño. */
+	.veredicto {
+		padding: 0.85rem 0;
+		border-top: 1px solid var(--borde);
+	}
+	.veredicto:first-of-type {
+		border-top: 0;
+		padding-top: 0.2rem;
+	}
+	.encabezado {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+	.deQuien {
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--tenue);
+	}
+	.marca {
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--tenue);
+	}
+	.veredicto.logrado .marca {
+		color: #fbbf24;
+	}
+	.queria {
+		display: block;
+		font-size: 1.1rem;
+		margin: 0.15rem 0 0.5rem;
+	}
+	.veredicto.logrado .queria {
+		color: #fbbf24;
+	}
+	.barraFinal {
+		display: block;
+		height: 8px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.08);
+		overflow: hidden;
+	}
+	.rellenoFinal {
+		display: block;
+		height: 100%;
+		border-radius: 999px;
+		background: var(--tenue);
+	}
+	.veredicto.logrado .rellenoFinal {
+		background: linear-gradient(90deg, #fbbf24, #fde68a);
+	}
+	.numeros {
+		display: block;
+		margin-top: 0.35rem;
+		font-size: 0.78rem;
+		color: var(--tenue);
+		font-variant-numeric: tabular-nums;
+	}
+	.cierre {
+		margin: 0.5rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.45;
 	}
 
 	.duelo {

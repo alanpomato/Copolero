@@ -1,6 +1,7 @@
 import { club, contexto } from '../../../content/mundo';
 import { rasgo } from './rasgos';
 import { puntosDeSeleccion } from './seleccion';
+import { comoVaElSueno, puntosDelSueno } from './suenos';
 import type { Estado } from './tipos';
 
 /**
@@ -115,6 +116,12 @@ export function puntajeDelFutbolista(estado: Estado): PuntajeFinal {
 		});
 	}
 
+	// El sueño, que es por lo que estuvo jugando quince temporadas. Pesa fuerte a
+	// propósito: si cumplirlo no moviera el número final, no habría sido una meta,
+	// habría sido una decoración.
+	const suSueno = puntosDelSueno(estado, 'futbolista');
+	if (suSueno) desglose.push(suSueno);
+
 	const bruto = desglose.reduce((total, d) => total + d.puntos, 0);
 
 	// Quedarse paga. Es lo que hace que aceptar todos los pases no sea gratis.
@@ -153,6 +160,9 @@ export function puntajeDelRepresentante(estado: Estado): PuntajeFinal {
 	if (estado.confianza < 25) {
 		desglose.push({ concepto: 'Terminaron mal', puntos: -500 });
 	}
+
+	const suSueno = puntosDelSueno(estado, 'representante');
+	if (suSueno) desglose.push(suSueno);
 
 	return {
 		total: Math.max(0, Math.round(desglose.reduce((t, d) => t + d.puntos, 0))),
@@ -286,6 +296,23 @@ export type Retiro = {
 	/** Qué clase de jugador fue. */
 	rasgo: { nombre: string; siempre: string } | null;
 
+	/**
+	 * Y para qué estuvo jugando cada uno, con el veredicto.
+	 *
+	 * Es lo primero que hay que leer del final: el resto del retiro cuenta lo que
+	 * pasó, y esto cuenta si pasó lo que se había propuesto. Los dos van juntos
+	 * porque en una partida de a dos el que no cumplió tiene que ver al que sí.
+	 */
+	suenos: {
+		rol: string;
+		deQuien: string;
+		nombre: string;
+		lleva: string;
+		pct: number;
+		cumplido: boolean;
+		cierre: string;
+	}[];
+
 	/** Y qué hizo con la selección, si hizo algo. */
 	seleccion: { partidos: number; goles: number; mundiales: number; campeon: boolean } | null;
 };
@@ -322,6 +349,7 @@ export function resumirRetiro(estado: Estado): Retiro {
 			clubIdFinal: f.contrato.clubId
 		},
 
+		suenos: cerrarLosSuenos(estado),
 		duelo: cerrarElDuelo(estado),
 		rasgo: rasgo(estado.rasgo)
 			? { nombre: rasgo(estado.rasgo)!.nombre, siempre: rasgo(estado.rasgo)!.siempre }
@@ -335,6 +363,45 @@ export function resumirRetiro(estado: Estado): Retiro {
 				}
 			: null
 	};
+}
+
+/**
+ * Si cumplieron lo que se habían propuesto.
+ *
+ * El cierre no repite el número: dice qué significa haberse quedado ahí. Quedar
+ * en el 94% de los cien goles no es lo mismo que quedar en el 20%, y en una
+ * carrera que ya no se puede seguir jugando, esa diferencia es todo lo que
+ * queda para decir.
+ */
+function cerrarLosSuenos(estado: Estado): Retiro['suenos'] {
+	const salida: Retiro['suenos'] = [];
+
+	for (const rol of ['futbolista', 'representante'] as const) {
+		const p = comoVaElSueno(estado, rol);
+		if (!p) continue;
+
+		const cierre = p.cumplido
+			? p.detalle
+			: p.pct >= 90
+				? 'Se quedó a nada. De esas carreras se habla toda la vida.'
+				: p.pct >= 60
+					? 'No llegó, pero estuvo cerca de verdad. Faltó una temporada más.'
+					: p.pct >= 25
+						? 'Quedó a mitad de camino. Casi todas las carreras terminan así.'
+						: 'No pudo ser. Se propuso algo grande y el fútbol no le alcanzó.';
+
+		salida.push({
+			rol,
+			deQuien: rol === 'futbolista' ? estado.futbolista.nombre : estado.representante.nombre,
+			nombre: p.nombre,
+			lleva: p.lleva,
+			pct: p.pct,
+			cumplido: p.cumplido,
+			cierre
+		});
+	}
+
+	return salida;
 }
 
 /**

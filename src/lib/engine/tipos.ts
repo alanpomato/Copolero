@@ -250,6 +250,33 @@ export type Estado = {
 	rasgo: string | null;
 
 	/**
+	 * Para qué está jugando cada uno. Ver `suenos.ts`.
+	 *
+	 * Se elige uno por rol en la primera pretemporada y se cumple —o no— quince
+	 * temporadas después. `cumplidos` guarda los que ya se lograron para que no
+	 * se puedan descumplir: la caja del representante puede bajar después de
+	 * haber tocado los diez millones, pero los tocó.
+	 *
+	 * Se guarda también en qué temporada pasó, porque el día que se cumple es
+	 * tapa de diario y la tapa se arma con la temporada que cerró.
+	 */
+	suenos: {
+		futbolista: string | null;
+		representante: string | null;
+		cumplidos: { id: string; temporada: number }[];
+		/**
+		 * Lo más alto que llegó cada uno.
+		 *
+		 * Hay sueños que se miden con un número que puede bajar: la caja del
+		 * representante baja cuando compra algo, y el prestigio baja si se manda una
+		 * macana. La barra no puede bajar nunca —una meta que retrocede no es una
+		 * meta, es un castigo, y es exactamente lo que hace cerrar el juego—, así que
+		 * lo que se muestra es la marca más alta que tocó.
+		 */
+		tope: { futbolista: number; representante: number };
+	};
+
+	/**
 	 * El otro pibe de la camada. Ver `rival.ts`.
 	 *
 	 * El tipo vive allá porque el estado no depende del contenido; acá se
@@ -318,6 +345,9 @@ export type Decision = {
 
 	/** Futbolista, primera pretemporada: qué clase de jugador es. */
 	rasgo?: string;
+
+	/** Los dos, primera pretemporada: para qué está jugando. Ver `suenos.ts`. */
+	sueno?: string;
 
 	/** Futbolista, fase 2: cómo va a jugar el año. Ver `objetivos.ts`. */
 	objetivo?: string;
