@@ -21,8 +21,12 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-# SQLite
+# SQLite. Los `-shm` y `-wal` son los archivos temporales del modo WAL: los
+# escribe cualquier servidor que se levante, y `*.db` no los agarra porque el
+# sufijo va después de la extensión.
 *.db
+*.db-shm
+*.db-wal
 
 # Sitio de progreso generado (ver scripts/construir-sitio.mjs)
 /sitio
