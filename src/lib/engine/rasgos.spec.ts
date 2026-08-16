@@ -10,6 +10,7 @@ import {
 	rasgosQueLeTocaron,
 	tocaElegirRasgo
 } from './rasgos';
+import { resumirRetiro } from './retiro';
 import { rngPara } from './rng';
 import { POSICIONES, type Decision, type Estado } from './tipos';
 
@@ -189,5 +190,18 @@ describe('en una partida de verdad', () => {
 		}
 		expect(e.carreraTerminada).toBe(true);
 		expect(e.rasgo).not.toBeNull();
+	});
+});
+
+describe('el retiro lo recuerda', () => {
+	it('la pantalla final dice qué clase de jugador fue', () => {
+		let e = unPibe();
+		while (!e.carreraTerminada) e = resolverFase(e, NADA, 'fin').estado;
+
+		const r = resumirRetiro(e);
+		expect(r.rasgo?.nombre.length).toBeGreaterThan(3);
+		expect(r.carrera.temporadas).toBeGreaterThan(5);
+		expect(r.carrera.partidos).toBe(e.futbolista.partidos);
+		expect(r.carrera.mediaMaxima).toBeGreaterThan(0);
 	});
 });

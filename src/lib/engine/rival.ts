@@ -97,7 +97,13 @@ export function inventarRival(estado: Estado, rng: Rng): Rival {
 		nombre: `${rng.elegir(NOMBRES)} ${rng.elegir(APELLIDOS)}`,
 		clubId: donde.id,
 		nivel: media(f.atributos, f.posicion) + rng.entero(1, 6),
-		potencial: rng.entero(60, 92),
+		// Su techo se sortea alrededor del techo del futbolista, que nadie ve.
+		//
+		// Antes era un número suelto entre 60 y 92, y el duelo terminaba 18 a 0:
+		// un rival que nunca te gana no es un rival, es un adorno. Sorteado contra
+		// el del jugador, a veces te pasa y a veces se queda, pero siempre está en
+		// la misma conversación, que es lo único que hace que valga mirarlo.
+		potencial: Math.max(52, Math.min(95, f.potencial + rng.entero(-9, 9))),
 		edad: f.edad,
 		goles: 0,
 		asistencias: 0,
@@ -114,16 +120,19 @@ function produccionPor90(
 	nivel: number,
 	posicion: Posicion
 ): { goles: number; asistencias: number } {
+	// Los mismos factores con los que produce el futbolista (ver `temporada.ts`).
+	// Que sean los mismos es la mitad de que el duelo sea justo: con factores más
+	// bajos, el otro perdía siempre por construcción y no por lo que hizo.
 	const factorGol: Record<Posicion, number> = {
-		delantero: 0.62,
-		mediocampista: 0.24,
-		defensor: 0.08,
+		delantero: 0.85,
+		mediocampista: 0.32,
+		defensor: 0.1,
 		arquero: 0
 	};
 	const factorAsistencia: Record<Posicion, number> = {
-		delantero: 0.22,
-		mediocampista: 0.34,
-		defensor: 0.11,
+		delantero: 0.3,
+		mediocampista: 0.45,
+		defensor: 0.14,
 		arquero: 0.01
 	};
 	return {
@@ -157,11 +166,15 @@ export function correrleElAnio(estado: Estado, semilla: string): void {
 	if (r.edad >= 31) r.nivel -= rng.entero(1, 2);
 
 	const ajuste = 58 / (contexto(r.clubId).liga.fuerza + 20);
+	// Cuánto juega: lo mismo que el futbolista, contra la exigencia de su liga.
+	const exigencia = contexto(r.clubId).liga.fuerza * 0.82;
+	const brecha = r.nivel - exigencia;
+	const porcentaje = Math.max(4, Math.min(100, Math.round(52 + brecha * 2)));
 	const partidos = Math.max(
 		0,
-		Math.min(34, Math.round(20 + (r.nivel - 55) / 2 + rng.entero(-5, 5)))
+		Math.round((34 * porcentaje) / 100) - (rng.ocurre(0.12) ? rng.entero(4, 12) : 0)
 	);
-	const noventas = (partidos * 78) / 90;
+	const noventas = (partidos * (40 + porcentaje * 0.5)) / 90;
 	const por90 = produccionPor90(r.nivel, estado.futbolista.posicion);
 
 	const goles = Math.round(por90.goles * noventas * ajuste * (rng.entero(65, 140) / 100));
@@ -184,11 +197,14 @@ export function correrleElAnio(estado: Estado, semilla: string): void {
 	if (rng.ocurre(0.18)) {
 		const arriba = clubes.filter((c) => {
 			const l = contexto(c.id).liga;
+			// Se va adonde vaya a jugar, no adonde le quede grande. Cuando el corte
+			// era su nivel exacto terminaba de suplente en ligas fuertes, jugaba la
+			// mitad de los partidos y el duelo lo perdía por no entrar.
 			return (
 				c.id !== r.clubId &&
 				c.id !== estado.futbolista.contrato.clubId &&
-				l.fuerza <= r.nivel + 6 &&
-				l.fuerza >= r.nivel - 22
+				l.fuerza <= r.nivel - 4 &&
+				l.fuerza >= r.nivel - 26
 			);
 		});
 		if (arriba.length > 0) r.clubId = rng.elegir(arriba).id;

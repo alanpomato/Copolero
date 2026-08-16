@@ -3,6 +3,7 @@ import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
 import { opcionesDeFase } from './pantalla';
 import { portadaDe } from './portada';
+import { resumirRetiro } from './retiro';
 import { comoVaElDuelo, correrleElAnio } from './rival';
 import { rngPara } from './rng';
 import { contexto } from '../../../content/mundo';
@@ -145,6 +146,38 @@ describe('cómo se cuenta', () => {
 		const p = portadaDe(e)!;
 		expect(p.notas.some((n) => n.titulo === 'El de la camada')).toBe(true);
 		expect(p.notas.length).toBeLessThanOrEqual(4);
+	});
+
+	it('el duelo termina parejo casi siempre', () => {
+		// Un rival que nunca te gana no es un rival, es un adorno. La primera
+		// versión terminaba 18 a 0 porque producía con factores más bajos que el
+		// futbolista y su techo se sorteaba suelto. Medido sobre varias semillas,
+		// la mayoría de los duelos tienen que quedar en la misma conversación.
+		const semillas = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7'];
+		let parejos = 0;
+
+		for (const s of semillas) {
+			let e = unaPartida(s);
+			while (!e.carreraTerminada) e = resolverFase(e, NADA, s).estado;
+
+			const r = e.rival!;
+			const total = r.ganadasPorVos + r.ganadasPorEl;
+			expect(total, s).toBeGreaterThan(0);
+			if (Math.abs(r.ganadasPorVos - r.ganadasPorEl) <= total * 0.5) parejos++;
+		}
+
+		expect(parejos).toBeGreaterThanOrEqual(semillas.length - 2);
+	});
+
+	it('el retiro cierra el duelo con un resultado', () => {
+		let e = unaPartida();
+		while (!e.carreraTerminada) e = resolverFase(e, NADA, 'riv').estado;
+
+		const d = resumirRetiro(e).duelo!;
+		expect(d.nombre).toBe(e.rival!.nombre);
+		expect(d.golesYAsistencias).toBe(e.futbolista.goles + e.futbolista.asistencias);
+		expect(d.suyos).toBe(e.rival!.goles + e.rival!.asistencias);
+		expect(d.texto.length).toBeGreaterThan(30);
 	});
 
 	it('y a la ficha, para los dos roles', () => {

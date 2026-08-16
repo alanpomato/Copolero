@@ -1,4 +1,5 @@
 import { club, contexto } from '../../../content/mundo';
+import { rasgo } from './rasgos';
 import { puntosDeSeleccion } from './seleccion';
 import type { Estado } from './tipos';
 
@@ -256,6 +257,37 @@ export type Retiro = {
 	casa: { nombre: string; temporadas: number } | null;
 	/** Una línea que cierra la carrera. */
 	epitafio: string;
+
+	/** Los números de toda la carrera, para la ficha final. */
+	carrera: {
+		temporadas: number;
+		partidos: number;
+		goles: number;
+		asistencias: number;
+		titulos: number;
+		clubes: number;
+		mediaMaxima: number;
+		edad: number;
+		clubIdFinal: string;
+	};
+
+	/** Cómo terminó el duelo con el otro de la camada. */
+	duelo: {
+		nombre: string;
+		clubId: string;
+		golesYAsistencias: number;
+		suyos: number;
+		ganadasPorVos: number;
+		ganadasPorEl: number;
+		/** Una línea que lo cierra. */
+		texto: string;
+	} | null;
+
+	/** Qué clase de jugador fue. */
+	rasgo: { nombre: string; siempre: string } | null;
+
+	/** Y qué hizo con la selección, si hizo algo. */
+	seleccion: { partidos: number; goles: number; mundiales: number; campeon: boolean } | null;
 };
 
 export function resumirRetiro(estado: Estado): Retiro {
@@ -269,12 +301,78 @@ export function resumirRetiro(estado: Estado): Retiro {
 		temporadas: i.temporadas
 	}));
 
+	const sel = estado.seleccion;
+
 	return {
 		futbolista: { ...pl, rango: rangoDelFutbolista(pl.total) },
 		representante: { ...pc, rango: rangoDelRepresentante(pc.total) },
 		idolatria,
 		casa: casa ? { nombre: club(casa.clubId).nombre, temporadas: casa.temporadas } : null,
-		epitafio: epitafioDe(estado, idolatria.length > 0, casa?.temporadas ?? 0)
+		epitafio: epitafioDe(estado, idolatria.length > 0, casa?.temporadas ?? 0),
+
+		carrera: {
+			temporadas: estado.temporada - 1,
+			partidos: f.partidos,
+			goles: f.goles,
+			asistencias: f.asistencias,
+			titulos: f.titulos,
+			clubes: Object.keys(estado.temporadasPorClub ?? {}).length,
+			mediaMaxima: Math.max(0, ...(estado.historial ?? []).map((h) => h.media)),
+			edad: f.edad,
+			clubIdFinal: f.contrato.clubId
+		},
+
+		duelo: cerrarElDuelo(estado),
+		rasgo: rasgo(estado.rasgo)
+			? { nombre: rasgo(estado.rasgo)!.nombre, siempre: rasgo(estado.rasgo)!.siempre }
+			: null,
+		seleccion: sel?.debuto
+			? {
+					partidos: sel.partidos,
+					goles: sel.goles,
+					mundiales: sel.mundiales.length,
+					campeon: sel.mundiales.some((m) => m.resultado === 'campeon')
+				}
+			: null
+	};
+}
+
+/**
+ * Cómo terminó el duelo de toda la vida.
+ *
+ * Es lo último que se cuenta antes de los puntajes, y a propósito: al que jugó
+ * veinte temporadas mirando de reojo lo que hacía el otro, el resultado del
+ * duelo le importa tanto como el puntaje.
+ */
+function cerrarElDuelo(estado: Estado): Retiro['duelo'] {
+	const r = estado.rival;
+	if (!r) return null;
+
+	const f = estado.futbolista;
+	const mios = f.goles + f.asistencias;
+	const suyos = r.goles + r.asistencias;
+
+	let texto: string;
+	if (r.ganadasPorVos > r.ganadasPorEl) {
+		texto =
+			`Le ganaste ${r.ganadasPorVos} temporadas a ${r.ganadasPorEl}. Cuando se junten dentro de ` +
+			`veinte años, la charla la vas a ganar vos.`;
+	} else if (r.ganadasPorEl > r.ganadasPorVos) {
+		texto =
+			`Te ganó ${r.ganadasPorEl} temporadas a ${r.ganadasPorVos}. Empezaron juntos y terminó ` +
+			`adelante. Eso también es parte de la carrera.`;
+	} else {
+		texto = `Empataron ${r.ganadasPorVos} a ${r.ganadasPorEl}. Veinte años y no se sacaron ventaja.`;
+	}
+
+	return {
+		nombre: r.nombre,
+		clubId: r.clubId,
+		golesYAsistencias: mios,
+		suyos,
+		ganadasPorVos: r.ganadasPorVos,
+		ganadasPorEl: r.ganadasPorEl,
+		texto
 	};
 }
 
