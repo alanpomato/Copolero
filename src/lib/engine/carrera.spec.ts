@@ -26,6 +26,8 @@ type Estrategia = {
 	gestion: string;
 	/** Si prefiere jugar antes que cobrar. */
 	priorizaJugar?: boolean;
+	/** Qué contrato de representación firman cuando toca renegociar. */
+	trato?: string;
 };
 
 function correrCarrera(
@@ -80,8 +82,21 @@ function correrCarrera(
 			}
 
 			const decisiones: Decision[] = [
-				{ rol: 'futbolista', nota: '', intensidad: estrategia.intensidad, destino },
-				{ rol: 'representante', nota: '', gestion: estrategia.gestion, destino }
+				{
+					rol: 'futbolista',
+					nota: '',
+					intensidad: estrategia.intensidad,
+					destino,
+					// El futbolista acepta lo que el representante pida.
+					trato: 'socios'
+				},
+				{
+					rol: 'representante',
+					nota: '',
+					gestion: estrategia.gestion,
+					destino,
+					trato: estrategia.trato
+				}
 			];
 			estado = resolverFase(estado, decisiones, semilla).estado;
 		}
@@ -193,15 +208,57 @@ describe('el final de la carrera', () => {
 		expect(suyo.futbolista.multiplicador).toBeGreaterThan(delOtro.futbolista.multiplicador);
 	});
 
-	it('cada pase le deja una comisión al representante', () => {
-		// Lo que el juego promete: el representante cobra cuando mueve. Se prueba
-		// el mecanismo, no la estrategia.
+	it('mover al futbolista le deja al representante más plata', () => {
+		// La tensión del juego, medida: dos carreras iguales en todo salvo la
+		// política de pases.
 		//
-		// PENDIENTE DE BALANCE: hoy el ingreso fijo (4.000 + 600 × prestigio por
-		// temporada) pesa más que las comisiones a lo largo de una carrera, así
-		// que al representante le rinde más una carrera larga que una carrera
-		// movida. Eso apunta en contra de la tensión que el juego quiere y hay que
-		// mirarlo con números en la mano, no a ojo.
+		// Lo que lo hace funcionar no son solo las comisiones: cada pase le sube
+		// el prestigio, y el prestigio es lo que paga el fijo de todas las
+		// temporadas siguientes. Mover compone.
+		//
+		// La diferencia es clara pero no enorme, y por un motivo que es del
+		// juego y no del balance: una carrera que se queda en Argentina hace un
+		// pase en veinte temporadas. Renovar sueldo todos los años sube la vara
+		// que la próxima oferta tiene que superar, así que quedarse te hace más
+		// difícil de mover. Eso está bien que sea así.
+		const semillas = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
+		const promedio = (estrategia: Estrategia) =>
+			semillas
+				.map((s) => correrCarrera(s, 'centrodelantero', 'ar-huracan', estrategia).estado)
+				.reduce((total, e) => total + e.representante.dineroUsd, 0) / semillas.length;
+
+		// Mismo entrenamiento, misma gestión y el mismo contrato entre ellos: lo
+		// único que cambia es si acepta los pases o no.
+		const base = { intensidad: 'firme', gestion: 'renovar', trato: 'fuerte' };
+		const seMueve: Estrategia = { ...base, mejoraMinima: 1.25 };
+		const seQueda: Estrategia = { ...base, mejoraMinima: 99 };
+
+		expect(promedio(seMueve)).toBeGreaterThan(promedio(seQueda));
+	});
+
+	it('y cuánto más depende del contrato que negoció', () => {
+		// Ésta es la gracia de la mesa: un representante barato casi no tiene
+		// motivo para empujar un pase, y uno caro tiene todos. El porcentaje que
+		// firmaron es lo que decide cuánto le importa mover a su jugador.
+		const semillas = ['t1', 't2', 't3', 't4'];
+		const conTrato = (trato: string) =>
+			semillas
+				.map(
+					(s) =>
+						correrCarrera(s, 'centrodelantero', 'ar-huracan', {
+							intensidad: 'firme',
+							gestion: 'renovar',
+							mejoraMinima: 1.25,
+							trato
+						}).estado
+				)
+				.reduce((total, e) => total + e.representante.dineroUsd, 0) / semillas.length;
+
+		expect(conTrato('fuerte')).toBeGreaterThan(conTrato('minimo'));
+	});
+
+	it('cada pase le deja una comisión al representante', () => {
+		// El mecanismo, aparte de la estrategia.
 		const estado = estadoInicial(
 			{
 				futbolista: {
