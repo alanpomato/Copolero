@@ -19,6 +19,28 @@
 	let { portada }: { portada: Portada } = $props();
 
 	let abierta = $state(true);
+
+	/**
+	 * El confeti de los años buenos.
+	 *
+	 * Papelitos quietos, no una animación: la tapa se mira una vez y después
+	 * queda plegada, y una animación que arranca cada vez que se abre la pantalla
+	 * cansa a la tercera temporada. Las posiciones salen del año, así que la
+	 * misma tapa se ve siempre igual.
+	 */
+	const papelitos = $derived.by(() => {
+		if (portada.tono !== 'gloria') return [];
+		const semilla = portada.anio * 31 + portada.temporada * 7;
+		return Array.from({ length: 14 }, (_, i) => {
+			const n = (semilla + i * 97) % 1000;
+			return {
+				izq: (n % 96) + 2,
+				alto: ((n * 3) % 40) + 2,
+				giro: (n * 7) % 180,
+				color: ['#4ade80', '#e0b83a', '#6ab6e0', '#f87171'][n % 4]
+			};
+		});
+	});
 </script>
 
 <article
@@ -26,6 +48,16 @@
 	class:gloria={portada.tono === 'gloria'}
 	class:mala={portada.tono === 'mala'}
 >
+	{#if papelitos.length > 0}
+		<div class="confeti" aria-hidden="true">
+			{#each papelitos as p, i (i)}
+				<span
+					style="left:{p.izq}%; top:{p.alto}px; background:{p.color}; transform:rotate({p.giro}deg)"
+				></span>
+			{/each}
+		</div>
+	{/if}
+
 	<header class="cabezal">
 		<span class="nombre">{portada.diario}</span>
 		<span class="fecha">{portada.fecha}</span>
@@ -67,6 +99,7 @@
 	 * la pantalla en dos y avisa sin palabras que acá empieza otra cosa.
 	 */
 	.diario {
+		position: relative;
 		--tinta: #16181c;
 		--tinta-suave: #4a4f57;
 		background: #f4f1e8;
@@ -87,6 +120,21 @@
 	}
 	.diario.mala {
 		background: #eceae4;
+	}
+
+	.confeti {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 90px;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	.confeti span {
+		position: absolute;
+		width: 10px;
+		height: 4px;
+		border-radius: 1px;
+		opacity: 0.85;
 	}
 
 	.cabezal {

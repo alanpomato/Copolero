@@ -19,6 +19,34 @@
 
 	let { form }: { form: ActionData } = $props();
 
+	/**
+	 * Armar un jugador de una.
+	 *
+	 * La pantalla de creación tiene ocho decisiones y ninguna se puede tomar bien
+	 * sin haber jugado antes. El botón las resuelve todas de un toque, y después
+	 * se cambia lo que uno quiera: es la diferencia entre empezar a jugar en diez
+	 * segundos o abandonar en el formulario.
+	 *
+	 * Acá `Math.random` está bien: es la pantalla, no el motor. Lo que el motor
+	 * decide sale siempre de la semilla de la partida.
+	 */
+	function alAzar() {
+		const unoDe = <T,>(lista: readonly T[]): T => lista[Math.floor(Math.random() * lista.length)];
+
+		nacionalidad = unoDe(paises);
+		const pais = unoDe(mundo);
+		paisElegido = pais.id;
+		const liga = unoDe(pais.ligas);
+		ligaElegida = liga.id;
+		clubElegido = unoDe(liga.clubes).id;
+
+		const p = unoDe(PUESTOS);
+		puestoElegido = p.id;
+		numeroTocado = false;
+		numero = p.numero;
+		pie = p.lado === 'izquierdo' ? 'izquierdo' : unoDe(PIES).id;
+	}
+
 	const mundo = mundoPorPais();
 	const paises = nacionalidades();
 
@@ -56,6 +84,7 @@
 	// a arrancar la carrera antes de crear nada.
 	let clubElegido = $state(CLUB_POR_DEFECTO);
 
+	let nacionalidad = $state('Argentina');
 	let puestoElegido = $state(PUESTO_POR_DEFECTO);
 	let pie = $state('derecho');
 	let numero = $state(puestoPorId(PUESTO_POR_DEFECTO).numero);
@@ -124,32 +153,36 @@
 	</div>
 
 	<div class="tarjeta">
-		<h3>El futbolista</h3>
+		<div class="cabezaConBoton">
+			<h3 style="margin:0; border:none; padding:0">El futbolista</h3>
+			<button type="button" class="azar" onclick={alAzar}>🎲 Al azar</button>
+		</div>
 		<label>
 			<span class="titulo">Nombre</span>
 			<input name="nombreFutbolista" maxlength="60" required placeholder="Damián Correa" />
 		</label>
 		<label>
 			<span class="titulo">Nacionalidad</span>
-			<select name="nacionalidad">
+			<select name="nacionalidad" bind:value={nacionalidad}>
 				{#each paises as pais (pais)}
-					<option value={pais} selected={pais === 'Argentina'}>{pais}</option>
+					<option value={pais}>{pais}</option>
 				{/each}
 			</select>
 		</label>
-		<label>
-			<span class="titulo">Puesto</span>
-			<select name="puesto" bind:value={puestoElegido} required>
-				{#each LINEAS as linea (linea.posicion)}
-					<optgroup label={linea.etiqueta}>
-						{#each PUESTOS.filter((p) => p.posicion === linea.posicion) as p (p.id)}
-							<option value={p.id}>{p.nombre}</option>
-						{/each}
-					</optgroup>
+		<span class="titulo" style="display:block; margin-bottom:.5rem">Puesto</span>
+		{#each LINEAS as linea (linea.posicion)}
+			<p class="linea">{linea.etiqueta}</p>
+			<div class="puestos">
+				{#each PUESTOS.filter((p) => p.posicion === linea.posicion) as p (p.id)}
+					<label class="puesto" class:elegido={puestoElegido === p.id}>
+						<input type="radio" name="puesto" value={p.id} bind:group={puestoElegido} required />
+						<span class="dorsal">{p.numero}</span>
+						<span class="comoSeLlama">{p.nombre}</span>
+						<span class="quees">{p.detalle}</span>
+					</label>
 				{/each}
-			</select>
-		</label>
-		<p class="sutil" style="margin:-.7rem 0 1rem">{elPuesto.detalle}</p>
+			</div>
+		{/each}
 
 		<div class="fila">
 			<label>
@@ -306,6 +339,98 @@
 </div>
 
 <style>
+	.cabezaConBoton {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.9rem;
+	}
+	.azar {
+		flex: none;
+		width: auto;
+		margin: 0;
+		padding: 0.35rem 0.75rem;
+		font-size: 0.8rem;
+		font-weight: 700;
+		background: transparent;
+		color: var(--acento);
+		border: 1px solid var(--acento-oscuro);
+		border-radius: 999px;
+		cursor: pointer;
+	}
+	.azar:hover {
+		background: rgba(74, 222, 128, 0.1);
+	}
+
+	/*
+	 * Las tarjetas de puesto.
+	 *
+	 * El número grande es lo que hace que se reconozca sin leer: en una cancha
+	 * nadie dice "mediocampista ofensivo", dice "el 10". Van agrupadas por línea
+	 * porque son once y en una sola lista no se encuentra nada.
+	 */
+	.linea {
+		margin: 0.9rem 0 0.4rem;
+		font-size: 0.66rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--tenue);
+	}
+	.puestos {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.5rem;
+	}
+	.puesto {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.15rem;
+		margin: 0;
+		padding: 0.65rem 0.5rem 0.7rem;
+		background: var(--tarjeta-alta);
+		border: 1px solid var(--borde);
+		border-radius: 10px;
+		cursor: pointer;
+		text-align: center;
+		transition:
+			border-color 0.12s,
+			background 0.12s;
+	}
+	.puesto input {
+		position: absolute;
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+	.puesto.elegido {
+		border-color: var(--plata);
+		background: linear-gradient(180deg, rgba(224, 184, 58, 0.12), rgba(224, 184, 58, 0.03));
+	}
+	.puesto .dorsal {
+		font-size: 1.9rem;
+		font-weight: 800;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+		color: var(--tenue);
+	}
+	.puesto.elegido .dorsal {
+		color: var(--plata);
+	}
+	.puesto .comoSeLlama {
+		font-size: 0.78rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		line-height: 1.15;
+	}
+	.puesto .quees {
+		font-size: 0.68rem;
+		color: var(--tenue);
+		line-height: 1.25;
+	}
+
 	.vistazo {
 		background: var(--tarjeta-alta);
 		border-radius: 10px;

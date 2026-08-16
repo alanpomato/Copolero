@@ -10,6 +10,7 @@
 	import ClubLinea from '$lib/ui/ClubLinea.svelte';
 	import Decisiones from '$lib/ui/Decisiones.svelte';
 	import Camiseta from '$lib/ui/Camiseta.svelte';
+	import TarjetaJugador from '$lib/ui/TarjetaJugador.svelte';
 	import Confianza from '$lib/ui/Confianza.svelte';
 	import Alerta from '$lib/ui/Alerta.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
@@ -111,50 +112,22 @@
 		<Mundial opciones={vista.opciones} {estado} />
 
 		{#if vista.rol === 'futbolista'}
+			<TarjetaJugador {estado} opciones={vista.opciones} />
+
 			<div class="tarjeta" data-tema="cancha">
-				<h3>Vos</h3>
+				<h3>Todo lo que sabés hacer</h3>
 				<div class="conCamiseta">
 					<Camiseta
 						clubId={futbolista.contrato.clubId}
 						numero={futbolista.numero}
 						nombre={futbolista.nombre}
-						alto={140}
+						alto={130}
 					/>
 					<div class="alLado">
-						<ClubLinea clubId={futbolista.contrato.clubId} tamano={34} />
-						{#if vista.opciones.situacion}
-							<p style="margin:.6rem 0 0">
-								<span class="chip {vista.opciones.situacion.tono === 'bien' ? 'listo' : 'espera'}"
-									>{vista.opciones.situacion.texto}</span
-								>
-							</p>
-						{/if}
+						<AtributosLista atributos={futbolista.atributos} />
 					</div>
 				</div>
-			</div>
-
-			<div class="tarjeta" data-tema="cancha">
-				<h3>Lo que sabés hacer</h3>
-				<p class="sutil" style="margin:-.35rem 0 .85rem">
-					{puesto.nombre} · pie {futbolista.pie} · media {media(
-						futbolista.atributos,
-						futbolista.posicion
-					)}
-				</p>
-				<AtributosLista atributos={futbolista.atributos} />
-			</div>
-
-			<div class="tarjeta" data-tema="cancha">
-				<h3>Cómo te ven</h3>
-				<div class="cifras">
-					<div class="cifra">
-						<span class="valor">{futbolista.fama}</span>
-						<span class="etiqueta">Fama</span>
-					</div>
-					<div class="cifra">
-						<span class="valor">{futbolista.hinchada}</span>
-						<span class="etiqueta">Hinchada</span>
-					</div>
+				<div class="cifras" style="margin-top:.85rem">
 					<div class="cifra">
 						<span class="valor">{futbolista.dt}</span>
 						<span class="etiqueta">El técnico</span>
@@ -162,6 +135,14 @@
 					<div class="cifra">
 						<span class="valor">{futbolista.prensa}</span>
 						<span class="etiqueta">Prensa</span>
+					</div>
+					<div class="cifra">
+						<span class="valor">{futbolista.forma}</span>
+						<span class="etiqueta">Forma</span>
+					</div>
+					<div class="cifra">
+						<span class="valor">{futbolista.desgaste}</span>
+						<span class="etiqueta">Desgaste</span>
 					</div>
 				</div>
 			</div>
@@ -226,11 +207,10 @@
 				</div>
 			</div>
 
+			<TarjetaJugador {estado} opciones={vista.opciones} />
+
 			<div class="tarjeta" data-tema="cancha">
-				<h3>Tu cliente</h3>
-				<div style="margin-bottom:.85rem">
-					<ClubLinea clubId={futbolista.contrato.clubId} tamano={38} />
-				</div>
+				<h3>Tu cliente, en detalle</h3>
 				<div class="cifras">
 					<div class="cifra">
 						<span class="valor" style="font-size:1.1rem">{plata(futbolista.valorMercadoUsd)}</span>

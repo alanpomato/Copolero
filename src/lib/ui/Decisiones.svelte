@@ -86,7 +86,10 @@
 		{#if inv.tiene.length > 0}
 			<ul class="tenes">
 				{#each inv.tiene as i (i.id)}
-					<li><b>{i.nombre}</b> — {i.efecto}</li>
+					<li>
+						<b>{i.nombre}</b> — {i.efecto}
+						{#if i.dura}<span class="restan">queda{i.dura > 1 ? 'n' : ''} poco</span>{/if}
+					</li>
 				{/each}
 			</ul>
 		{/if}
@@ -104,25 +107,32 @@
 			detalle="Guardarla. Nunca está mal."
 			bind:elegido={compra}
 		/>
-		{#each inv.puedeComprar as i (i.id)}
-			<Opcion
-				grupo="inversion"
-				valor={i.id}
-				titulo={i.nombre}
-				detalle={i.detalle}
-				bind:elegido={compra}
-				deshabilitada={inv.plataUsd < i.precioUsd}
-			>
-				{#snippet extra()}
-					<span class="sube">
-						<span class="chip-sube gana">{i.efecto}</span>
-						<span class="chip-sube {inv.plataUsd < i.precioUsd ? 'pierde' : ''}">
-							{plata(i.precioUsd)}{inv.plataUsd < i.precioUsd ? ' · no te alcanza' : ''}
-						</span>
-						<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
-					</span>
-				{/snippet}
-			</Opcion>
+		{#each [{ titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => !i.dura) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.dura) }] as grupo (grupo.titulo)}
+			{#if grupo.cuales.length > 0}
+				<p class="subtitulo">{grupo.titulo}</p>
+				{#each grupo.cuales as i (i.id)}
+					<Opcion
+						grupo="inversion"
+						valor={i.id}
+						titulo={i.nombre}
+						detalle={i.detalle}
+						bind:elegido={compra}
+						deshabilitada={inv.plataUsd < i.precioUsd}
+					>
+						{#snippet extra()}
+							<span class="sube">
+								<span class="chip-sube gana">{i.efecto}</span>
+								<span class="chip-sube {inv.plataUsd < i.precioUsd ? 'pierde' : ''}">
+									{plata(i.precioUsd)}{inv.plataUsd < i.precioUsd ? ' · no te alcanza' : ''}
+								</span>
+								{#if i.porTemporadaUsd > 0}
+									<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
+								{/if}
+							</span>
+						{/snippet}
+					</Opcion>
+				{/each}
+			{/if}
 		{/each}
 	{/if}
 {/if}
@@ -497,6 +507,14 @@
 		background: rgba(248, 113, 113, 0.14);
 		color: var(--malo);
 	}
+	.subtitulo {
+		margin: 1rem 0 0.5rem;
+		font-size: 0.66rem;
+		text-transform: uppercase;
+		letter-spacing: 0.09em;
+		color: var(--tenue);
+	}
+
 	.tenes {
 		list-style: none;
 		margin: 0.85rem 0 0;
@@ -508,6 +526,9 @@
 	}
 	.tenes b {
 		color: var(--texto);
+	}
+	.restan {
+		color: var(--espera);
 	}
 
 	.acambio {

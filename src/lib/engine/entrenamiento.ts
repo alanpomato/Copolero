@@ -156,6 +156,7 @@ export function entrenar(
 	// Queda anotado para la temporada: lo que se entrenó en el verano es lo que
 	// se aprovecha jugando (ver `crecerPorJugar`).
 	estado.intensidadDeLaPretemporada = intensidad.id;
+	estado.atributosQueSubieron = [];
 
 	const rinde = rindeDeLaEdad(f.edad) * intensidad.rinde;
 	const subieron: ResultadoEntrenamiento['subieron'] = [];
@@ -170,6 +171,7 @@ export function entrenar(
 		if (puntos > 0) {
 			f.atributos[atributo] = Math.min(99, f.atributos[atributo] + puntos);
 			subieron.push({ atributo, puntos });
+			estado.atributosQueSubieron = [...estado.atributosQueSubieron, atributo];
 		}
 	}
 

@@ -1,7 +1,12 @@
 import { club, clubesDe, contexto } from '../../../content/mundo';
 import { aprovechaDe, nombreAtributo, rindeDeLaEdad } from './entrenamiento';
 import { media } from './estado';
-import { aprovechaExtra, pisoDeMoral } from './inversiones';
+import {
+	aprovechaExtra,
+	empujeDeLosBotines,
+	pisoDeMoral,
+	riesgoDeLesionExtra
+} from './inversiones';
 import { objetivo as objetivoPorId } from './objetivos';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
@@ -237,10 +242,25 @@ export function jugarTemporada(
 
 	const goles =
 		golesDeOcasion +
-		Math.round(golesPor90(f) * noventas * ajuste * suerte() * (f.forma / 60) * plan.goles);
+		Math.round(
+			golesPor90(f) *
+				noventas *
+				ajuste *
+				suerte() *
+				(f.forma / 60) *
+				plan.goles *
+				empujeDeLosBotines(estado)
+		);
 	const asistencias =
 		asistenciasDeOcasion +
-		Math.round(asistenciasPor90(f) * noventas * ajuste * suerte() * plan.asistencias);
+		Math.round(
+			asistenciasPor90(f) *
+				noventas *
+				ajuste *
+				suerte() *
+				plan.asistencias *
+				empujeDeLosBotines(estado)
+		);
 
 	// --- El equipo -----------------------------------------------------------
 	const aporte = (goles + asistencias) / 11 + Math.max(0, brecha) / 18 + plan.equipo;
@@ -403,7 +423,11 @@ function crecerPorJugar(
 		subieron.set(atributo, (subieron.get(atributo) ?? 0) + 1);
 	}
 
-	return [...subieron.entries()].map(([atributo, puntos]) => ({ atributo, puntos }));
+	const lista = [...subieron.entries()].map(([atributo, puntos]) => ({ atributo, puntos }));
+	estado.atributosQueSubieron = [
+		...new Set([...(estado.atributosQueSubieron ?? []), ...lista.map((l) => l.atributo)])
+	];
+	return lista;
 }
 
 /**

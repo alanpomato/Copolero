@@ -159,6 +159,50 @@ describe('sostenerlo todos los años', () => {
 	});
 });
 
+describe('los consumibles', () => {
+	it('se pagan una vez y no dejan gasto anual', () => {
+		const e = conPlata();
+		comprar(e, 'futbolista', 'botines');
+		expect(gastoAnual(e, 'futbolista')).toBe(0);
+		expect(loQueTiene(e, 'futbolista')).toHaveLength(1);
+	});
+
+	it('duran lo que dicen y después se van solos', () => {
+		const e = conPlata();
+		comprar(e, 'futbolista', 'fisio'); // dura 2
+
+		cobrarMantenimiento(e);
+		expect(loQueTiene(e, 'futbolista'), 'después de una temporada sigue').toHaveLength(1);
+
+		const lineas = cobrarMantenimiento(e);
+		expect(loQueTiene(e, 'futbolista'), 'después de dos se terminó').toHaveLength(0);
+		expect(lineas.some((l) => l.texto.includes('terminaron'))).toBe(true);
+	});
+
+	it('el que dura una temporada se va en el primer cierre', () => {
+		const e = conPlata();
+		comprar(e, 'futbolista', 'botines');
+		cobrarMantenimiento(e);
+		expect(loQueTiene(e, 'futbolista')).toHaveLength(0);
+	});
+
+	it('un consumible gastado se puede volver a comprar', () => {
+		const e = conPlata();
+		comprar(e, 'futbolista', 'botines');
+		cobrarMantenimiento(e);
+		expect(loQuePuedeComprar(e, 'futbolista').map((i) => i.id)).toContain('botines');
+	});
+
+	it('y sin plata no se pierde, porque no se paga', () => {
+		const e = conPlata();
+		comprar(e, 'futbolista', 'fisio');
+		e.futbolista.dineroUsd = 0;
+		cobrarMantenimiento(e);
+		// Sigue teniéndolo: ya lo pagó.
+		expect(loQueTiene(e, 'futbolista')).toHaveLength(1);
+	});
+});
+
 describe('en una partida de verdad', () => {
 	it('se compra en la pretemporada y queda en el diario del que compró', () => {
 		const e = conPlata();
@@ -187,7 +231,9 @@ describe('en una partida de verdad', () => {
 		expect(suyas.plataUsd).toBe(e.futbolista.dineroUsd);
 		for (const i of suyas.puedeComprar) {
 			expect(i.precioUsd).toBeGreaterThan(0);
-			expect(i.porTemporadaUsd).toBeGreaterThan(0);
+			// Los consumibles se pagan una vez y se gastan; el staff se mantiene.
+			if (i.dura) expect(i.porTemporadaUsd).toBe(0);
+			else expect(i.porTemporadaUsd).toBeGreaterThan(0);
 		}
 
 		// En la temporada no se compra: es una decisión de armar el año.

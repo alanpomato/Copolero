@@ -328,6 +328,10 @@ function cerrarTemporada(
 		log.push({ tipo: 'inversion', visiblePara: linea.visiblePara, texto: linea.texto });
 	}
 
+	// Lo que vale, al día. Es el número que los dos miran para decidir, así que
+	// no puede quedar viejo de un año para otro.
+	futbolista.valorMercadoUsd = valorDeMercado(estado);
+
 	// --- La foto del año -----------------------------------------------------
 	// Se anota acá, con la temporada jugada, la selección resuelta y el pase ya
 	// hecho, pero antes de que el cuerpo envejezca: la media que se guarda es la

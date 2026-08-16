@@ -36,6 +36,15 @@ export type Inversion = {
 	 * gana hoy, y así la decisión pesa igual a los dos extremos de la carrera.
 	 */
 	peso: number;
+	/**
+	 * Cuántas temporadas dura, si es un consumible.
+	 *
+	 * Las que no lo dicen son para siempre —el staff, la casa— y se pagan todos
+	 * los años. Un consumible se paga una vez, dura lo que dura y se va solo. Es
+	 * la compra del que tiene un año importante por delante y no quiere atarse a
+	 * un gasto para el resto de la carrera.
+	 */
+	dura?: number;
 	/** Si ya no tiene sentido comprarla. */
 	sirveAun?: (estado: Estado) => boolean;
 };
@@ -81,6 +90,35 @@ export const INVERSIONES: Inversion[] = [
 		detalle: 'Sacarlos del barrio. Es lo primero que compra casi todo el mundo.',
 		efecto: 'Se te va un peso de encima: +15 de moral y +2 todos los años',
 		peso: 5
+	},
+
+	// --- Consumibles del futbolista ------------------------------------------
+	{
+		id: 'botines',
+		de: 'futbolista',
+		nombre: 'Botines nuevos',
+		detalle: 'Un par hecho a tu pie para el año que viene. Se gastan y listo.',
+		efecto: 'Una temporada: goles y asistencias +12%',
+		peso: 2,
+		dura: 1
+	},
+	{
+		id: 'fisio',
+		de: 'futbolista',
+		nombre: 'Fisio para toda la temporada',
+		detalle: 'Uno solo para vos durante el año. Después vuelve al plantel.',
+		efecto: 'Dos temporadas: mitad de riesgo de lesión',
+		peso: 3,
+		dura: 2
+	},
+	{
+		id: 'concentracion',
+		de: 'futbolista',
+		nombre: 'Irte a entrenar afuera',
+		detalle: 'Un verano entero en un centro de alto rendimiento, lejos de todo.',
+		efecto: 'Una temporada: crecés un 30% más rápido',
+		peso: 4,
+		dura: 1
 	},
 
 	// --- Del representante ---------------------------------------------------
@@ -149,11 +187,17 @@ export function precioDe(estado: Estado, item: Inversion): number {
  * exactamente lo que le pasa a la gente.
  */
 export function mantenimientoDe(estado: Estado, item: Inversion): number {
+	// Un consumible no se mantiene: se compra, se usa y se termina.
+	if (item.dura) return 0;
 	return Math.max(500, Math.round((ingresoAnual(estado, item.de) * item.peso * 0.055) / 500) * 500);
 }
 
-/** Una inversión ya comprada, con el gasto que quedó fijado ese día. */
-export type Comprada = { id: string; porTemporadaUsd: number };
+/**
+ * Una inversión ya comprada, con el gasto que quedó fijado ese día.
+ *
+ * `quedan` solo existe en los consumibles: es cuántas temporadas les faltan.
+ */
+export type Comprada = { id: string; porTemporadaUsd: number; quedan?: number };
 
 export function inversion(id: string | undefined): Inversion | null {
 	return INVERSIONES.find((i) => i.id === id) ?? null;
@@ -229,9 +273,18 @@ export function comprar(estado: Estado, rol: Rol, id: string | undefined): strin
 		futbolista: [...(estado.inversiones?.futbolista ?? [])],
 		representante: [...(estado.inversiones?.representante ?? [])]
 	};
-	estado.inversiones[rol] = [...yaTiene, { id: item.id, porTemporadaUsd }];
+	estado.inversiones[rol] = [
+		...yaTiene,
+		{ id: item.id, porTemporadaUsd, ...(item.dura ? { quedan: item.dura } : {}) }
+	];
 
 	aplicarDeUnaVez(estado, item);
+	if (item.dura) {
+		return (
+			`${item.nombre}: USD ${precio.toLocaleString('es-AR')} por ${item.dura} ` +
+			`${item.dura === 1 ? 'temporada' : 'temporadas'}. ${item.efecto}.`
+		);
+	}
 	return (
 		`${item.nombre}: USD ${precio.toLocaleString('es-AR')}, y USD ` +
 		`${porTemporadaUsd.toLocaleString('es-AR')} por año de acá en adelante. ${item.efecto}.`
@@ -271,6 +324,20 @@ export function cobrarMantenimiento(estado: Estado): Mantenimiento {
 		for (const comprada of tiene) {
 			const item = inversion(comprada.id);
 			if (!item) continue;
+
+			// Los consumibles no se pagan otra vez: se gastan.
+			if (item.dura) {
+				const restan = (comprada.quedan ?? 1) - 1;
+				if (restan > 0) {
+					quedan.push({ ...comprada, quedan: restan });
+				} else {
+					lineas.push({
+						visiblePara: rol,
+						texto: `Se te terminaron ${item.nombre.toLowerCase()}. Duraron lo que tenían que durar.`
+					});
+				}
+				continue;
+			}
 
 			if (plataDe(estado, rol) >= comprada.porTemporadaUsd) {
 				cobrarle(estado, rol, comprada.porTemporadaUsd);
@@ -319,5 +386,15 @@ function tiene(estado: Estado, id: string): boolean {
 
 /** Cuánto más se aprovecha una temporada con analista propio. */
 export function aprovechaExtra(estado: Estado): number {
-	return tiene(estado, 'analista') ? 1.18 : 1;
+	return (tiene(estado, 'analista') ? 1.18 : 1) * (tiene(estado, 'concentracion') ? 1.3 : 1);
+}
+
+/** Cuánto multiplican los botines lo que produce en la cancha. */
+export function empujeDeLosBotines(estado: Estado): number {
+	return tiene(estado, 'botines') ? 1.12 : 1;
+}
+
+/** Y cuánto le baja el fisio el riesgo de romperse. */
+export function riesgoDeLesionExtra(estado: Estado): number {
+	return tiene(estado, 'fisio') ? 0.5 : 1;
 }

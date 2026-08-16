@@ -233,14 +233,23 @@ export type Estado = {
 	intensidadDeLaPretemporada: string;
 
 	/**
+	 * Qué atributos subieron desde la última vez que se miró la tarjeta.
+	 *
+	 * Sirve para la flechita del ▲ al lado del número. Sin esto, subir dos puntos
+	 * de definición es un cambio que nadie ve: el número está ahí y era otro hace
+	 * un rato, y nada lo señala.
+	 */
+	atributosQueSubieron: string[];
+
+	/**
 	 * En qué gastó cada uno su plata. Ver `inversiones.ts`.
 	 *
 	 * Se guardan los ids y nada más: lo que hace cada una vive en el catálogo,
 	 * así que cambiar un precio o un efecto no obliga a migrar las partidas.
 	 */
 	inversiones: {
-		futbolista: { id: string; porTemporadaUsd: number }[];
-		representante: { id: string; porTemporadaUsd: number }[];
+		futbolista: { id: string; porTemporadaUsd: number; quedan?: number }[];
+		representante: { id: string; porTemporadaUsd: number; quedan?: number }[];
 	};
 
 	/**

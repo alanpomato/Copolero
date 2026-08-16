@@ -230,7 +230,10 @@ export function aplicarPase(estado: Estado, oferta: Oferta, log: EntradaLog[]): 
 		temporadasRestantes: oferta.temporadas,
 		clausula: Math.round(oferta.montoUsd * 2.5)
 	};
-	f.valorMercadoUsd = Math.max(oferta.montoUsd, oferta.primaUsd * 4);
+	// Nunca menos de lo que vale de verdad. Un pase libre o firmado apurado no
+	// cuesta nada, y sin este piso el jugador quedaba tasado en cero justo
+	// después de cambiar de club, que es cuando más se mira el número.
+	f.valorMercadoUsd = Math.max(valorDeMercado(estado), oferta.montoUsd, oferta.primaUsd * 4);
 
 	// La prima por llegar libre es del futbolista: se la paga el club que lo
 	// firma, y es la única plata del juego que entra sin que nadie venda nada.
