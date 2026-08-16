@@ -16,6 +16,12 @@ import {
 	type Trato
 } from './representacion';
 import { portadaDe, type Portada } from './portada';
+import {
+	comoLlegaAlMercado,
+	ofertaDeRenovacion,
+	tocaRenovar,
+	type OfertaDeRenovacion
+} from './renovacion';
 import { resumirRetiro, type Retiro } from './retiro';
 import { chanceDeConvocatoria, loQueFalta, proximoMundial } from './seleccion';
 import { brechaCon } from './temporada';
@@ -56,6 +62,13 @@ export type OpcionesDeFase = {
 	/** Cuando vence el contrato entre los dos: los tratos sobre la mesa. */
 	tratos?: Trato[];
 	consejo?: string;
+	/**
+	 * La mesa con el club, cuando el contrato está por vencer.
+	 *
+	 * `oferta` en `null` significa que el club no lo quiere renovar, que también
+	 * hay que mostrarlo: es la señal más clara de que hay que moverse.
+	 */
+	renovacion?: { oferta: OfertaDeRenovacion | null; libre: boolean };
 	/** Lo que hay que decirle en la cara, si hay algo. Ver `alertas.ts`. */
 	alerta?: Alerta;
 	/** La tapa del diario del año que cerró. Solo en pretemporada. */
@@ -102,6 +115,15 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	if (estado.fase === 1 && tocaRenegociar(estado)) {
 		opciones.tratos = rol === 'futbolista' ? TRATOS : tratosQuePuedePedir(estado);
 		opciones.consejo = rol === 'futbolista' ? loQueLeConviene(estado) : undefined;
+	}
+
+	// La mesa con el club. La ven los dos con los mismos números, porque tienen
+	// que elegir lo mismo para que pase algo.
+	if (estado.fase === 1 && tocaRenovar(estado)) {
+		opciones.renovacion = {
+			oferta: ofertaDeRenovacion(estado, semilla),
+			libre: estado.futbolista.contrato.temporadasRestantes === 0
+		};
 	}
 
 	if (rol === 'futbolista') {
@@ -156,8 +178,12 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	// propósito: la regla es que tienen que elegir lo mismo, así que tienen que
 	// estar mirando lo mismo.
 	if (estado.fase === 3) {
-		opciones.ofertas = ofertasPara(estado, semilla);
-		opciones.valorDeMercadoUsd = valorDeMercado(estado);
+		// Con el año ya descontado del contrato, que es como va a estar cuando el
+		// mercado se resuelva. Si acá se mirara el contrato sin descontar, la
+		// pantalla mostraría un pase millonario y después se firmaría uno libre.
+		const enElMercado = comoLlegaAlMercado(estado);
+		opciones.ofertas = ofertasPara(enElMercado, semilla);
+		opciones.valorDeMercadoUsd = valorDeMercado(enElMercado);
 		opciones.brechaActual = Math.round(
 			brechaCon(estado.futbolista, estado.futbolista.contrato.clubId)
 		);

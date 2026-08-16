@@ -272,6 +272,14 @@ export type Decision = {
 	trato?: string;
 
 	/**
+	 * Los dos, fase 1, cuando el contrato con el club está por vencer.
+	 *
+	 * `firmar` o `esperar`. Solo se renueva si los dos eligen lo mismo, igual
+	 * que el pase. Esperar es apostar a salir libre.
+	 */
+	renovacion?: string;
+
+	/**
 	 * Los dos, fase 3: a qué club quiere ir, o `quedarse`.
 	 *
 	 * El pase se hace solo si los dos eligen lo mismo. Es la regla que obliga a

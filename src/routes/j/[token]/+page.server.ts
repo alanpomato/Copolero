@@ -61,9 +61,12 @@ export const actions: Actions = {
 		if (vista.estado.fase === 3) {
 			decision.destino = campo(datos, 'destino');
 		}
-		// La mesa la juegan los dos: los dos mandan `trato`.
+		// Las dos mesas las juegan los dos: la de ellos y la del club.
 		if (vista.opciones.tratos) {
 			decision.trato = campo(datos, 'trato');
+		}
+		if (vista.opciones.renovacion?.oferta) {
+			decision.renovacion = campo(datos, 'renovacion');
 		}
 
 		// "Avanzar sin esperar": cierra también por el otro con lo que el motor

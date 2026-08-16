@@ -53,6 +53,7 @@ function correrCarrera(
 		2026
 	);
 
+	const salarioInicial = estado.futbolista.contrato.salarioMensual;
 	const clubes = [clubInicial];
 	const notas: number[] = [];
 	let vueltas = 0;
@@ -109,11 +110,25 @@ function correrCarrera(
 		vueltas++;
 	}
 
-	return { estado, clubes, notas, temporadas: vueltas };
+	return { estado, clubes, notas, temporadas: vueltas, salarioInicial };
+}
+
+function promedio(ns: number[]): number {
+	return ns.reduce((a, b) => a + b, 0) / Math.max(1, ns.length);
 }
 
 const AMBICIOSO: Estrategia = { intensidad: 'a-matar', mejoraMinima: 1.3, gestion: 'renovar' };
 const PRUDENTE: Estrategia = { intensidad: 'suave', mejoraMinima: 3, gestion: 'acompanar' };
+/**
+ * El que no se mueve nunca por su cuenta.
+ *
+ * `mejoraMinima: Infinity` es literal: ninguna oferta le alcanza. Hace falta
+ * porque PRUDENTE no modela lealtad —con el sueldo de un pibe, cualquier oferta
+ * supera el triple— y para medir lo que paga quedarse hay que tener a alguien
+ * que de verdad se quede.
+ */
+const FIEL: Estrategia = { intensidad: 'firme', mejoraMinima: Infinity, gestion: 'acompanar' };
+
 /** El que prioriza jugar por encima de la plata. */
 const BUSCA_JUGAR: Estrategia = {
 	intensidad: 'firme',
@@ -146,7 +161,26 @@ describe('una carrera entera', () => {
 
 		const techo = (r: typeof roto) => Math.max(...r.clubes.map((c) => contexto(c).liga.fuerza));
 		expect(techo(roto)).toBeGreaterThanOrEqual(techo(entero));
-		expect(roto.estado.futbolista.dineroUsd).toBeGreaterThan(entero.estado.futbolista.dineroUsd);
+
+		// El nivel al que llegó, que es lo que "más arriba" quiere decir. Antes acá
+		// se comparaba la plata, y desde que existe la renovación eso dejó de ser
+		// una diferencia: el que se queda quieto también cobra cada vez más, y que
+		// las dos formas de jugar den plata parecida es justamente la idea.
+		const pico = (r: typeof roto) => Math.max(...r.estado.historial.map((h) => h.media));
+		expect(pico(roto)).toBeGreaterThanOrEqual(pico(entero));
+	});
+
+	it('quedarse quieto ya no es cobrar siempre lo mismo', () => {
+		// Sin renovación, el que nunca se movía cobraba su primer sueldo hasta el
+		// retiro. Era el agujero que hacía que no moverse fuera insostenible por
+		// razones equivocadas.
+		const { estado, salarioInicial } = correrCarrera(
+			'quieto',
+			'centrodelantero',
+			'ar-huracan',
+			PRUDENTE
+		);
+		expect(estado.futbolista.contrato.salarioMensual).toBeGreaterThan(salarioInicial * 1.5);
 	});
 
 	it('el que arranca en el Ascenso puede terminar en otra liga', () => {
@@ -182,21 +216,34 @@ describe('una carrera entera', () => {
 		expect(final).toBeLessThan(pico);
 	});
 
-	it('el que juega mejora y el que mira desde el banco no', () => {
-		// Mismo jugador y misma semilla; lo único distinto es que a uno lo dejan
-		// jugar. Es la regla que le da peso al mercado: quedarse donde no entrás
-		// no cuesta solo minutos, cuesta la carrera entera.
-		const juega = correrCarrera('banco', 'centrodelantero', 'ar2-moron', BUSCA_JUGAR);
-		const mira = correrCarrera('banco', 'centrodelantero', 'en-mancity', {
-			...BUSCA_JUGAR,
-			priorizaJugar: false,
-			mejoraMinima: 99
-		});
+	it('las temporadas en las que jugó son las que lo hicieron mejor', () => {
+		// Dentro de una misma carrera: los años de muchos minutos suben la media y
+		// los años de banco no. Es la regla que le da peso al mercado, porque
+		// quedarse donde no entrás no cuesta solo minutos: cuesta la carrera.
+		// Arranca en un club que le queda grande, que es donde de verdad se alternan
+		// años de jugar y años de mirar.
+		const { estado } = correrCarrera('minutos', 'centrodelantero', 'ar-river', PRUDENTE);
+		const h = estado.historial;
 
-		const creció = (r: ReturnType<typeof correrCarrera>) =>
-			Math.max(...r.estado.historial.map((h) => h.media)) - r.estado.historial[0].media;
+		// Solo mientras todavía tenía margen para crecer: después de los 28 la
+		// media baja juegue lo que juegue, y eso mezclaría las dos cosas.
+		const conSiguiente = h
+			.map((x, i) => ({ x, sube: i + 1 < h.length ? h[i + 1].media - x.media : null }))
+			.filter((p) => p.sube !== null && p.x.edad <= 27);
 
-		expect(creció(juega)).toBeGreaterThan(creció(mira));
+		const mediana = [...conSiguiente].sort((a, b) => a.x.partidos - b.x.partidos)[
+			Math.floor(conSiguiente.length / 2)
+		];
+		const jugando = conSiguiente
+			.filter((p) => p.x.partidos > mediana.x.partidos)
+			.map((p) => p.sube!);
+		const mirando = conSiguiente
+			.filter((p) => p.x.partidos < mediana.x.partidos)
+			.map((p) => p.sube!);
+
+		expect(jugando.length).toBeGreaterThan(0);
+		expect(mirando.length).toBeGreaterThan(0);
+		expect(promedio(jugando)).toBeGreaterThan(promedio(mirando));
 	});
 
 	it('el representante termina con plata y con prestigio', () => {
@@ -233,8 +280,11 @@ describe('una carrera entera', () => {
 
 describe('el final de la carrera', () => {
 	it('el que se queda en un club puntúa más que el que se mueve siempre', () => {
-		const fiel = correrCarrera('fiel', 'centrodelantero', 'ar-huracan', PRUDENTE);
-		const trotamundos = correrCarrera('fiel', 'centrodelantero', 'ar-huracan', AMBICIOSO);
+		// Los dos arrancan donde pueden sostener el puesto. Si arrancan en un club
+		// que les queda grande, el "fiel" no es fiel: se queda sin contrato y el
+		// mercado lo mueve igual, que es otra cosa y se prueba aparte.
+		const fiel = correrCarrera('fiel', 'centrodelantero', 'ar2-moron', FIEL);
+		const trotamundos = correrCarrera('fiel', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 
 		expect(fiel.clubes.length).toBeLessThan(trotamundos.clubes.length);
 

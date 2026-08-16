@@ -2,6 +2,7 @@
 	import { contexto } from '../../../content/mundo';
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
+	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
 	import { SIN_TRATO } from '$lib/engine/representacion';
 	import type { OpcionesDeFase } from '$lib/engine/pantalla';
@@ -25,6 +26,7 @@
 	let gestion = $state('acompanar');
 	let destino = $state(QUEDARSE);
 	let acuerdo = $state('estandar');
+	let renovacion = $state(FIRMAR);
 	let ocasiones = $state<string[]>([]);
 
 	$effect(() => {
@@ -50,6 +52,8 @@
 		return p.atributos.map((a) => NOMBRE_ATRIBUTO[a]).join(' + ');
 	}
 
+	const clubActual = $derived(contexto(estado.futbolista.contrato.clubId).club.nombre);
+
 	function comoJuega(brecha: number): string {
 		if (brecha >= 10) return 'Sos la figura';
 		if (brecha >= 2) return 'Titular';
@@ -57,6 +61,75 @@
 		return 'Te sentás en el banco';
 	}
 </script>
+
+<!-- ---------- Cuando vence el contrato con el club ---------- -->
+{#if opciones.renovacion}
+	{@const r = opciones.renovacion}
+	<div class="tarjeta" data-tema="plata">
+		<h3>{r.libre ? 'Quedó libre' : 'Se le vence el contrato'}</h3>
+		{#if !r.oferta}
+			<p style="margin:0 0 .5rem">
+				<strong>{clubActual}</strong> no ofreció renovación. Con los minutos que le dan, en el club ya
+				no cuentan con él.
+			</p>
+			<p class="sutil" style="margin:0">
+				No hay nada que decidir acá. La decisión es en el mercado, al final de la temporada.
+			</p>
+		{:else}
+			<p style="margin:0 0 .75rem">
+				<strong>{clubActual}</strong> pone sobre la mesa
+				<strong>{plata(r.oferta.salarioMensual)}</strong> por mes —{r.oferta.mejora >= 0
+					? `+${r.oferta.mejora}%`
+					: `${r.oferta.mejora}%`}— por {r.oferta.temporadas}
+				{r.oferta.temporadas === 1 ? 'temporada' : 'temporadas'}.
+			</p>
+			<p class="sutil" style="margin:0">
+				Tienen que <strong>elegir lo mismo</strong> para que pase algo. Si uno firma y el otro espera,
+				no se firma nada y la relación lo paga.
+			</p>
+		{/if}
+	</div>
+
+	{#if r.oferta}
+		{@const o = r.oferta}
+		<Opcion
+			grupo="renovacion"
+			valor={FIRMAR}
+			titulo="Firmar la renovación"
+			detalle="Lo seguro: más sueldo desde ya y {o.temporadas} {o.temporadas === 1
+				? 'temporada'
+				: 'temporadas'} tranquilo en {clubActual}."
+			bind:elegido={renovacion}
+		>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube gana">{plata(o.salarioMensual)} por mes</span>
+					{#if rol === 'representante'}
+						<span class="chip-sube gana">Tu comisión: {plata(o.comisionUsd)}</span>
+					{:else}
+						<span class="chip-sube">Los años acá siguen sumando para el final</span>
+					{/if}
+				</span>
+			{/snippet}
+		</Opcion>
+
+		<Opcion
+			grupo="renovacion"
+			valor={ESPERAR}
+			titulo="No firmar y salir libre"
+			detalle="La apuesta: si termina el contrato el pase no cuesta nada, así que muchos más clubes pueden ir a buscarlo y pagan más."
+			bind:elegido={renovacion}
+		>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube gana">Sueldos ~18% mejores y prima por firmar</span>
+					<span class="chip-sube pierde">El técnico lo hace jugar menos este año</span>
+					<span class="chip-sube pierde">Y jugar menos es crecer menos</span>
+				</span>
+			{/snippet}
+		</Opcion>
+	{/if}
+{/if}
 
 <!-- ---------- Cuando vence el contrato entre los dos ---------- -->
 {#if opciones.tratos}
@@ -257,7 +330,14 @@
 					<span class="numeros">
 						<span><b>{plata(oferta.salarioMensual)}</b> por mes</span>
 						<span>{oferta.temporadas} temporadas</span>
-						<span>Pase: {plata(oferta.montoUsd)}</span>
+						{#if oferta.montoUsd > 0}
+							<span>Pase: {plata(oferta.montoUsd)}</span>
+						{:else}
+							<span>Llega libre, sin pase</span>
+						{/if}
+						{#if oferta.primaUsd > 0}
+							<span class="mio">Prima al firmar: {plata(oferta.primaUsd)}</span>
+						{/if}
 						{#if rol === 'representante'}
 							<span class="mio">Tu comisión: {plata(oferta.comisionUsd)}</span>
 						{/if}

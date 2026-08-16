@@ -1,5 +1,6 @@
 import { club, clubes, contexto, salarioTipico } from '../../../content/mundo';
 import { media } from './estado';
+import { primaDeFirmaLibre } from './renovacion';
 import { dtActualDe } from './mercado';
 import { rngPara } from './rng';
 import { brechaCon } from './temporada';
@@ -31,6 +32,8 @@ export type Oferta = {
 	brecha: number;
 	/** El técnico que lo va a dirigir, si es alguien conocido. */
 	tecnico: string | null;
+	/** Prima por firmar, cuando llega libre. El club se ahorró el pase. */
+	primaUsd: number;
 };
 
 export const QUEDARSE = 'quedarse';
@@ -124,10 +127,14 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 
 	return elegidos
 		.map((clubId): Oferta => {
-			// Cuanto más contrato le queda, más caro sale sacarlo.
-			const porContrato = 0.55 + f.contrato.temporadasRestantes * 0.28;
+			// Cuanto más contrato le queda, más caro sale sacarlo. Y si está libre
+			// no cuesta nada: ésa es toda la apuesta de no renovar.
+			const libre = f.contrato.temporadasRestantes === 0;
+			const porContrato = libre ? 0 : 0.55 + f.contrato.temporadasRestantes * 0.28;
 			const ganas = 0.8 + rng.entero(0, 60) / 100;
-			const monto = Math.max(20_000, Math.round((valor * porContrato * ganas) / 10_000) * 10_000);
+			const monto = libre
+				? 0
+				: Math.max(20_000, Math.round((valor * porContrato * ganas) / 10_000) * 10_000);
 
 			// Lo que ofrecen depende de para qué lo compran: si viene a ser titular
 			// paga el precio del puesto, y si viene a competir por el puesto, menos.
@@ -138,18 +145,30 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 					(salarioTipico(clubId, suMedia) * porRol * (0.85 + rng.entero(0, 40) / 100)) / 100
 				) * 100;
 
+			// Lo que el club se ahorra en el pase lo pone en la firma y en el
+			// sueldo: por eso salir libre paga más aunque el club no gaste más.
+			const prima = libre ? primaDeFirmaLibre(valor) : 0;
+
 			return {
 				clubId,
 				montoUsd: monto,
+				primaUsd: prima,
 				// El que sale del banco suele resignar plata para volver a jugar.
-				salarioMensual: estaEnElBanco ? sueldo : Math.max(f.contrato.salarioMensual + 100, sueldo),
+				salarioMensual: Math.round(
+					(estaEnElBanco ? sueldo : Math.max(f.contrato.salarioMensual + 100, sueldo)) *
+						(libre ? 1.18 : 1)
+				),
 				temporadas: rng.entero(2, 4),
-				comisionUsd: Math.round((monto * estado.contratoRepresentacion.pctTransferencia) / 100),
+				// El representante cobra sobre la operación, y en un pase libre la
+				// operación es la prima. Por eso no le da lo mismo que no renueve.
+				comisionUsd: Math.round(
+					((monto + prima) * estado.contratoRepresentacion.pctTransferencia) / 100
+				),
 				brecha: Math.round(brecha),
 				tecnico: dtActualDe(clubId, estado.cambiosMundo)?.nombre ?? null
 			};
 		})
-		.sort((a, b) => b.montoUsd - a.montoUsd);
+		.sort((a, b) => b.montoUsd + b.primaUsd - (a.montoUsd + a.primaUsd));
 }
 
 /**
@@ -211,7 +230,13 @@ export function aplicarPase(estado: Estado, oferta: Oferta, log: EntradaLog[]): 
 		temporadasRestantes: oferta.temporadas,
 		clausula: Math.round(oferta.montoUsd * 2.5)
 	};
-	f.valorMercadoUsd = oferta.montoUsd;
+	f.valorMercadoUsd = Math.max(oferta.montoUsd, oferta.primaUsd * 4);
+
+	// La prima por llegar libre es del futbolista: se la paga el club que lo
+	// firma, y es la única plata del juego que entra sin que nadie venda nada.
+	if (oferta.primaUsd > 0) {
+		f.dineroUsd += oferta.primaUsd;
+	}
 
 	// Cambiar de club es empezar de cero con el técnico y con la gente.
 	f.dt = Math.round(f.dt * 0.4);
@@ -232,7 +257,9 @@ export function aplicarPase(estado: Estado, oferta: Oferta, log: EntradaLog[]): 
 		visiblePara: 'ambos',
 		texto:
 			`${f.nombre} pasa de ${desde} a ${hacia.club.nombre} (${hacia.liga.nombre}) ` +
-			`por USD ${oferta.montoUsd.toLocaleString('es-AR')}. ` +
+			(oferta.montoUsd > 0
+				? `por USD ${oferta.montoUsd.toLocaleString('es-AR')}. `
+				: `libre, sin que ${desde} cobre un peso. `) +
 			`Firma por ${oferta.temporadas} temporadas a USD ${oferta.salarioMensual.toLocaleString('es-AR')} por mes.`
 	});
 	log.push({

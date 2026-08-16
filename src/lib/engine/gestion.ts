@@ -75,6 +75,12 @@ export const ACCIONES: AccionDeGestion[] = [
 		detalle: 'Sentarse con el club y pedir por el contrato que ya tenés.',
 		fases: [1, 2],
 		probabilidad: (e) => {
+			// Con el contrato por vencer esto no corre: ahí la conversación es la
+			// renovación de verdad, que deciden los dos (ver `renovacion.ts`). Si
+			// corriera igual, una gestión del representante pisaría lo que acaban
+			// de firmar juntos.
+			if (e.futbolista.contrato.temporadasRestantes <= 1) return 0;
+
 			const f = e.futbolista;
 			const merecimiento =
 				media(f.atributos, f.posicion) - contexto(f.contrato.clubId).club.prestigio;

@@ -11,10 +11,18 @@ import { aplicarEvento, eventosDeLaTemporada } from './eventos';
 import { resolverGestion } from './gestion';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
-import { ofertasPara, resolverPase, valorDeMercado } from './pases';
+import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
+import {
+	clubDeUltimoRecurso,
+	comoLlegaAlMercado,
+	contratoDeUltimoRecurso,
+	ofertaDeRenovacion,
+	resolverRenovacion,
+	tocaRenovar
+} from './renovacion';
 import { aplicarSeleccion, jugarConLaSeleccion, type Mundial } from './seleccion';
-import { PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO, jugarTemporada } from './temporada';
+import { PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO, brechaCon, jugarTemporada } from './temporada';
 import {
 	MUNDO_SIN_CAMBIOS,
 	NOMBRE_FASE,
@@ -28,6 +36,9 @@ import {
 	type ResumenTemporada,
 	type Rol
 } from './tipos';
+
+/** Lo que se resigna del sueldo por llegar al mercado sin nada arreglado. */
+const DESCUENTO_POR_APURO = 0.75;
 
 /** Tope duro de temporadas: de los 16 a los 39. */
 export const TEMPORADAS_MAXIMAS = 24;
@@ -110,6 +121,21 @@ export function resolverFase(
 		for (const linea of negociacion.lineas) {
 			log.push({ tipo: 'representacion', visiblePara: linea.visiblePara, texto: linea.texto });
 		}
+	}
+
+	// --- La mesa con el club -------------------------------------------------
+	// Cuando el contrato con el club está por vencer, la pretemporada arranca
+	// también con esa conversación. Va después de la mesa entre ellos dos, a
+	// propósito: el porcentaje que el representante acaba de firmar es lo que
+	// cobra por esta renovación.
+	if (estado.fase === 1 && tocaRenovar(siguiente)) {
+		resolverRenovacion(
+			siguiente,
+			semilla,
+			delFutbolista.renovacion,
+			delRepresentante.renovacion,
+			log
+		);
 	}
 
 	if (estado.fase === 1) {
@@ -253,17 +279,33 @@ function cerrarTemporada(
 	// que va al historial, porque los goles los hizo con esa camiseta.
 	const clubDondeJugo = futbolista.contrato.clubId;
 
+	// Los contratos corren un año antes del mercado, no después: la temporada que
+	// se acaba de jugar ya se consumió. Con esto, el que decide no renovar juega
+	// su último año y llega libre a este mismo mercado. Es la misma cuenta que
+	// hace la pantalla, así que las ofertas que se ven son las que se firman.
+	const enElMercado = comoLlegaAlMercado(estado);
+	futbolista.contrato.temporadasRestantes = enElMercado.futbolista.contrato.temporadasRestantes;
+	estado.contratoRepresentacion.duracionTemporadas =
+		enElMercado.contratoRepresentacion.duracionTemporadas;
+
 	// Se resuelve después de cobrar el año, porque el sueldo que se cobró es el
 	// del club donde se jugó. El pase se hace solamente si los dos eligieron el
 	// mismo club: es la única decisión del juego que necesita que se hayan
 	// hablado antes de apretar el botón.
-	resolverPase(
-		estado,
-		ofertasPara(estado, semilla),
-		destinos.futbolista,
-		destinos.representante,
-		log
-	);
+	const ofertas = ofertasPara(estado, semilla);
+	resolverPase(estado, ofertas, destinos.futbolista, destinos.representante, log);
+
+	// --- El que quedó sin contrato -------------------------------------------
+	// Si se le terminó el contrato y no hubo pase, el club no lo renueva solo:
+	// hay que conseguir equipo. Sin esto, quedar libre no tenía consecuencia
+	// —seguía jugando en el mismo lugar por el mismo sueldo para siempre— y la
+	// apuesta de no renovar era gratis.
+	if (
+		futbolista.contrato.clubId === clubDondeJugo &&
+		futbolista.contrato.temporadasRestantes === 0
+	) {
+		buscarEquipo(estado, semilla, ofertas, log);
+	}
 
 	// --- La foto del año -----------------------------------------------------
 	// Se anota acá, con la temporada jugada, la selección resuelta y el pase ya
@@ -302,22 +344,14 @@ function cerrarTemporada(
 	// plata. Ésa es la decisión del juego.
 	estado.confianza = acotar(estado.confianza - 5, 0, 100);
 
-	// --- Los contratos -------------------------------------------------------
-	futbolista.contrato.temporadasRestantes = Math.max(
-		0,
-		futbolista.contrato.temporadasRestantes - 1
-	);
-	// El de representación también vence, y cuando llega a cero la pretemporada
-	// siguiente es la de sentarse a hablar.
-	estado.contratoRepresentacion.duracionTemporadas = Math.max(
-		0,
-		estado.contratoRepresentacion.duracionTemporadas - 1
-	);
-	if (futbolista.contrato.temporadasRestantes === 0) {
+	// El contrato de representación vence junto con el del club (los dos corren
+	// arriba, antes del mercado). Cuando llega a cero, la pretemporada siguiente
+	// es la de sentarse a hablar.
+	if (futbolista.contrato.temporadasRestantes === 1) {
 		log.push({
 			tipo: 'contrato',
 			visiblePara: 'ambos',
-			texto: `Se le vence el contrato con ${club(futbolista.contrato.clubId).nombre}.`
+			texto: `Le queda una temporada de contrato con ${club(futbolista.contrato.clubId).nombre}.`
 		});
 	}
 
@@ -362,6 +396,129 @@ function cerrarTemporada(
 	});
 
 	return estado;
+}
+
+/**
+ * El que se quedó sin contrato tiene que conseguir equipo.
+ *
+ * Se le acabó el contrato y no hubo pase: el club ya no le paga. De las ofertas
+ * que hay sobre la mesa se queda con la que más lo va a hacer jugar, porque un
+ * jugador libre no elige por plata, elige por seguir jugando.
+ *
+ * Y si no hay ninguna, ahí se termina. Es el final más duro del juego y el más
+ * merecido: nadie lo quiere y no hay a dónde ir. Vale la pena que exista,
+ * porque es lo que hace que dejar vencer un contrato sea una decisión de
+ * verdad y no un trámite.
+ */
+function buscarEquipo(
+	estado: Estado,
+	semilla: string,
+	ofertas: readonly Oferta[],
+	log: EntradaLog[]
+): void {
+	const f = estado.futbolista;
+	const desde = club(f.contrato.clubId).nombre;
+
+	/*
+	 * Primero, el club donde está.
+	 *
+	 * Que se le termine el contrato no es que lo echen: si el club lo quiere —y
+	 * lo quiere siempre que juegue— le renueva y no pasa nada. Sin esto, el que
+	 * firmaba un año quedaba expulsado al terminarlo aunque las dos partes
+	 * estuvieran contentas, y una carrera entera en un mismo club era imposible.
+	 */
+	const sigue = ofertaDeRenovacion(estado, semilla);
+	if (sigue) {
+		f.contrato.salarioMensual = sigue.salarioMensual;
+		f.contrato.temporadasRestantes = sigue.temporadas;
+		estado.representante.dineroUsd += sigue.comisionUsd;
+		log.push({
+			tipo: 'contrato',
+			visiblePara: 'ambos',
+			texto:
+				`Se le terminaba el contrato con ${desde} y lo renovaron sobre la hora por ` +
+				`${sigue.temporadas} ${sigue.temporadas === 1 ? 'temporada' : 'temporadas'}.`
+		});
+		return;
+	}
+
+	/*
+	 * De lo que haya sobre la mesa, la que más lo va a hacer jugar.
+	 *
+	 * El destino es el sensato —a nadie le sirve caer otra vez en un banco, y si
+	 * cayera volvería a quedar libre el año siguiente y rebotaría toda la
+	 * carrera—, pero las condiciones son las de firmar apurado: menos sueldo del
+	 * que le habrían dado negociando, y el golpe de haber llegado hasta acá sin
+	 * arreglar nada.
+	 *
+	 * Ahí está la diferencia con elegir: el que decide se lleva el contrato
+	 * entero, el que no decide se lleva el mismo club por menos plata. Si el
+	 * motor firmara los mismos términos, no decidir rendiría igual que decidir y
+	 * el juego dejaría de tener sentido.
+	 */
+	const apurado = [...ofertas].sort((a, b) => b.brecha - a.brecha)[0];
+	if (apurado) {
+		estado.confianza = acotar(estado.confianza - 5, 0, 100);
+		f.moral = acotar(f.moral - 8, 0, 100);
+		log.push({
+			tipo: 'contrato',
+			visiblePara: 'ambos',
+			texto:
+				`Se le terminó el contrato con ${desde} sin que arreglaran nada, y hubo que firmar a las ` +
+				`apuradas. Firmar apurado siempre sale más barato para el que firma del otro lado.`
+		});
+		aplicarPase(
+			estado,
+			{
+				...apurado,
+				salarioMensual: Math.round((apurado.salarioMensual * DESCUENTO_POR_APURO) / 100) * 100,
+				primaUsd: 0,
+				comisionUsd: 0
+			},
+			log
+		);
+		return;
+	}
+
+	// Y si no llegó ninguna, se busca abajo. A los veinte sin contrato se juega
+	// en el Ascenso; no se deja de jugar.
+	const refugio = clubDeUltimoRecurso(estado);
+	if (refugio) {
+		const terminos = contratoDeUltimoRecurso(estado, refugio);
+		aplicarPase(
+			estado,
+			{
+				clubId: refugio,
+				montoUsd: 0,
+				primaUsd: 0,
+				salarioMensual: terminos.salarioMensual,
+				temporadas: terminos.temporadas,
+				comisionUsd: 0,
+				brecha: Math.round(brechaCon(f, refugio)),
+				tecnico: null
+			},
+			log
+		);
+		log.push({
+			tipo: 'contrato',
+			visiblePara: 'ambos',
+			texto:
+				`Nadie lo llamó del nivel de ${desde}. Terminó firmando en ${club(refugio).nombre} por ` +
+				`bastante menos, que es lo que hay cuando se llega libre y sin ofertas.`
+		});
+		return;
+	}
+
+	// Y si de verdad no hay ningún club en el mundo donde pueda jugar, se
+	// terminó. Es el final más duro del juego y el más merecido.
+	estado.carreraTerminada = true;
+	log.push({
+		tipo: 'retiro',
+		visiblePara: 'ambos',
+		texto:
+			`Se le terminó el contrato con ${desde} y no apareció nadie. ${f.nombre} se quedó ` +
+			`sin club a los ${f.edad} años, y así es como se termina la mayoría de las carreras.`
+	});
 }
 
 /**
