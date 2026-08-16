@@ -144,6 +144,13 @@
 		</p>
 	{/if}
 
+	{#if opciones.rasgoElegido}
+		<p class="rasgo">
+			<span class="marca">{opciones.rasgoElegido.nombre}</span>
+			<span class="sutil">{opciones.rasgoElegido.siempre}</span>
+		</p>
+	{/if}
+
 	{#if opciones.situacion}
 		<p class="situacion">
 			<span class="chip {opciones.situacion.tono === 'bien' ? 'listo' : 'espera'}">
@@ -375,6 +382,25 @@
 	}
 	.seleccion b.sin {
 		color: var(--tenue);
+	}
+
+	.rasgo {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.4rem 0.55rem;
+		margin: 0.7rem 0 0;
+		font-size: 0.8rem;
+	}
+	.rasgo .marca {
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		font-size: 0.72rem;
+		color: var(--plata);
+		border: 1px solid rgba(224, 184, 58, 0.45);
+		border-radius: 999px;
+		padding: 0.15rem 0.55rem;
 	}
 
 	.situacion {

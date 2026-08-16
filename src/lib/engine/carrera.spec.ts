@@ -3,7 +3,7 @@ import { estadoInicial, media } from './estado';
 import { resolverFase } from './fases';
 import { aplicarPase, ofertasPara } from './pases';
 import { resumirRetiro } from './retiro';
-import { brechaCon } from './temporada';
+import { brechaCon, crecerPorJugar } from './temporada';
 import { rngPara } from './rng';
 import { contexto } from '../../../content/mundo';
 import { PUESTOS, puesto } from './puestos';
@@ -129,10 +129,18 @@ const PRUDENTE: Estrategia = { intensidad: 'suave', mejoraMinima: 3, gestion: 'a
  */
 const FIEL: Estrategia = { intensidad: 'firme', mejoraMinima: Infinity, gestion: 'acompanar' };
 
-/** El que prioriza jugar por encima de la plata. */
+/**
+ * El que prioriza jugar por encima de la plata.
+ *
+ * `mejoraMinima: Infinity` es parte de la definición y no un detalle: este es
+ * el que se mueve **solo** cuando no juega. Cuando además perseguía cualquier
+ * oferta un 30% mejor terminaba en diez clubes distintos, perdía el
+ * multiplicador de permanencia y puntuaba peor que el que no hacía nada. Eso no
+ * medía la salida del banco, medía una mala estrategia de plata.
+ */
 const BUSCA_JUGAR: Estrategia = {
 	intensidad: 'firme',
-	mejoraMinima: 1.3,
+	mejoraMinima: Infinity,
 	gestion: 'acompanar',
 	priorizaJugar: true
 };
@@ -223,34 +231,52 @@ describe('una carrera entera', () => {
 		expect(final).toBeLessThan(pico);
 	});
 
-	it('las temporadas en las que jugó son las que lo hicieron mejor', () => {
-		// Dentro de una misma carrera: los años de muchos minutos suben la media y
-		// los años de banco no. Es la regla que le da peso al mercado, porque
-		// quedarse donde no entrás no cuesta solo minutos: cuesta la carrera.
-		// Arranca en un club que le queda grande, que es donde de verdad se alternan
-		// años de jugar y años de mirar.
-		const { estado } = correrCarrera('minutos', 'centrodelantero', 'ar-river', PRUDENTE);
-		const h = estado.historial;
+	it('jugar es lo que te hace mejor, y no jugar no te hace nada', () => {
+		// La regla, medida de frente: el mismo jugador, la misma semilla, y lo
+		// único distinto son los minutos que jugó.
+		//
+		// Antes esto se medía comparando tramos de una misma carrera, y no servía:
+		// los años de muchos minutos son también los años de más margen al techo y
+		// de mejor edad, así que la comparación mezclaba tres cosas y a veces
+		// empataba. Acá no hay nada más que cambie.
+		function crecio(minutos: number): number {
+			const e = estadoInicial(
+				{
+					futbolista: {
+						nombre: 'Damián Correa',
+						nacionalidad: 'Argentina',
+						puesto: 'centrodelantero',
+						numero: 9,
+						pie: 'derecho',
+						edadInicial: 18,
+						clubId: 'ar2-moron'
+					},
+					representante: { nombre: 'Alan' }
+				},
+				rngPara('minutos', { temporada: 0, fase: 1, clave: 'inicio' }),
+				2026
+			);
+			e.futbolista.potencial = 90;
+			const antes = media(e.futbolista.atributos, e.futbolista.posicion);
+			crecerPorJugar(
+				e,
+				{ minutos, nota: 6.5 },
+				rngPara('minutos', {
+					temporada: 1,
+					fase: 2,
+					clave: 'crecer'
+				})
+			);
+			return media(e.futbolista.atributos, e.futbolista.posicion) - antes;
+		}
 
-		// Solo mientras todavía tenía margen para crecer: después de los 28 la
-		// media baja juegue lo que juegue, y eso mezclaría las dos cosas.
-		const conSiguiente = h
-			.map((x, i) => ({ x, sube: i + 1 < h.length ? h[i + 1].media - x.media : null }))
-			.filter((p) => p.sube !== null && p.x.edad <= 27);
+		const jugandoTodo = crecio(2400);
+		const desdeElBanco = crecio(150);
 
-		const mediana = [...conSiguiente].sort((a, b) => a.x.partidos - b.x.partidos)[
-			Math.floor(conSiguiente.length / 2)
-		];
-		const jugando = conSiguiente
-			.filter((p) => p.x.partidos > mediana.x.partidos)
-			.map((p) => p.sube!);
-		const mirando = conSiguiente
-			.filter((p) => p.x.partidos < mediana.x.partidos)
-			.map((p) => p.sube!);
-
-		expect(jugando.length).toBeGreaterThan(0);
-		expect(mirando.length).toBeGreaterThan(0);
-		expect(promedio(jugando)).toBeGreaterThan(promedio(mirando));
+		expect(jugandoTodo).toBeGreaterThan(desdeElBanco);
+		expect(desdeElBanco).toBeLessThanOrEqual(1);
+		// Y el que no entró nunca no aprende nada.
+		expect(crecio(0)).toBe(0);
 	});
 
 	it('el representante termina con plata y con prestigio', () => {

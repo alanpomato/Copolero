@@ -135,17 +135,47 @@ describe('jugar el Mundial', () => {
 	});
 });
 
+function estadoTerminado(e: Estado): boolean {
+	return e.carreraTerminada;
+}
+
 describe('en una partida de verdad', () => {
-	it('el pibe del Ascenso nunca debuta en la selección', () => {
-		let estado = unPibe();
+	it('al que juega donde no lo ve nadie no lo llaman', () => {
+		// La regla, medida directamente y no a través de una carrera entera: el
+		// mismo jugador, con la misma media y la misma fama, tiene mucha menos
+		// chance desde el Ascenso que desde una liga fuerte. Es lo que hace que el
+		// pase exista.
+		//
+		// Antes esto se probaba jugando dieciocho fases en piloto automático y
+		// esperando que no lo llamaran nunca. Dejó de valer cuando jugar empezó a
+		// hacer crecer: un pibe que gana la Primera Nacional seis años seguidos
+		// termina con media 81, y a ése lo miran igual. Que lo miren está bien; lo
+		// que hay que proteger es que sea por ser bueno y no por estar ahí.
+		const enElAscenso = unPibe('Argentina', 'ar2-moron');
+		for (const k of Object.keys(enElAscenso.futbolista.atributos)) {
+			enElAscenso.futbolista.atributos[k as keyof typeof enElAscenso.futbolista.atributos] = 74;
+		}
+		enElAscenso.futbolista.edad = 24;
+		enElAscenso.futbolista.fama = 40;
+
+		const enEuropa = structuredClone(enElAscenso);
+		enEuropa.futbolista.contrato.clubId = 'es-realmadrid';
+
+		expect(chanceDeConvocatoria(enElAscenso)).toBeLessThan(chanceDeConvocatoria(enEuropa));
+		expect(chanceDeConvocatoria(enElAscenso)).toBe(0);
+	});
+
+	it('y al del montón no lo llaman de ningún lado', () => {
+		const delMonton = unPibe('Argentina', 'ar2-moron');
 		const cierran: Decision[] = [
 			{ rol: 'futbolista', nota: '' },
 			{ rol: 'representante', nota: '' }
 		];
-		for (let i = 0; i < 18 && !estado.carreraTerminada; i++) {
-			estado = resolverFase(estado, cierran, 'sel').estado;
+		// Tres temporadas: todavía es un pibe de 19 en el Ascenso.
+		for (let i = 0; i < 9 && !estadoTerminado(delMonton); i++) {
+			Object.assign(delMonton, resolverFase(delMonton, cierran, 'sel').estado);
 		}
-		expect(estado.seleccion.debuto).toBe(false);
+		expect(delMonton.seleccion.debuto).toBe(false);
 	});
 
 	it('un crack acumula partidos con la selección al pasar los años', () => {

@@ -27,6 +27,7 @@
 		mercado: '⇄',
 		ingresos: '$',
 		inversion: '◈',
+		rasgo: '✦',
 		contrato: '✎',
 		entrenamiento: '↑',
 		progreso: '⤒',

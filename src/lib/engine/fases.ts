@@ -13,6 +13,7 @@ import { cobrarMantenimiento, comprar } from './inversiones';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
+import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
 import {
 	clubDeUltimoRecurso,
@@ -137,6 +138,15 @@ export function resolverFase(
 			delRepresentante.renovacion,
 			log
 		);
+	}
+
+	// --- Qué clase de jugador es ---------------------------------------------
+	// Va primero de todo en la primera pretemporada: lo que se elige acá le sube
+	// un atributo, y todo lo que viene después de esta fase tiene que verlo ya
+	// aplicado.
+	if (estado.fase === 1 && tocaElegirRasgo(siguiente)) {
+		const elegido = elegirRasgo(siguiente, semilla, delFutbolista.rasgo);
+		if (elegido) log.push({ tipo: 'rasgo', visiblePara: 'ambos', texto: elegido });
 	}
 
 	// --- En qué gastan la plata ----------------------------------------------

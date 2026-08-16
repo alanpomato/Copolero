@@ -8,6 +8,7 @@ import {
 	riesgoDeLesionExtra
 } from './inversiones';
 import { objetivo as objetivoPorId } from './objetivos';
+import { loQueAporta } from './rasgos';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
 import type { Efecto, ResultadoDeOcasion } from './ocasiones';
@@ -196,6 +197,8 @@ export function jugarTemporada(
 	// Cómo decidió jugar el año. Es la palanca que el futbolista tiene sobre la
 	// temporada: no cambia lo que es, cambia de dónde sale lo que hace.
 	const plan = objetivoPorId(objetivoId);
+	// Y lo que es desde la primera pretemporada, que no cambia nunca.
+	const suyo = loQueAporta(estado);
 	const rng = rngPara(semilla, { temporada: estado.temporada, fase: 2, clave: 'temporada' });
 	const jugadas: Jugada[] = [];
 
@@ -213,7 +216,10 @@ export function jugarTemporada(
 
 	// --- Minutos -------------------------------------------------------------
 	const brecha = brechaCon(f, clubId);
-	const porcentaje = Math.max(4, Math.min(100, porcentajeDeJuego(brecha) + plan.minutos));
+	const porcentaje = Math.max(
+		4,
+		Math.min(100, porcentajeDeJuego(brecha) + plan.minutos + suyo.minutos)
+	);
 
 	// La lesión se descuenta de los partidos, no del rendimiento: el que se
 	// rompe en agosto no juega mal, no juega.
@@ -249,6 +255,7 @@ export function jugarTemporada(
 				suerte() *
 				(f.forma / 60) *
 				plan.goles *
+				suyo.goles *
 				empujeDeLosBotines(estado)
 		);
 	const asistencias =
@@ -259,11 +266,12 @@ export function jugarTemporada(
 				ajuste *
 				suerte() *
 				plan.asistencias *
+				suyo.asistencias *
 				empujeDeLosBotines(estado)
 		);
 
 	// --- El equipo -----------------------------------------------------------
-	const aporte = (goles + asistencias) / 11 + Math.max(0, brecha) / 18 + plan.equipo;
+	const aporte = (goles + asistencias) / 11 + Math.max(0, brecha) / 18 + plan.equipo + suyo.equipo;
 	const puesto = puestoEnLaLiga(clubId, aporte, rng);
 	const equipos = clubesDe(contexto(clubId).liga.id).length;
 	const campeon = puesto === 1;
@@ -329,7 +337,7 @@ export function jugarTemporada(
 	// El psicólogo no te hace jugar mejor: te sostiene el año malo, que es
 	// justamente cuando hace falta.
 	f.moral = acotar(f.moral + Math.round((nota - 6) * 4), pisoDeMoral(estado), 100);
-	f.dt = acotar(f.dt + Math.round((nota - 6) * 3) + plan.dt, -100, 100);
+	f.dt = acotar(f.dt + Math.round((nota - 6) * 3) + plan.dt + suyo.dt, -100, 100);
 	f.hinchada = acotar(f.hinchada + Math.round((nota - 6) * 4 + goles), 0, 100);
 	f.prensa = acotar(f.prensa + Math.round((nota - 6) * 2), -100, 100);
 	// La fama la limita dónde jugás. Ver `techoDeFama`.
@@ -374,7 +382,7 @@ export function jugarTemporada(
  *  - y la edad, con la misma curva que la pretemporada.
  * El techo sigue siendo el potencial, que nadie ve.
  */
-function crecerPorJugar(
+export function crecerPorJugar(
 	estado: Estado,
 	anio: { minutos: number; nota: number },
 	rng: Rng
@@ -405,6 +413,7 @@ function crecerPorJugar(
 		// hace que entrenar a matar valga la pena a pesar del desgaste.
 		aprovechaDe(estado.intensidadDeLaPretemporada) *
 		aprovechaExtra(estado) *
+		loQueAporta(estado).crecimiento *
 		(rng.entero(80, 125) / 100);
 
 	// Los puntos se reparten entre los atributos del puesto, así que hacen falta

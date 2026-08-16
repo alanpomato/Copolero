@@ -9,6 +9,7 @@ import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
 import { gastoAnual, loQuePuedeComprar, loQueTiene, type EnLaVidriera } from './inversiones';
 import { loQueVaAPasar, objetivosPara, type Objetivo } from './objetivos';
+import { rasgo, rasgosQueLeTocaron, tocaElegirRasgo, type Rasgo } from './rasgos';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
 import {
 	TRATOS,
@@ -48,6 +49,14 @@ export type OpcionesDeFase = {
 	/** Futbolista, fase 1. */
 	planes?: PlanDeEntrenamiento[];
 	intensidades?: PerfilDeIntensidad[];
+	/**
+	 * Los tres rasgos que le tocaron, la primera pretemporada y nunca más.
+	 *
+	 * `elegido` es el que ya tiene: se muestra siempre, porque es lo que lo
+	 * define y hay que poder mirarlo veinte temporadas después.
+	 */
+	rasgos?: Rasgo[];
+	rasgoElegido?: Rasgo;
 	/** Futbolista, fase 2: cómo va a jugar el año, y qué dice de lo elegido. */
 	objetivos?: Objetivo[];
 	consejoDelObjetivo?: string;
@@ -138,7 +147,14 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 		};
 	}
 
+	// Lo que es, que se muestra siempre una vez elegido.
+	const suRasgo = rasgo(estado.rasgo);
+	if (suRasgo) opciones.rasgoElegido = suRasgo;
+
 	if (rol === 'futbolista') {
+		if (estado.fase === 1 && tocaElegirRasgo(estado)) {
+			opciones.rasgos = rasgosQueLeTocaron(estado, semilla);
+		}
 		if (estado.fase === 1) {
 			opciones.planes = PLANES;
 			opciones.intensidades = INTENSIDADES;

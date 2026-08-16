@@ -242,6 +242,14 @@ export type Estado = {
 	atributosQueSubieron: string[];
 
 	/**
+	 * Qué clase de jugador es. Ver `rasgos.ts`.
+	 *
+	 * Se elige en la primera pretemporada, entre tres que trae el azar, y no se
+	 * cambia nunca más. `null` hasta que se elija.
+	 */
+	rasgo: string | null;
+
+	/**
 	 * En qué gastó cada uno su plata. Ver `inversiones.ts`.
 	 *
 	 * Se guardan los ids y nada más: lo que hace cada una vive en el catálogo,
@@ -286,6 +294,9 @@ export type Decision = {
 	/** Futbolista, fase 1: qué plan de pretemporada y con cuánta intensidad. */
 	entrenamiento?: string;
 	intensidad?: string;
+
+	/** Futbolista, primera pretemporada: qué clase de jugador es. */
+	rasgo?: string;
 
 	/** Futbolista, fase 2: cómo va a jugar el año. Ver `objetivos.ts`. */
 	objetivo?: string;

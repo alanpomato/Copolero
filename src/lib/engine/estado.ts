@@ -212,6 +212,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		temporadasPerdidas: 0,
 		intensidadDeLaPretemporada: 'firme',
 		atributosQueSubieron: [],
+		rasgo: null,
 		inversiones: { futbolista: [], representante: [] },
 		seleccion: { debuto: false, partidos: 0, goles: 0, mundiales: [] }
 	};

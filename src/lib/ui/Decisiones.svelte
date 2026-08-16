@@ -3,6 +3,7 @@
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
 	import { NADA } from '$lib/engine/inversiones';
+	import { NOMBRE_ATRIBUTO as ATRIBUTO } from '$lib/engine/puestos';
 	import { OBJETIVO_POR_DEFECTO } from '$lib/engine/objetivos';
 	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
@@ -31,6 +32,12 @@
 	let renovacion = $state(FIRMAR);
 	let objetivo = $state(OBJETIVO_POR_DEFECTO);
 	let compra = $state(NADA);
+	let rasgo = $state('');
+
+	$effect(() => {
+		const tres = opciones.rasgos ?? [];
+		if (tres.length > 0 && !tres.some((r) => r.id === rasgo)) rasgo = tres[0].id;
+	});
 	let ocasiones = $state<string[]>([]);
 
 	$effect(() => {
@@ -65,6 +72,32 @@
 		return 'Te sentás en el banco';
 	}
 </script>
+
+<!-- ---------- Qué clase de jugador sos ---------- -->
+{#if opciones.rasgos && opciones.rasgos.length > 0}
+	<div class="tarjeta" data-tema="cancha">
+		<h3>¿Qué clase de jugador sos?</h3>
+		<p style="margin:0 0 .5rem">
+			El azar te trajo tres. Elegí uno: <strong>te define para toda la carrera</strong> y no se cambia
+			nunca más.
+		</p>
+		<p class="sutil" style="margin:0">
+			Ninguno es mejor que otro. El olfato de gol hace goleadores y el pulmón hace jugadores que
+			llegan a los 36.
+		</p>
+	</div>
+
+	{#each opciones.rasgos as r (r.id)}
+		<Opcion grupo="rasgo" valor={r.id} titulo={r.nombre} detalle={r.detalle} bind:elegido={rasgo}>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube gana">+{r.cuanto} {ATRIBUTO[r.atributo]}</span>
+					<span class="chip-sube">{r.siempre}</span>
+				</span>
+			{/snippet}
+		</Opcion>
+	{/each}
+{/if}
 
 <!-- ---------- En qué gastar la plata ---------- -->
 {#if opciones.inversiones}
