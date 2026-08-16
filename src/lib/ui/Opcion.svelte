@@ -13,6 +13,7 @@
 		titulo,
 		detalle = '',
 		probabilidad = null,
+		deshabilitada = false,
 		elegido = $bindable(),
 		extra
 	}: {
@@ -21,6 +22,8 @@
 		titulo: string;
 		detalle?: string;
 		probabilidad?: number | null;
+		/** Se muestra igual pero no se puede elegir: por ejemplo, no le alcanza. */
+		deshabilitada?: boolean;
 		elegido: string;
 		extra?: Snippet;
 	} = $props();
@@ -30,8 +33,8 @@
 	);
 </script>
 
-<label class="opcion" class:activa={elegido === valor}>
-	<input type="radio" name={grupo} value={valor} bind:group={elegido} />
+<label class="opcion" class:activa={elegido === valor} class:apagada={deshabilitada}>
+	<input type="radio" name={grupo} value={valor} bind:group={elegido} disabled={deshabilitada} />
 	<span class="cuerpo">
 		<span class="cabecera">
 			<span class="titulo">{titulo}</span>
@@ -48,6 +51,11 @@
 </label>
 
 <style>
+	.opcion.apagada {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
 	.opcion {
 		display: block;
 		position: relative;

@@ -9,6 +9,7 @@ import {
 } from './entrenamiento';
 import { aplicarEvento, eventosDeLaTemporada } from './eventos';
 import { resolverGestion } from './gestion';
+import { cobrarMantenimiento, comprar } from './inversiones';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
@@ -136,6 +137,19 @@ export function resolverFase(
 			delRepresentante.renovacion,
 			log
 		);
+	}
+
+	// --- En qué gastan la plata ----------------------------------------------
+	// Cada uno la suya, sin pedirle permiso al otro: es lo único del juego que se
+	// decide solo. Va en la pretemporada porque es cuando se arma el año.
+	if (estado.fase === 1) {
+		for (const [rol, decision] of [
+			['futbolista', delFutbolista],
+			['representante', delRepresentante]
+		] as const) {
+			const compro = comprar(siguiente, rol, decision.inversion);
+			if (compro) log.push({ tipo: 'inversion', visiblePara: rol, texto: compro });
+		}
 	}
 
 	if (estado.fase === 1) {
@@ -305,6 +319,13 @@ function cerrarTemporada(
 		futbolista.contrato.temporadasRestantes === 0
 	) {
 		buscarEquipo(estado, semilla, ofertas, log);
+	}
+
+	// --- Lo que cuesta mantener lo que tienen --------------------------------
+	// Después de cobrar y antes de la foto del año: la plata del año ya entró, y
+	// lo que no se puede sostener se pierde acá.
+	for (const linea of cobrarMantenimiento(estado)) {
+		log.push({ tipo: 'inversion', visiblePara: linea.visiblePara, texto: linea.texto });
 	}
 
 	// --- La foto del año -----------------------------------------------------

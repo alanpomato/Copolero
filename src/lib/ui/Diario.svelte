@@ -26,6 +26,7 @@
 		pase: '⇄',
 		mercado: '⇄',
 		ingresos: '$',
+		inversion: '◈',
 		contrato: '✎',
 		entrenamiento: '↑',
 		progreso: '⤒',

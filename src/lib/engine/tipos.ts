@@ -233,6 +233,17 @@ export type Estado = {
 	intensidadDeLaPretemporada: string;
 
 	/**
+	 * En qué gastó cada uno su plata. Ver `inversiones.ts`.
+	 *
+	 * Se guardan los ids y nada más: lo que hace cada una vive en el catálogo,
+	 * así que cambiar un precio o un efecto no obliga a migrar las partidas.
+	 */
+	inversiones: {
+		futbolista: { id: string; porTemporadaUsd: number }[];
+		representante: { id: string; porTemporadaUsd: number }[];
+	};
+
+	/**
 	 * La selección y los mundiales.
 	 *
 	 * Es lo único del juego que se espera: llega solo, cada cuatro años, y no se
@@ -291,6 +302,9 @@ export type Decision = {
 	 * que el pase. Esperar es apostar a salir libre.
 	 */
 	renovacion?: string;
+
+	/** Los dos, fase 1: qué compran esta temporada. Ver `inversiones.ts`. */
+	inversion?: string;
 
 	/**
 	 * Los dos, fase 3: a qué club quiere ir, o `quedarse`.

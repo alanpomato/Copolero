@@ -1,6 +1,7 @@
 import { club, clubesDe, contexto } from '../../../content/mundo';
 import { aprovechaDe, nombreAtributo, rindeDeLaEdad } from './entrenamiento';
 import { media } from './estado';
+import { aprovechaExtra, pisoDeMoral } from './inversiones';
 import { objetivo as objetivoPorId } from './objetivos';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
@@ -305,7 +306,9 @@ export function jugarTemporada(
 		0,
 		Math.min(100, f.desgaste + Math.round(minutos / 1600) + rng.entero(0, 1) + plan.desgaste)
 	);
-	f.moral = acotar(f.moral + Math.round((nota - 6) * 4), 0, 100);
+	// El psicólogo no te hace jugar mejor: te sostiene el año malo, que es
+	// justamente cuando hace falta.
+	f.moral = acotar(f.moral + Math.round((nota - 6) * 4), pisoDeMoral(estado), 100);
 	f.dt = acotar(f.dt + Math.round((nota - 6) * 3) + plan.dt, -100, 100);
 	f.hinchada = acotar(f.hinchada + Math.round((nota - 6) * 4 + goles), 0, 100);
 	f.prensa = acotar(f.prensa + Math.round((nota - 6) * 2), -100, 100);
@@ -381,6 +384,7 @@ function crecerPorJugar(
 		// Lo que se hizo en el verano decide cuánto se aprovecha el año. Es lo que
 		// hace que entrenar a matar valga la pena a pesar del desgaste.
 		aprovechaDe(estado.intensidadDeLaPretemporada) *
+		aprovechaExtra(estado) *
 		(rng.entero(80, 125) / 100);
 
 	// Los puntos se reparten entre los atributos del puesto, así que hacen falta

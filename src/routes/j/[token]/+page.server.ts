@@ -66,6 +66,11 @@ export const actions: Actions = {
 		if (vista.opciones.tratos) {
 			decision.trato = campo(datos, 'trato');
 		}
+		// Cada uno gasta lo suyo, y el servidor solo acepta lo que ese rol puede
+		// comprar: el catálogo está partido por rol y `comprar` lo verifica.
+		if (vista.opciones.inversiones) {
+			decision.inversion = campo(datos, 'inversion');
+		}
 		if (vista.opciones.renovacion?.oferta) {
 			decision.renovacion = campo(datos, 'renovacion');
 		}

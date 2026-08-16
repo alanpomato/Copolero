@@ -7,6 +7,7 @@ import {
 } from './entrenamiento';
 import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
+import { gastoAnual, loQuePuedeComprar, loQueTiene, type EnLaVidriera } from './inversiones';
 import { loQueVaAPasar, objetivosPara, type Objetivo } from './objetivos';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
 import {
@@ -73,6 +74,13 @@ export type OpcionesDeFase = {
 	 * hay que mostrarlo: es la señal más clara de que hay que moverse.
 	 */
 	renovacion?: { oferta: OfertaDeRenovacion | null; libre: boolean };
+	/** En qué puede gastar la plata, qué ya tiene y cuánto se le va por año. */
+	inversiones?: {
+		puedeComprar: EnLaVidriera[];
+		tiene: EnLaVidriera[];
+		plataUsd: number;
+		gastoAnualUsd: number;
+	};
 	/** Lo que hay que decirle en la cara, si hay algo. Ver `alertas.ts`. */
 	alerta?: Alerta;
 	/** La tapa del diario del año que cerró. Solo en pretemporada. */
@@ -146,6 +154,17 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			detalle: a.detalle,
 			probabilidad: a.probabilidad(estado)
 		}));
+	}
+
+	// En qué gastar la plata, en pretemporada. Cada uno ve solo lo suyo: es la
+	// única decisión del juego que no necesita al otro.
+	if (estado.fase === 1) {
+		opciones.inversiones = {
+			puedeComprar: loQuePuedeComprar(estado, rol),
+			tiene: loQueTiene(estado, rol),
+			plataUsd: rol === 'futbolista' ? estado.futbolista.dineroUsd : estado.representante.dineroUsd,
+			gastoAnualUsd: gastoAnual(estado, rol)
+		};
 	}
 
 	// Cómo lo ve su club se muestra siempre, en las tres fases: es el número que

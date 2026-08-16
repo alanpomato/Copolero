@@ -2,6 +2,7 @@
 	import { contexto } from '../../../content/mundo';
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
+	import { NADA } from '$lib/engine/inversiones';
 	import { OBJETIVO_POR_DEFECTO } from '$lib/engine/objetivos';
 	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
@@ -29,6 +30,7 @@
 	let acuerdo = $state('estandar');
 	let renovacion = $state(FIRMAR);
 	let objetivo = $state(OBJETIVO_POR_DEFECTO);
+	let compra = $state(NADA);
 	let ocasiones = $state<string[]>([]);
 
 	$effect(() => {
@@ -63,6 +65,67 @@
 		return 'Te sentás en el banco';
 	}
 </script>
+
+<!-- ---------- En qué gastar la plata ---------- -->
+{#if opciones.inversiones}
+	{@const inv = opciones.inversiones}
+	<div class="tarjeta" data-tema="plata">
+		<h3>Tu plata</h3>
+		<div class="cifras">
+			<div class="cifra">
+				<span class="valor" style="font-size:1.1rem">{plata(inv.plataUsd)}</span>
+				<span class="etiqueta">Tenés</span>
+			</div>
+			{#if inv.gastoAnualUsd > 0}
+				<div class="cifra">
+					<span class="valor" style="font-size:1.1rem">{plata(inv.gastoAnualUsd)}</span>
+					<span class="etiqueta">Se te va por año</span>
+				</div>
+			{/if}
+		</div>
+		{#if inv.tiene.length > 0}
+			<ul class="tenes">
+				{#each inv.tiene as i (i.id)}
+					<li><b>{i.nombre}</b> — {i.efecto}</li>
+				{/each}
+			</ul>
+		{/if}
+		<p class="sutil" style="margin:.75rem 0 0">
+			Lo que comprás se paga una vez y después cuesta todos los años. Si un año no te alcanza, lo
+			perdés.
+		</p>
+	</div>
+
+	{#if inv.puedeComprar.length > 0}
+		<Opcion
+			grupo="inversion"
+			valor={NADA}
+			titulo="No gastar nada este año"
+			detalle="Guardarla. Nunca está mal."
+			bind:elegido={compra}
+		/>
+		{#each inv.puedeComprar as i (i.id)}
+			<Opcion
+				grupo="inversion"
+				valor={i.id}
+				titulo={i.nombre}
+				detalle={i.detalle}
+				bind:elegido={compra}
+				deshabilitada={inv.plataUsd < i.precioUsd}
+			>
+				{#snippet extra()}
+					<span class="sube">
+						<span class="chip-sube gana">{i.efecto}</span>
+						<span class="chip-sube {inv.plataUsd < i.precioUsd ? 'pierde' : ''}">
+							{plata(i.precioUsd)}{inv.plataUsd < i.precioUsd ? ' · no te alcanza' : ''}
+						</span>
+						<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
+					</span>
+				{/snippet}
+			</Opcion>
+		{/each}
+	{/if}
+{/if}
 
 <!-- ---------- Cuando vence el contrato con el club ---------- -->
 {#if opciones.renovacion}
@@ -434,6 +497,19 @@
 		background: rgba(248, 113, 113, 0.14);
 		color: var(--malo);
 	}
+	.tenes {
+		list-style: none;
+		margin: 0.85rem 0 0;
+		padding: 0;
+		display: grid;
+		gap: 0.3rem;
+		font-size: 0.85rem;
+		color: var(--tenue);
+	}
+	.tenes b {
+		color: var(--texto);
+	}
+
 	.acambio {
 		display: block;
 		margin-top: 0.5rem;
