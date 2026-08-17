@@ -1,6 +1,12 @@
 import { error, fail } from '@sveltejs/kit';
 import { obtenerDb } from '$lib/server/db';
-import { enviarDecision, ErrorDePartida, tocarJugador, vistaPara } from '$lib/server/partidas';
+import {
+	enviarDecision,
+	ErrorDePartida,
+	tirarOcasion,
+	tocarJugador,
+	vistaPara
+} from '$lib/server/partidas';
 import type { Decision } from '$lib/engine/tipos';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -31,6 +37,31 @@ export const load: PageServerLoad = ({ params, cookies }) => {
 };
 
 export const actions: Actions = {
+	/**
+	 * Tirar la rueda de un momento del año.
+	 *
+	 * Devuelve qué pasó para que la ruleta pueda girar hasta ahí. La elección
+	 * queda escrita antes de responder, así que el número que se ve es el número
+	 * que va a contar: recargar la página no lo cambia y volver a mandar el
+	 * formulario con otra opción tampoco.
+	 */
+	tirar: async ({ params, request }) => {
+		const datos = await request.formData();
+		const indice = Number(datos.get('indice'));
+		const opcion = campo(datos, 'opcion');
+
+		if (!Number.isInteger(indice) || indice < 0 || !opcion) {
+			return fail(400, { problema: 'Falta decir qué hacés.' });
+		}
+
+		try {
+			return { tirada: tirarOcasion(obtenerDb(), params.token, indice, opcion) };
+		} catch (e) {
+			const mensaje = e instanceof ErrorDePartida ? e.message : 'No se pudo tirar la rueda.';
+			return fail(400, { problema: mensaje });
+		}
+	},
+
 	cerrarFase: async ({ params, request }) => {
 		const datos = await request.formData();
 		const nota = String(datos.get('nota') ?? '')

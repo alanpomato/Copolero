@@ -53,6 +53,22 @@ import type { Estado, HitoTemporada, Rol } from './tipos';
  * servidor puede armar la vista de cada rol sin que se le escape nada del otro.
  */
 
+/**
+ * Una tirada de la rueda que ya ocurrió.
+ *
+ * Vive acá y no en el servidor porque la pantalla la necesita: es lo que le
+ * permite mostrar la ruleta frenada donde corresponde cuando el jugador
+ * recarga. Quién la escribe y por qué es irrevocable es asunto del servidor;
+ * la forma que tiene al llegar al navegador es asunto de este módulo.
+ */
+export type Tirada = {
+	indice: number;
+	ocasionId: string;
+	opcionId: string;
+	salio: boolean;
+	texto: string;
+};
+
 export type GestionVisible = {
 	id: string;
 	nombre: string;

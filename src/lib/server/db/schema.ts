@@ -160,6 +160,54 @@ export const snapshots = sqliteTable(
 	(t) => [unique('snapshots_uno_por_fase').on(t.partidaId, t.temporada, t.fase)]
 );
 
+/**
+ * Las tiradas de la rueda de ocasión.
+ *
+ * Cuando el futbolista elige qué hacer en un momento del año, la rueda gira y
+ * el resultado aparece en el acto. Para que eso no sea una mentira tiene que
+ * ser irrevocable: la elección se escribe acá antes de mostrar nada, con un
+ * índice único por momento, y si el jugador recarga la página o vuelve a
+ * mandar el formulario con otra opción, lo que vale es lo que está escrito.
+ *
+ * El resultado se guarda junto con la elección por una sola razón: que
+ * recargar muestre lo mismo que se vio. Igual no es la fuente de verdad —al
+ * cerrar la fase el motor lo vuelve a calcular con la misma semilla, y da lo
+ * mismo, porque el azar es determinista—. Acá se guarda para poder dibujarlo,
+ * no para decidirlo.
+ */
+export const tiradas = sqliteTable(
+	'tiradas',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+
+		partidaId: text('partida_id')
+			.notNull()
+			.references(() => partidas.id, { onDelete: 'cascade' }),
+
+		temporada: integer('temporada').notNull(),
+
+		/** Cuál de los momentos del año: 0, 1, 2. */
+		indice: integer('indice').notNull(),
+
+		/** La ocasión que tocó, para no tirar la de otra si algo cambió. */
+		ocasionId: text('ocasion_id').notNull(),
+
+		/** Lo que eligió. Esto es lo que manda al cerrar la fase. */
+		opcionId: text('opcion_id').notNull(),
+
+		salio: integer('salio', { mode: 'boolean' }).notNull(),
+		texto: text('texto').notNull(),
+
+		tiradaEn: integer('tirada_en').notNull().default(ahora)
+	},
+	(t) => [
+		unique('tiradas_una_por_momento').on(t.partidaId, t.temporada, t.indice),
+		index('tiradas_por_temporada').on(t.partidaId, t.temporada)
+	]
+);
+
 export type Partida = typeof partidas.$inferSelect;
 export type Jugador = typeof jugadores.$inferSelect;
 export type FilaDecision = typeof decisiones.$inferSelect;

@@ -8,6 +8,13 @@
       "when": 1786815039192,
       "tag": "0000_handy_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786992803355,
+      "tag": "0001_parched_piledriver",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@
 		detalle = '',
 		probabilidad = null,
 		deshabilitada = false,
+		bloqueado = false,
 		elegido = $bindable(),
 		extra
 	}: {
@@ -24,6 +25,12 @@
 		probabilidad?: number | null;
 		/** Se muestra igual pero no se puede elegir: por ejemplo, no le alcanza. */
 		deshabilitada?: boolean;
+		/**
+		 * Ya se eligió y no hay vuelta atrás. Distinto de `deshabilitada`: no es
+		 * que no se pueda, es que ya está hecho. La elegida se queda encendida y
+		 * las otras se apagan, que es lo que se siente al ver la que no elegiste.
+		 */
+		bloqueado?: boolean;
 		elegido: string;
 		extra?: Snippet;
 	} = $props();
@@ -33,8 +40,20 @@
 	);
 </script>
 
-<label class="opcion" class:activa={elegido === valor} class:apagada={deshabilitada}>
-	<input type="radio" name={grupo} value={valor} bind:group={elegido} disabled={deshabilitada} />
+<label
+	class="opcion"
+	class:activa={elegido === valor}
+	class:apagada={deshabilitada}
+	class:sellada={bloqueado && elegido === valor}
+	class:descartada={bloqueado && elegido !== valor}
+>
+	<input
+		type="radio"
+		name={grupo}
+		value={valor}
+		bind:group={elegido}
+		disabled={deshabilitada || bloqueado}
+	/>
 	<span class="cuerpo">
 		<span class="cabecera">
 			<span class="titulo">{titulo}</span>
@@ -54,6 +73,22 @@
 	.opcion.apagada {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* Ya jugada. La que se eligió queda firme; las otras se van apagando, que es
+	   exactamente lo que pasa cuando la pelota ya salió. */
+	.opcion.sellada {
+		cursor: default;
+		border-color: var(--acento);
+		background: rgba(74, 222, 128, 0.09);
+	}
+	.opcion.sellada input,
+	.opcion.descartada input {
+		cursor: default;
+	}
+	.opcion.descartada {
+		opacity: 0.32;
+		cursor: default;
 	}
 
 	.opcion {

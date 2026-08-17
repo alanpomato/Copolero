@@ -2,10 +2,11 @@ import { randomBytes } from 'node:crypto';
 import { club } from '../../../content/mundo';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from './db/cliente';
-import { decisiones, jugadores, log, partidas, snapshots } from './db/schema';
+import { decisiones, jugadores, log, partidas, snapshots, tiradas } from './db/schema';
 import { estadoInicial, type ConfigPartida } from '$lib/engine/estado';
 import { estadoSincronizacion, resolverFase } from '$lib/engine/fases';
-import { opcionesDeFase, type OpcionesDeFase } from '$lib/engine/pantalla';
+import { ocasionesDe, resolverOcasion } from '$lib/engine/ocasiones';
+import { opcionesDeFase, type OpcionesDeFase, type Tirada } from '$lib/engine/pantalla';
 import { puesto } from '$lib/engine/puestos';
 import { nuevaSemilla, rngPara } from '$lib/engine/rng';
 import {
@@ -185,7 +186,11 @@ export type Vista = {
 	diario: { tipo: string; texto: string; temporada: number; fase: number }[];
 	/** Lo que este rol tiene para decidir en esta fase. */
 	opciones: OpcionesDeFase;
+	/** Los momentos del año que ya se tiraron, en orden. */
+	tiradas: Tirada[];
 };
+
+export type { Tirada };
 
 /**
  * Arma todo lo que ve un jugador.
@@ -239,8 +244,125 @@ export function vistaPara(db: Db, token: string): Vista | null {
 		sincronizacion: otroJugador ? estadoSincronizacion(estado, cerraron) : 'WAITING_FOR_BOTH',
 		yaCerre: cerraron.includes(jugador.rol),
 		diario,
-		opciones: opcionesDeFase(estado, jugador.rol, partida.semilla)
+		opciones: opcionesDeFase(estado, jugador.rol, partida.semilla),
+		tiradas: tiradasDe(db, partida.id, partida.temporada)
 	};
+}
+
+/** Lo que ya se tiró este año, en el orden en que pasó. */
+function tiradasDe(db: Db, partidaId: string, temporada: number): Tirada[] {
+	return db
+		.select()
+		.from(tiradas)
+		.where(and(eq(tiradas.partidaId, partidaId), eq(tiradas.temporada, temporada)))
+		.orderBy(asc(tiradas.indice))
+		.all()
+		.map((t) => ({
+			indice: t.indice,
+			ocasionId: t.ocasionId,
+			opcionId: t.opcionId,
+			salio: t.salio,
+			texto: t.texto
+		}));
+}
+
+// ---------------------------------------------------------------------------
+// La rueda
+// ---------------------------------------------------------------------------
+
+/**
+ * Tira la rueda de un momento del año y devuelve qué pasó.
+ *
+ * Esto es lo que hace que la rueda pueda girar de verdad. Antes el resultado
+ * de las tres ocasiones aparecía recién al cerrar la fase, junto con todo lo
+ * demás, y eso obligaba a que la rueda fuera un dibujo quieto: al elegir, el
+ * resultado todavía no existía y animar algo hubiera sido inventarlo.
+ *
+ * Existe porque `resolverOcasion` no mira nada del representante ni nada de lo
+ * que pasa después: mira los atributos, la forma y la semilla, y las tres ya
+ * están escritas cuando el futbolista elige. Así que el resultado ya existe en
+ * el momento de elegir; lo único que faltaba era animarse a mirarlo.
+ *
+ * Lo que lo hace honesto es que sea irrevocable, y de eso se encarga la base:
+ * la elección se escribe con un índice único por momento, dentro de la misma
+ * transacción que la resuelve. El que recarga la página buscando otro número
+ * se encuentra con el mismo. Y al cerrar la fase, `enviarDecision` pisa lo que
+ * mande el formulario con lo que está escrito acá.
+ *
+ * Se tiran en orden: no se puede saltar al tercero sin jugar el primero.
+ */
+export function tirarOcasion(db: Db, token: string, indice: number, opcionId: string): Tirada {
+	return db.transaction(
+		(tx) => {
+			const jugador = tx.select().from(jugadores).where(eq(jugadores.token, token)).get();
+			if (!jugador) throw new ErrorDePartida('Ese link no corresponde a ninguna partida.');
+			if (jugador.rol !== 'futbolista') {
+				throw new ErrorDePartida('La rueda la tira el que juega.');
+			}
+
+			const partida = tx.select().from(partidas).where(eq(partidas.id, jugador.partidaId)).get();
+			if (!partida) throw new ErrorDePartida('La partida ya no existe.');
+			if (partida.fase !== 2) throw new ErrorDePartida('Todavía no empezó el campeonato.');
+
+			const estado = JSON.parse(partida.estadoJson) as Estado;
+			if (estado.carreraTerminada) throw new ErrorDePartida('La carrera ya terminó.');
+
+			// Si ya cerró su parte, la fase está esperando al otro y no hay nada
+			// más que tirar.
+			const yaCerro = tx
+				.select({ rol: decisiones.rol })
+				.from(decisiones)
+				.where(
+					and(
+						eq(decisiones.partidaId, partida.id),
+						eq(decisiones.temporada, partida.temporada),
+						eq(decisiones.fase, 2),
+						eq(decisiones.rol, 'futbolista')
+					)
+				)
+				.get();
+			if (yaCerro) throw new ErrorDePartida('Ya cerraste tu parte de esta fase.');
+
+			const delAnio = ocasionesDe(estado, partida.semilla);
+			const ocasion = delAnio[indice];
+			if (!ocasion) throw new ErrorDePartida('Ese momento no existe.');
+			if (!ocasion.opciones.some((o) => o.id === opcionId)) {
+				throw new ErrorDePartida('Esa no es una de las opciones.');
+			}
+
+			const hechas = tiradasDe(tx as unknown as Db, partida.id, partida.temporada);
+			const yaEstaba = hechas.find((t) => t.indice === indice);
+			if (yaEstaba) return yaEstaba;
+			// En orden: para tirar el tercero tienen que estar los dos primeros.
+			if (hechas.length < indice) {
+				throw new ErrorDePartida('Primero se juega el momento anterior.');
+			}
+
+			const resultado = resolverOcasion(ocasion, opcionId, estado, partida.semilla, indice);
+
+			tx.insert(tiradas)
+				.values({
+					partidaId: partida.id,
+					temporada: partida.temporada,
+					indice,
+					ocasionId: ocasion.id,
+					opcionId: resultado.opcionId,
+					salio: resultado.salio,
+					texto: resultado.texto
+				})
+				.onConflictDoNothing()
+				.run();
+
+			// Releída: si dos clicks entraron a la vez, gana el que escribió, y los
+			// dos ven lo mismo.
+			const escrita = tiradasDe(tx as unknown as Db, partida.id, partida.temporada).find(
+				(t) => t.indice === indice
+			);
+			if (!escrita) throw new ErrorDePartida('No se pudo tirar la rueda.');
+			return escrita;
+		},
+		{ behavior: 'immediate' }
+	);
 }
 
 /** Marca que el jugador pasó por acá, para saber si sigue vivo. */
@@ -302,6 +424,18 @@ export function enviarDecision(
 
 			const temporada = partida.temporada;
 			const fase = partida.fase as Fase;
+
+			// Lo que ya se tiró, se tiró. El formulario manda las tres opciones
+			// juntas, así que sin esto alcanzaría con editar un radio para cambiar
+			// una elección de la que ya se vio el resultado. Lo escrito manda.
+			if (fase === 2 && jugador.rol === 'futbolista') {
+				const hechas = tiradasDe(tx as unknown as Db, partida.id, temporada);
+				if (hechas.length > 0) {
+					const elegidas = [...(payload.ocasiones ?? [])];
+					for (const t of hechas) elegidas[t.indice] = t.opcionId;
+					payload = { ...payload, ocasiones: elegidas };
+				}
+			}
 
 			// El índice único es la barrera de verdad: si ya había decisión de este
 			// rol para esta fase, no se pisa.

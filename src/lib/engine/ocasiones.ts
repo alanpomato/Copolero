@@ -131,6 +131,15 @@ const arqueroDelRival = (e: Escenario) => e.arqueroRival ?? `el arquero de ${clu
 /** Para las frases que arrancan con un nombre que puede venir en minúscula. */
 const Mayus = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
 
+/**
+ * "a" delante de un nombre que a veces es una persona y a veces un puesto.
+ *
+ * El rival puede ser "Franco Armani" o "el arquero de Temperley", según si el
+ * club tiene a alguien conocido en el arco. Concatenar "a" con las dos daba
+ * "Se la cruzaste a el arquero", que en castellano no existe.
+ */
+const aQuien = (quien: string) => (quien.startsWith('el ') ? `al ${quien.slice(3)}` : `a ${quien}`);
+
 const PARA_DELANTERO: Plantilla[] = [
 	(a, e) => ({
 		id: 'mano-a-mano',
@@ -142,7 +151,7 @@ const PARA_DELANTERO: Plantilla[] = [
 				etiqueta: 'Definir cruzado, al segundo palo',
 				detalle: 'Lo que haría un nueve. Si entra, es golazo.',
 				probabilidad: chance(46, a.definicion),
-				siSale: `Se la cruzaste a ${arqueroDelRival(e)} y la clavaste contra el palo.`,
+				siSale: `Se la cruzaste ${aQuien(arqueroDelRival(e))} y la clavaste contra el palo.`,
 				siFalla: `${Mayus(arqueroDelRival(e))} te adivinó el palo y la sacó al córner.`,
 				premio: { goles: 1, fama: 3, moral: 6, hinchada: 4, prensa: 3 },
 				castigo: { moral: -4, hinchada: -1 }
@@ -152,7 +161,7 @@ const PARA_DELANTERO: Plantilla[] = [
 				etiqueta: 'Amagar y esperar a que se tire',
 				detalle: 'Más difícil, pero si sale es la jugada de la fecha.',
 				probabilidad: chance(34, (a.regate + a.definicion) / 2),
-				siSale: `Lo sentaste a ${arqueroDelRival(e)} y la empujaste sin arco. La repitieron todo el día.`,
+				siSale: `Lo sentaste ${aQuien(arqueroDelRival(e))} y la empujaste sin arco. La repitieron todo el día.`,
 				siFalla: `Amagaste de más y ${arqueroDelRival(e)} te comió los tiempos.`,
 				premio: { goles: 1, fama: 6, moral: 8, hinchada: 7, prensa: 6 },
 				castigo: { moral: -6, hinchada: -3, dt: -3 }
@@ -179,7 +188,7 @@ const PARA_DELANTERO: Plantilla[] = [
 				etiqueta: 'Agarrar la pelota vos',
 				detalle: 'Si entra sos el que la puso. Si la errás, también.',
 				probabilidad: chance(72, a.definicion, 0.4),
-				siSale: `Se la pusiste abajo del ángulo a ${arqueroDelRival(e)}. Explotó la cancha.`,
+				siSale: `Se la pusiste abajo del ángulo ${aQuien(arqueroDelRival(e))}. Explotó la cancha.`,
 				siFalla: `${Mayus(arqueroDelRival(e))} te la sacó abajo. Silencio.`,
 				premio: { goles: 1, fama: 5, moral: 8, hinchada: 8 },
 				castigo: { moral: -10, hinchada: -6, prensa: -4 }
@@ -277,7 +286,7 @@ const PARA_DEFENSOR: Plantilla[] = [
 				etiqueta: 'Barrerlo limpio',
 				detalle: 'Si llegás, es la jugada del partido. Si no, es roja.',
 				probabilidad: chance(44, (a.defensa + a.velocidad) / 2),
-				siSale: `Lo barriste limpio a ${e.figuraRival ?? 'el nueve'} justo antes del área. La cancha se paró a aplaudir.`,
+				siSale: `Lo barriste limpio ${aQuien(e.figuraRival ?? 'el nueve')} justo antes del área. La cancha se paró a aplaudir.`,
 				siFalla: 'Llegaste tarde, lo tocaste y te fuiste expulsado.',
 				premio: { fama: 4, moral: 7, hinchada: 8, dt: 5 },
 				castigo: { moral: -9, dt: -8, hinchada: -6, prensa: -4 }
@@ -334,7 +343,7 @@ const PARA_ARQUERO: Plantilla[] = [
 				etiqueta: 'Jugártela a un palo',
 				detalle: 'O sos el héroe, o no pasó nada.',
 				probabilidad: chance(30, (a.potencia + a.defensa) / 2),
-				siSale: `Le adivinaste el palo a ${e.figuraRival ?? 'el nueve'} y la sacaste. Te fueron a abrazar todos.`,
+				siSale: `Le adivinaste el palo ${aQuien(e.figuraRival ?? 'el nueve')} y la sacaste. Te fueron a abrazar todos.`,
 				siFalla: 'Te tiraste antes y la puso del otro lado.',
 				premio: { fama: 8, moral: 9, hinchada: 9, prensa: 7 },
 				castigo: { moral: -3 }

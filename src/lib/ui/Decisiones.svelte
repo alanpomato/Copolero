@@ -9,7 +9,9 @@
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
 	import { SIN_TRATO } from '$lib/engine/representacion';
 	import { LO_QUE_CUESTA_CON_EL_DT, LO_QUE_CUESTA_CON_LA_HINCHADA, PIDE } from '$lib/engine/salida';
-	import type { OpcionesDeFase } from '$lib/engine/pantalla';
+	import { deserialize } from '$app/forms';
+	import { page } from '$app/state';
+	import type { OpcionesDeFase, Tirada } from '$lib/engine/pantalla';
 	import type { Atributos, Estado, Rol } from '$lib/engine/tipos';
 	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
@@ -24,7 +26,12 @@
 	 * futbolista nunca recibe las gestiones del representante ni al revés, así
 	 * que no hay nada que esconder del lado del navegador.
 	 */
-	let { opciones, estado, rol }: { opciones: OpcionesDeFase; estado: Estado; rol: Rol } = $props();
+	let {
+		opciones,
+		estado,
+		rol,
+		tiradas = []
+	}: { opciones: OpcionesDeFase; estado: Estado; rol: Rol; tiradas?: Tirada[] } = $props();
 
 	// Elecciones por defecto: las mismas que toma el motor si nadie toca nada.
 	let plan = $state('fisico');
@@ -57,32 +64,15 @@
 	 * tiempo. Pasa una, se decide, y meses después pasa la otra. Mostrarlas juntas
 	 * las convertía en un formulario de tres preguntas en vez de tres momentos.
 	 *
-	 * `destapadas` es cuántas ya ocurrieron y `abierta` cuál se está mirando. Se
-	 * puede volver a las anteriores —la fase no se cerró, nada se resolvió
-	 * todavía— pero no adelantarse a las que no pasaron.
+	 * Cuántas ya ocurrieron no es una decisión de la pantalla: es cuántas se
+	 * tiraron. Para llegar al segundo momento hay que haber jugado el primero, y
+	 * eso lo sabe el servidor, no el navegador. `abierta` es la única que
+	 * pertenece a la pantalla: cuál se está mirando ahora.
 	 */
-	let destapadas = $state(1);
 	let abierta = $state(0);
 
-	$effect(() => {
-		// Fase nueva: se vuelve a empezar por la primera.
-		if ((opciones.ocasiones?.length ?? 0) === 0) return;
-		if (destapadas > (opciones.ocasiones?.length ?? 0)) {
-			destapadas = 1;
-			abierta = 0;
-		}
-	});
-
-	function seguir(i: number, cuantas: number) {
-		if (i !== destapadas - 1) {
-			// Volvió a mirar una vieja y cambió de idea: se queda donde estaba.
-			abierta = destapadas - 1;
-			return;
-		}
-		if (destapadas < cuantas) {
-			destapadas += 1;
-			abierta = destapadas - 1;
-		}
+	function seguir(cuantas: number) {
+		if (abierta < cuantas - 1) abierta += 1;
 	}
 
 	$effect(() => {
@@ -92,6 +82,114 @@
 			ocasiones = (opciones.ocasiones ?? []).map((o) => o.opciones[o.opciones.length - 1].id);
 		}
 	});
+
+	/*
+	 * Tirar la rueda.
+	 *
+	 * Lo que se manda es la elección; lo que vuelve es qué pasó. El servidor la
+	 * escribe antes de contestar, así que a partir de acá no hay vuelta atrás:
+	 * cambiar el radio no cambia nada, recargar tampoco, y al cerrar la fase el
+	 * servidor pisa el formulario con lo que quedó escrito.
+	 *
+	 * Eso es justamente lo que la hace valer. Una ruleta que se puede volver a
+	 * tirar hasta que salga bien no es una ruleta, es un botón de reintentar.
+	 */
+	let tiradasEnVivo = $state<Tirada[]>([]);
+	let recienTirada = $state(-1);
+	let tirando = $state(-1);
+	let contado = $state(-1);
+	let problema = $state('');
+
+	/** Lo que tarda la rueda en frenar. Tiene que ser lo mismo que la animación. */
+	const LO_QUE_TARDA_EN_FRENAR = 2700;
+
+	/**
+	 * Todo lo tirado: lo que vino con la página más lo que se tiró sin recargarla.
+	 * Las que llegaron con la página se dibujan ya frenadas —esa sorpresa ya
+	 * pasó—; las de esta visita giran.
+	 */
+	const hechas = $derived.by(() => {
+		const todas: Record<number, Tirada> = {};
+		for (const t of tiradas) todas[t.indice] = t;
+		for (const t of tiradasEnVivo) todas[t.indice] = t;
+		return todas;
+	});
+
+	/** Si de esta ya se sabe el final: o venía sabido, o la rueda ya frenó. */
+	function terminada(i: number): boolean {
+		if (!hechas[i]) return false;
+		return recienTirada !== i || contado === i;
+	}
+
+	/**
+	 * Hasta dónde se puede mirar: el primero sin jugar, y ni uno más.
+	 *
+	 * Cuenta las terminadas y no las tiradas, que no es lo mismo por dos segundos
+	 * y medio: si contara las tiradas, el momento siguiente se destaparía con la
+	 * rueda todavía girando y la pantalla saltaría sola justo cuando hay que
+	 * estar mirándola.
+	 */
+	const destapadas = $derived.by(() => {
+		const cuantas = opciones.ocasiones?.length ?? 0;
+		let listas = 0;
+		for (let i = 0; i < cuantas; i++) if (terminada(i)) listas++;
+		return Math.min(cuantas, listas + 1);
+	});
+
+	/**
+	 * Al entrar se mira el momento que toca: el primero sin jugar.
+	 *
+	 * Solo al entrar. Después la pantalla no se mueve sola nunca más: cuando la
+	 * rueda frena, el que decide pasar al momento siguiente es el que está
+	 * leyendo lo que acaba de pasar, no un efecto. Una pantalla que salta sola
+	 * justo cuando terminaste de jugártela te roba el único segundo que valía la
+	 * pena.
+	 */
+	let acomodadaPara = $state('');
+	$effect(() => {
+		const temporada = (opciones.ocasiones ?? []).map((o) => o.id).join('|');
+		if (temporada === acomodadaPara) return;
+		acomodadaPara = temporada;
+		abierta = Math.max(0, destapadas - 1);
+	});
+
+	async function tirar(i: number) {
+		if (tirando >= 0 || hechas[i]) return;
+		tirando = i;
+		problema = '';
+
+		const cuerpo = new FormData();
+		cuerpo.set('indice', String(i));
+		cuerpo.set('opcion', ocasiones[i] ?? '');
+
+		try {
+			const respuesta = await fetch(`${page.url.pathname}?/tirar`, {
+				method: 'POST',
+				body: cuerpo
+			});
+			const resultado = deserialize(await respuesta.text());
+
+			if (resultado.type === 'success' && resultado.data?.tirada) {
+				const tirada = resultado.data.tirada as Tirada;
+				tiradasEnVivo = [...tiradasEnVivo, tirada];
+				recienTirada = i;
+				// Lo que valga de verdad es lo que dijo el servidor, no lo que estaba
+				// marcado en la pantalla.
+				ocasiones[i] = tirada.opcionId;
+				// La crónica se escribe cuando la rueda frena. Contarla antes es
+				// contar el final con la pelota todavía en el aire.
+				setTimeout(() => (contado = i), LO_QUE_TARDA_EN_FRENAR);
+			} else if (resultado.type === 'failure') {
+				problema = String(resultado.data?.problema ?? 'No se pudo tirar.');
+			} else {
+				problema = 'No se pudo tirar.';
+			}
+		} catch {
+			problema = 'Se cortó la conexión. Probá de nuevo.';
+		} finally {
+			tirando = -1;
+		}
+	}
 
 	function plata(usd: number): string {
 		return `USD ${usd.toLocaleString('es-AR')}`;
@@ -542,39 +640,6 @@
 {/if}
 
 <!-- ---------- Fase 2: pedir salir del club ---------- -->
-{#if opciones.salida}
-	<Paso
-		titulo="Pedir salir del club"
-		elegido={salida === PIDE ? 'Sí, quiero irme' : ''}
-		dato={salida === PIDE ? '' : 'No lo pediste'}
-		tema="mercado"
-	>
-		<p style="margin:-.4rem 0 .6rem">{opciones.salida.aviso}</p>
-
-		<Opcion
-			grupo="pedirSalida"
-			valor=""
-			titulo="Seguir como si nada"
-			detalle="No decís nada. El club sigue contando con vos y el mercado, con lo que llegue solo."
-			bind:elegido={salida}
-		/>
-		<Opcion
-			grupo="pedirSalida"
-			valor={PIDE}
-			titulo="Decir que te querés ir"
-			detalle="Se lo decís a tu representante y al club. De ahí en adelante se sabe que estás en venta."
-			bind:elegido={salida}
-		>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube gana">Más ofertas en el mercado, y más baratas</span>
-					<span class="chip-sube pierde">El técnico: −{LO_QUE_CUESTA_CON_EL_DT}</span>
-					<span class="chip-sube pierde">La hinchada: −{LO_QUE_CUESTA_CON_LA_HINCHADA}</span>
-				</span>
-			{/snippet}
-		</Opcion>
-	</Paso>
-{/if}
 
 <!-- ---------- Fase 2: con qué está jugando el año ---------- -->
 {#if opciones.objetivoCerrado}
@@ -595,12 +660,16 @@
 	{@const cuantas = opciones.ocasiones.length}
 	<div class="momentos">
 		<p class="sutil" style="margin:0 0 1rem">
-			{cuantas} momentos de la temporada, uno por vez. Las probabilidades salen de tus atributos y son
-			las de verdad: lo que dice el número es lo que se tira.
+			{cuantas} momentos de la temporada, uno por vez. Elegís, tirás, y ahí mismo sabés qué pasó. Las
+			probabilidades salen de tus atributos y son las de verdad: lo que dice el número es lo que se tira,
+			y se tira una sola vez.
 		</p>
 
 		{#each opciones.ocasiones as ocasion, i (ocasion.id)}
-			{@const elegida = ocasion.opciones.find((o) => o.id === ocasiones[i]) ?? ocasion.opciones[0]}
+			{@const tirada = hechas[i]}
+			{@const elegida =
+				ocasion.opciones.find((o) => o.id === (tirada?.opcionId ?? ocasiones[i])) ??
+				ocasion.opciones[0]}
 			{@const yaPaso = i < destapadas}
 			{@const esLaDeAhora = i === abierta && yaPaso}
 
@@ -610,14 +679,21 @@
 					{i + 1} · Todavía no pasó
 				</p>
 			{:else if !esLaDeAhora}
-				<!-- Ya la decidió: una línea con lo que eligió, y se puede volver. -->
-				<button type="button" class="resuelta" onclick={() => (abierta = i)}>
+				<!-- Ya la jugó: una línea con lo que eligió y cómo le fue. -->
+				<button
+					type="button"
+					class="resuelta"
+					class:fallo={tirada && !tirada.salio}
+					onclick={() => (abierta = i)}
+				>
 					<span class="cual">{i + 1} · {ocasion.titulo}</span>
 					<span class="loQueElegi">{elegida.etiqueta}</span>
-					<span class="pct">{elegida.probabilidad}%</span>
+					<span class="pct">
+						{#if tirada}{tirada.salio ? 'Entró' : 'No'}{:else}{elegida.probabilidad}%{/if}
+					</span>
 				</button>
 			{:else}
-				<div class="tarjeta ocasion">
+				<div class="tarjeta ocasion" class:jugada={!!tirada}>
 					<p class="numeroDeMomento">Momento {i + 1} de {cuantas}</p>
 					<h3>{ocasion.titulo}</h3>
 					<p style="margin:0 0 .9rem">{ocasion.contexto}</p>
@@ -632,11 +708,19 @@
 					-->
 					<div class="apuesta">
 						<div class="rueda">
-							<Ruleta probabilidad={elegida.probabilidad} etiqueta={elegida.etiqueta} />
-							<p class="sutil siSale">{elegida.siSale}</p>
+							<Ruleta
+								probabilidad={elegida.probabilidad}
+								etiqueta={elegida.etiqueta}
+								resultado={tirada ? { salio: tirada.salio } : null}
+								tirando={tirando === i}
+								yaEstaba={!!tirada && recienTirada !== i}
+							/>
+							{#if !tirada}
+								<p class="sutil siSale">{elegida.siSale}</p>
+							{/if}
 						</div>
 
-						<div class="cuales" onchange={() => seguir(i, cuantas)}>
+						<div class="cuales">
 							{#each ocasion.opciones as opcion (opcion.id)}
 								<Opcion
 									grupo={`ocasion-${i}`}
@@ -645,15 +729,36 @@
 									detalle={opcion.detalle}
 									probabilidad={opcion.probabilidad}
 									bind:elegido={ocasiones[i]}
+									bloqueado={!!tirada}
 								/>
 							{/each}
 						</div>
 					</div>
 
-					{#if i < cuantas - 1}
-						<button type="button" class="secundario siguiente" onclick={() => seguir(i, cuantas)}>
-							Listo, ¿qué pasó después?
+					{#if tirada && (recienTirada !== i || contado === i)}
+						<!--
+							Lo que pasó. Aparece cuando la rueda frenó: contarlo antes sería
+							contar el final con la pelota todavía en el aire.
+						-->
+						{#if tirada.texto}
+							<p class="loQuePaso" class:mal={!tirada.salio}>{tirada.texto}</p>
+						{/if}
+						{#if i < cuantas - 1}
+							<button type="button" class="secundario siguiente" onclick={() => seguir(cuantas)}>
+								¿Y qué pasó después?
+							</button>
+						{/if}
+					{:else if tirada}
+						<p class="loQuePaso esperando">…</p>
+					{:else}
+						<button type="button" class="tirarla" disabled={tirando === i} onclick={() => tirar(i)}>
+							{tirando === i ? 'Girando…' : `Jugártela · ${elegida.probabilidad}%`}
 						</button>
+						<p class="aviso">Una sola vez. Lo que salga, salió.</p>
+					{/if}
+
+					{#if problema && tirando !== i}
+						<p class="problema">{problema}</p>
 					{/if}
 				</div>
 			{/if}
@@ -665,14 +770,65 @@
 				completa aunque el jugador no haya vuelto a mirar la primera. Y si el
 				navegador no tiene JavaScript, acá quedan las tres con su opción por
 				defecto, que es lo mismo que toma el motor cuando nadie elige.
+
+				También hace falta para la que está abierta y ya se tiró: ahí los radios
+				quedan deshabilitados, y un radio deshabilitado no viaja. Igual, lo que
+				manda es lo que el servidor tiene escrito.
 			-->
-			{#if !esLaDeAhora}
+			{#if !esLaDeAhora || tirada}
 				<div hidden>
 					<input type="radio" name={`ocasion-${i}`} value={ocasiones[i] ?? ''} checked />
 				</div>
 			{/if}
 		{/each}
 	</div>
+{/if}
+
+{#if opciones.salida}
+	<!--
+		Pedir salir.
+
+		Va acá abajo y chico, y no arriba con las decisiones del año, porque no es
+		una decisión del año: es algo que se hace una vez en toda una carrera, si
+		se hace. Estaba arriba de todo y ocupaba una tarjeta entera, así que cada
+		temporada la pantalla arrancaba preguntándole al jugador si se quería ir
+		del club —una pregunta que casi siempre se contesta que no—. Lo que se
+		usa siempre va arriba; esto se usa cuando pasa algo, y cuando pasa, se
+		busca.
+	-->
+	<details class="salida" open={salida === PIDE}>
+		<summary>
+			<span class="que">¿Te querés ir de {clubActual}?</span>
+			<span class="como">{salida === PIDE ? 'Lo pediste' : 'Pedir salir del club'}</span>
+		</summary>
+
+		<div class="adentro">
+			<p class="elAviso">{opciones.salida.aviso}</p>
+
+			<Opcion
+				grupo="pedirSalida"
+				valor=""
+				titulo="Seguir como si nada"
+				detalle="No decís nada. El club sigue contando con vos y el mercado, con lo que llegue solo."
+				bind:elegido={salida}
+			/>
+			<Opcion
+				grupo="pedirSalida"
+				valor={PIDE}
+				titulo="Decir que te querés ir"
+				detalle="Se lo decís a tu representante y al club. De ahí en adelante se sabe que estás en venta."
+				bind:elegido={salida}
+			>
+				{#snippet extra()}
+					<span class="sube">
+						<span class="chip-sube gana">Más ofertas en el mercado, y más baratas</span>
+						<span class="chip-sube pierde">El técnico: −{LO_QUE_CUESTA_CON_EL_DT}</span>
+						<span class="chip-sube pierde">La hinchada: −{LO_QUE_CUESTA_CON_LA_HINCHADA}</span>
+					</span>
+				{/snippet}
+			</Opcion>
+		</div>
+	</details>
 {/if}
 
 <!-- ---------- Fases 1 y 2: la gestión del representante ---------- -->
@@ -815,7 +971,109 @@
 		flex: none;
 		font-variant-numeric: tabular-nums;
 		font-weight: 800;
+		color: var(--acento);
+	}
+	.resuelta.fallo .loQueElegi,
+	.resuelta.fallo .pct {
+		color: var(--malo);
+	}
+
+	/* El botón de tirar. Es el único de la pantalla que hace algo irreversible,
+	   así que es el único que se ve así: ancho, encendido y con el número puesto
+	   adentro, para que no se pueda apretar sin haberlo leído. */
+	.tirarla {
+		width: 100%;
+		margin-top: 1.1rem;
+		padding: 0.95rem 1rem;
+		font-size: 1.02rem;
+		font-weight: 800;
+		letter-spacing: 0.01em;
+	}
+	.tirarla:disabled {
+		opacity: 0.75;
+		cursor: progress;
+	}
+	.aviso {
+		margin: 0.5rem 0 0;
+		text-align: center;
+		font-size: 0.76rem;
 		color: var(--tenue);
+	}
+
+	/* La crónica, cuando la rueda ya frenó. */
+	.loQuePaso {
+		margin: 1.1rem 0 0;
+		padding: 0.85rem 1rem;
+		border-radius: 12px;
+		border-left: 3px solid var(--acento);
+		background: rgba(74, 222, 128, 0.08);
+		font-size: 0.98rem;
+		line-height: 1.45;
+	}
+	.loQuePaso.mal {
+		border-left-color: var(--malo);
+		background: rgba(248, 113, 113, 0.07);
+	}
+	.loQuePaso.esperando {
+		border-left-color: var(--borde);
+		background: transparent;
+		color: var(--tenue);
+		text-align: center;
+		letter-spacing: 0.3em;
+	}
+	.problema {
+		margin: 0.7rem 0 0;
+		font-size: 0.84rem;
+		color: var(--malo);
+	}
+	/* Ya jugada: la tarjeta deja de ser una pregunta. */
+	.ocasion.jugada {
+		border-color: var(--borde);
+	}
+
+	/* Pedir salir: una línea al pie, del tamaño de lo que se usa una vez cada
+	   diez temporadas. Cuando se abre, se abre entera. */
+	.salida {
+		margin: 0.2rem 0 1.4rem;
+	}
+	.salida > summary {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.8rem;
+		padding: 0.55rem 0.2rem;
+		list-style: none;
+		cursor: pointer;
+		font-size: 0.84rem;
+		color: var(--tenue);
+		border-top: 1px solid var(--borde);
+	}
+	.salida > summary::-webkit-details-marker {
+		display: none;
+	}
+	.salida > summary:hover .como {
+		color: var(--texto);
+	}
+	.salida .como {
+		flex: none;
+		font-weight: 700;
+		color: var(--mercado);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.salida[open] > summary {
+		border-bottom: 0;
+	}
+	.salida .adentro {
+		padding: 0.2rem 0 0.4rem;
+		border-left: 2px solid var(--mercado);
+		padding-left: 0.9rem;
+		margin-bottom: 0.4rem;
+	}
+	.salida .elAviso {
+		margin: 0 0 0.8rem;
+		font-size: 0.88rem;
+		line-height: 1.45;
 	}
 	.apuesta {
 		display: grid;

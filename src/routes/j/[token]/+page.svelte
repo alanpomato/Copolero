@@ -290,7 +290,12 @@
 						</div>
 					{:else}
 						<form method="POST" action="?/cerrarFase" use:enhance>
-							<Decisiones opciones={vista.opciones} {estado} rol={vista.rol} />
+							<Decisiones
+								opciones={vista.opciones}
+								{estado}
+								rol={vista.rol}
+								tiradas={vista.tiradas}
+							/>
 
 							<Paso
 								titulo="Dejarle una nota a {vista.elOtro.nombre}"
