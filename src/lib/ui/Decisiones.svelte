@@ -14,6 +14,7 @@
 	import type { Atributos, Estado, Rol } from '$lib/engine/tipos';
 	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
+	import Mercado from './Mercado.svelte';
 	import Momento from './Momento.svelte';
 	import Opcion from './Opcion.svelte';
 	import Paso from './Paso.svelte';
@@ -39,6 +40,8 @@
 	let intensidad = $state('firme');
 	let gestion = $state('acompanar');
 	let destino = $state(QUEDARSE);
+	/** Representante, primer tiempo del mercado: las que deja pasar. Ver `cartas.ts`. */
+	let filtradas = $state<string[]>([]);
 	let acuerdo = $state('estandar');
 	let renovacion = $state(FIRMAR);
 	let objetivo = $state(OBJETIVO_POR_DEFECTO);
@@ -870,61 +873,16 @@
 	</Paso>
 {/if}
 
-<!-- ---------- Fase 3: el mercado ---------- -->
-{#if opciones.ofertas}
-	<Paso
-		titulo="El mercado"
-		elegido={queDestino}
-		tema="mercado"
-		abierto={abierto === 'mercado'}
-		nota="El pase se hace solo si los dos eligen el mismo club. Si no coinciden, no hay pase y la confianza se paga. Hablalo antes de cerrar."
-	>
-		<p style="margin:-.4rem 0 1rem">
-			Hoy vale <strong>{plata(opciones.valorDeMercadoUsd ?? 0)}</strong>.
-		</p>
+<!-- ---------- Fase 3: el mercado, en dos tiempos ---------- -->
+<!--
+	Ya no es un `Paso` plegable como los demás.
 
-		<Opcion
-			grupo="destino"
-			valor={QUEDARSE}
-			titulo="Quedarse"
-			detalle={`Sigue en ${contexto(estado.futbolista.contrato.clubId).club.nombre}, por ${estado.futbolista.contrato.temporadasRestantes} ${estado.futbolista.contrato.temporadasRestantes === 1 ? 'temporada' : 'temporadas'} más.`}
-			bind:elegido={destino}
-		/>
-
-		{#each opciones.ofertas as oferta (oferta.clubId)}
-			<Opcion
-				grupo="destino"
-				valor={oferta.clubId}
-				titulo={contexto(oferta.clubId).club.nombre}
-				detalle={`${contexto(oferta.clubId).liga.nombre} · ${contexto(oferta.clubId).pais.nombre}`}
-				bind:elegido={destino}
-			>
-				{#snippet extra()}
-					<span class="oferta">
-						<Escudo clubId={oferta.clubId} tamano={30} />
-						<span class="numeros">
-							<span><b>{plata(oferta.salarioMensual)}</b> por mes</span>
-							<span>{oferta.temporadas} temporadas</span>
-							{#if oferta.montoUsd > 0}
-								<span>Pase: {plata(oferta.montoUsd)}</span>
-							{:else}
-								<span>Llega libre, sin pase</span>
-							{/if}
-							{#if oferta.primaUsd > 0}
-								<span class="mio">Prima al firmar: {plata(oferta.primaUsd)}</span>
-							{/if}
-							{#if rol === 'representante'}
-								<span class="mio">Tu comisión: {plata(oferta.comisionUsd)}</span>
-							{/if}
-							<span class:mio={rol === 'futbolista'}>{comoJuega(oferta.brecha)}</span>
-							{#if oferta.tecnico}<span>Te dirige {oferta.tecnico}</span>{/if}
-						</span>
-					</span>
-				{/snippet}
-			</Opcion>
-		{/each}
-	</Paso>
-{/if}
+	El mercado dejó de ser una lista de tres ofertas que los dos miraban igual:
+	ahora tiene dos tiempos y en cada uno hay un rol distinto haciendo algo
+	distinto —o esperando—. Eso no entra en un desplegable con un título y un
+	elegido, así que tiene su propia caja. Ver `Mercado.svelte` y `cartas.ts`.
+-->
+<Mercado {opciones} {estado} {rol} bind:filtradas bind:destino />
 
 <style>
 	/*
@@ -1106,31 +1064,6 @@
 		width: 100%;
 	}
 
-	.oferta {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.7rem;
-		margin-top: 0.65rem;
-	}
-	.numeros {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem 0.5rem;
-		font-size: 0.8rem;
-	}
-	.numeros span {
-		background: rgba(255, 255, 255, 0.06);
-		border-radius: 999px;
-		padding: 0.15rem 0.55rem;
-		color: var(--tenue);
-	}
-	.numeros span.mio {
-		background: rgba(74, 222, 128, 0.14);
-		color: var(--acento);
-	}
-	.numeros b {
-		color: var(--texto);
-	}
 	.subtitulo {
 		margin: 1rem 0 0.5rem;
 		font-size: 0.66rem;

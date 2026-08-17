@@ -55,28 +55,87 @@ export function loQueValenJuntos(estado: Estado): number {
 }
 
 /**
- * Qué chance hay de que el club de verdad avance.
+ * Los bordes: nunca imposible, nunca regalada.
  *
- * Se mide contra el club donde está hoy, no contra un número absoluto: subir de
- * Huracán a Boca y subir de Boca al Madrid son el mismo salto para el que lo
- * da, aunque los prestigios no se parezcan en nada. Lo que empuja es lo que
- * valen los dos juntos, y lo que frena es cuánto más grande es el club nuevo.
- *
- * Bajar de categoría casi siempre sale: al club más chico le sobra con que
- * quieras ir. Lo que hay que ganarse es el salto para arriba.
+ * El piso es bajo a propósito. Con 10 se recortaba demasiado pronto y volvía a
+ * pasar lo que la curva vino a evitar: un salto muy grande daba 10 con
+ * cualquier representante, así que sus atributos dejaban de importar
+ * exactamente en la operación donde más querría que importaran. Con 3, una
+ * carta imposible se lee como imposible —elegirla es tirar la elección— y
+ * sigue habiendo lugar para que un buen representante la despegue del piso.
  */
-export function chanceDeQueLlegue(estado: Estado, clubId: string): number {
-	const suyo = club(estado.futbolista.contrato.clubId).prestigio;
-	const salto = club(clubId).prestigio - suyo;
-	const empuje = (loQueValenJuntos(estado) - 50) * 0.55;
-	return Math.max(10, Math.min(95, Math.round(72 - salto * 1.9 + empuje)));
+export const CHANCE_MINIMA = 3;
+export const CHANCE_MAXIMA = 93;
+
+/**
+ * Qué chance hay de que la operación de verdad prospere.
+ *
+ * Cuatro cosas la mueven, y tres de ellas son de alguno de los dos:
+ *
+ *  - **El salto.** Se mide contra el club donde está hoy, no contra un número
+ *    absoluto: subir de Huracán a Boca y subir de Boca al Madrid son el mismo
+ *    salto para el que lo da, aunque los prestigios no se parezcan en nada.
+ *  - **Lo que él vale.** Un jugador mejor se vende solo.
+ *  - **Lo que sabe hacer el representante**: negociación, contactos y
+ *    prestigio, en ese orden. Ésta es la parte que hace que el rol exista, y en
+ *    la primera versión no estaba: la chance salía solo del club y de la media,
+ *    así que sus tres atributos —los que entrena toda la partida— no tocaban su
+ *    propio trabajo.
+ *  - **Cuánto estira la oferta.** Un club que le duplica el sueldo está
+ *    haciendo un esfuerzo, y los esfuerzos se caen: alguien en la dirigencia
+ *    dice que es mucho, aparece otro más barato, el vendedor pide más. Sin esto
+ *    la operación grande y la chica costaban lo mismo.
+ *
+ * El último término es también lo que arregló el problema que se veía en
+ * pantalla: sin él, a un pibe que arranca abajo le salían las seis cartas en
+ * 95% —todas las ofertas eran de clubes más chicos que el suyo— y filtrar entre
+ * seis certezas no es filtrar.
+ */
+export function chanceDeQueLlegue(estado: Estado, oferta: Oferta): number {
+	const f = estado.futbolista;
+	const r = estado.representante;
+
+	const suyo = club(f.contrato.clubId).prestigio;
+	const salto = club(oferta.clubId).prestigio - suyo;
+
+	/** Cuánto más le pagan de lo que gana hoy, en veces. Se acota: el techo es real. */
+	const estira = Math.max(
+		0,
+		Math.min(2.5, oferta.salarioMensual / Math.max(1, f.contrato.salarioMensual) - 1)
+	);
+
+	/*
+	 * Todo se suma en una escala sin unidades y recién después se convierte en
+	 * porcentaje, con una curva en S.
+	 *
+	 * La primera versión sumaba directamente sobre 100 y recortaba en los
+	 * bordes, y eso rompía las palancas justo donde más se necesitan: un salto
+	 * de Huracán a Boca daba −21%, se recortaba a 10, y a partir de ahí daba
+	 * exactamente igual tener un representante de 20 que uno de 90. La curva no
+	 * llega nunca del todo al piso ni al techo, así que un salto imposible sigue
+	 * siendo casi imposible pero un buen representante lo acerca, que es
+	 * precisamente lo que uno quiere que se sienta.
+	 *
+	 * `0` en esta escala es la moneda al aire.
+	 */
+	const bruto =
+		8 -
+		salto * 1.5 +
+		(media(f.atributos, f.posicion) - 50) * 0.3 +
+		(r.atributos.negociacion - 40) * 0.35 +
+		(r.atributos.contactos - 40) * 0.25 +
+		(r.prestigio - 40) * 0.15 -
+		estira * 12;
+
+	const chance = 100 / (1 + Math.exp(-bruto / 16));
+	return Math.max(CHANCE_MINIMA, Math.min(CHANCE_MAXIMA, Math.round(chance)));
 }
 
 /** Las seis que le llegan al representante, con su chance puesta. */
 export function cartasDelMercado(estado: Estado, semilla: string): Carta[] {
 	return ofertasPara(estado, semilla).map((oferta) => ({
 		...oferta,
-		probabilidad: chanceDeQueLlegue(estado, oferta.clubId)
+		probabilidad: chanceDeQueLlegue(estado, oferta)
 	}));
 }
 

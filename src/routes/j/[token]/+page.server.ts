@@ -106,8 +106,26 @@ export const actions: Actions = {
 				);
 			}
 		}
-		if (vista.estado.fase === 3) {
+		/*
+		 * El mercado, cada uno lo suyo y en su tiempo.
+		 *
+		 * El futbolista manda a dónde va; el representante, cuáles deja pasar. Se
+		 * leen contra lo que el servidor le ofreció a ese rol —`ofertas` para uno,
+		 * `cartas` para el otro— y no contra la fase a secas: así un formulario
+		 * editado no puede mandar un `destino` durante el primer tiempo ni un
+		 * `filtradas` durante el segundo. Ver `cartas.ts`.
+		 */
+		if (vista.opciones.ofertas) {
 			decision.destino = campo(datos, 'destino');
+		}
+		if (vista.opciones.cartas) {
+			const cuantas = vista.opciones.cuantasDejaPasar ?? 0;
+			decision.filtradas = datos
+				.getAll('filtradas')
+				.filter((v): v is string => typeof v === 'string')
+				.map((v) => v.trim().slice(0, 60))
+				.filter((v) => v.length > 0)
+				.slice(0, cuantas);
 		}
 		// Las dos mesas las juegan los dos: la de ellos y la del club.
 		if (vista.opciones.tratos) {

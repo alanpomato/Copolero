@@ -104,12 +104,19 @@ describe('el historial de la carrera', () => {
 		 * el futbolista elige entre lo que sobrevivió. Ver `cartas.ts`.
 		 */
 		let e = unPibe();
+		// Con un representante hecho: si se le caen las tres todos los años, no hay
+		// pase que anotar y el test no prueba nada.
+		e.representante.atributos.negociacion = 95;
+		e.representante.atributos.contactos = 95;
+		e.representante.prestigio = 90;
+
 		for (let t = 0; t < 10 && !e.carreraTerminada; t++) {
 			e = resolverFase(e, NADA, 'tapa').estado; // fase 1 → 2
 			e = resolverFase(e, NADA, 'tapa').estado; // fase 2 → 3
 
-			// Primer tiempo: el representante deja pasar las tres que puede.
-			const filtradas = cartasDelMercado(e, 'tapa')
+			// Primer tiempo: el representante deja pasar las tres más fáciles.
+			const filtradas = [...cartasDelMercado(e, 'tapa')]
+				.sort((a, b) => b.probabilidad - a.probabilidad)
 				.slice(0, CARTAS_QUE_DEJA_PASAR)
 				.map((c) => c.clubId);
 			e = resolverFase(e, [{ rol: 'representante', nota: '', filtradas }], 'tapa').estado;

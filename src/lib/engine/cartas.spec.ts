@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { club } from '../../../content/mundo';
 import {
 	CARTAS_QUE_DEJA_PASAR,
+	CHANCE_MAXIMA,
+	CHANCE_MINIMA,
 	cartasDelMercado,
 	chanceDeQueLlegue,
 	filtrar,
@@ -11,6 +13,7 @@ import { estadoInicial } from './estado';
 import { pasoDelMercado, quienesDeciden, resolverFase } from './fases';
 import { opcionesDeFase } from './pantalla';
 import { rngPara } from './rng';
+import type { Oferta } from './pases';
 import type { Estado } from './tipos';
 
 /**
@@ -102,11 +105,25 @@ describe('quién decide y cuándo', () => {
 	});
 });
 
+/** Una oferta cualquiera de ese club, para preguntarle la chance. */
+function unaOferta(clubId: string, salarioMensual = 3000): Oferta {
+	return {
+		clubId,
+		montoUsd: 500_000,
+		primaUsd: 0,
+		salarioMensual,
+		temporadas: 3,
+		comisionUsd: 25_000,
+		brecha: 2,
+		tecnico: null
+	};
+}
+
 describe('la probabilidad de cada carta', () => {
 	it('subir a un club más grande cuesta más que bajar', () => {
 		const e = enElMercado();
-		const arriba = chanceDeQueLlegue(e, 'ar-boca');
-		const abajo = chanceDeQueLlegue(e, 'ar2-moron');
+		const arriba = chanceDeQueLlegue(e, unaOferta('ar-boca'));
+		const abajo = chanceDeQueLlegue(e, unaOferta('ar2-moron'));
 		expect(abajo).toBeGreaterThan(arriba);
 	});
 
@@ -116,8 +133,8 @@ describe('la probabilidad de cada carta', () => {
 		for (const k of Object.keys(bueno.futbolista.atributos)) {
 			(bueno.futbolista.atributos as Record<string, number>)[k] = 90;
 		}
-		expect(chanceDeQueLlegue(bueno, 'ar-boca')).toBeGreaterThan(
-			chanceDeQueLlegue(flojo, 'ar-boca')
+		expect(chanceDeQueLlegue(bueno, unaOferta('ar-boca'))).toBeGreaterThan(
+			chanceDeQueLlegue(flojo, unaOferta('ar-boca'))
 		);
 	});
 
@@ -131,16 +148,68 @@ describe('la probabilidad de cada carta', () => {
 		const capo = enElMercado();
 		nadie.representante.prestigio = 5;
 		capo.representante.prestigio = 95;
-		expect(chanceDeQueLlegue(capo, 'ar-boca')).toBeGreaterThan(chanceDeQueLlegue(nadie, 'ar-boca'));
+		expect(chanceDeQueLlegue(capo, unaOferta('ar-boca'))).toBeGreaterThan(
+			chanceDeQueLlegue(nadie, unaOferta('ar-boca'))
+		);
 	});
 
 	it('nunca es imposible ni está regalado', () => {
 		const e = enElMercado();
 		for (const id of ['ar-boca', 'es-realmadrid', 'ar2-moron', 'ar-instituto']) {
-			const chance = chanceDeQueLlegue(e, id);
-			expect(chance).toBeGreaterThanOrEqual(10);
-			expect(chance).toBeLessThanOrEqual(95);
+			const chance = chanceDeQueLlegue(e, unaOferta(id));
+			expect(chance).toBeGreaterThanOrEqual(CHANCE_MINIMA);
+			expect(chance).toBeLessThanOrEqual(CHANCE_MAXIMA);
 		}
+	});
+
+	/*
+	 * Es lo que hace que el rol exista. En la primera versión la chance salía
+	 * solo del club y de la media del jugador, así que los tres atributos que el
+	 * representante entrena toda la partida no tocaban su propio trabajo.
+	 */
+	it('la negociación y los contactos del representante mueven la aguja', () => {
+		const verde = enElMercado();
+		const capo = enElMercado();
+		verde.representante.atributos.negociacion = 20;
+		verde.representante.atributos.contactos = 20;
+		capo.representante.atributos.negociacion = 90;
+		capo.representante.atributos.contactos = 90;
+
+		expect(chanceDeQueLlegue(capo, unaOferta('ar-boca'))).toBeGreaterThan(
+			chanceDeQueLlegue(verde, unaOferta('ar-boca')) + 15
+		);
+	});
+
+	/*
+	 * Un club que le duplica el sueldo está haciendo un esfuerzo, y los
+	 * esfuerzos se caen. Sin esto, a un pibe que arranca abajo le salían las
+	 * seis cartas en 95% —todas las ofertas eran de clubes más chicos que el
+	 * suyo— y filtrar entre seis certezas no es filtrar.
+	 */
+	it('una oferta que estira mucho el sueldo cuesta más de cerrar', () => {
+		const e = enElMercado();
+		e.futbolista.contrato.salarioMensual = 4000;
+		const modesta = chanceDeQueLlegue(e, unaOferta('ar2-moron', 4400));
+		const enorme = chanceDeQueLlegue(e, unaOferta('ar2-moron', 12_000));
+		expect(modesta).toBeGreaterThan(enorme);
+	});
+
+	/*
+	 * Lo que importa de las seis cartas no es cuánto valen sino que se
+	 * distingan: seis relojes marcando lo mismo no son una decisión.
+	 */
+	it('las seis cartas no marcan todas lo mismo', () => {
+		let variadas = 0;
+		let miradas = 0;
+		for (const semilla of ['v1', 'v2', 'v3', 'v4', 'v5', 'v6']) {
+			const cartas = cartasDelMercado(enElMercado(), semilla);
+			if (cartas.length < 4) continue;
+			miradas++;
+			const chances = cartas.map((c) => c.probabilidad);
+			if (Math.max(...chances) - Math.min(...chances) >= 8) variadas++;
+		}
+		expect(miradas).toBeGreaterThan(3);
+		expect(variadas).toBeGreaterThan(miradas / 2);
 	});
 
 	it('lo que valen juntos pesa más el jugador que el representante', () => {
@@ -231,7 +300,7 @@ describe('lo que ve cada uno', () => {
 
 		expect(suyas.cartas!.length).toBeGreaterThan(CARTAS_QUE_DEJA_PASAR);
 		for (const c of suyas.cartas!) {
-			expect(c.probabilidad).toBeGreaterThanOrEqual(10);
+			expect(c.probabilidad).toBeGreaterThanOrEqual(CHANCE_MINIMA);
 			expect(club(c.clubId).nombre.length).toBeGreaterThan(0);
 		}
 	});
@@ -277,12 +346,25 @@ describe('lo que ve cada uno', () => {
 
 describe('el pase, al final', () => {
 	it('el futbolista se va a donde el representante lo dejó llegar', () => {
+		/*
+		 * Con un representante hecho y eligiendo las tres más fáciles, que algo
+		 * llegue está prácticamente asegurado. Sin esto el test se saltaba solo
+		 * las veces que se le caían las tres, que es la peor clase de test: el que
+		 * pasa sin haber probado nada.
+		 */
 		let e = enElMercado();
-		const todas = cartasDelMercado(e, 'cartas').map((c) => c.clubId);
-		e = resolverFase(e, [{ rol: 'representante', nota: '', filtradas: todas }], 'cartas').estado;
+		e.representante.atributos.negociacion = 95;
+		e.representante.atributos.contactos = 95;
+		e.representante.prestigio = 90;
+
+		const faciles = [...cartasDelMercado(e, 'cartas')]
+			.sort((a, b) => b.probabilidad - a.probabilidad)
+			.slice(0, CARTAS_QUE_DEJA_PASAR)
+			.map((c) => c.clubId);
+		e = resolverFase(e, [{ rol: 'representante', nota: '', filtradas: faciles }], 'cartas').estado;
 
 		const llegaron = e.mercado!.llegaron;
-		if (llegaron.length === 0) return;
+		expect(llegaron.length).toBeGreaterThan(0);
 
 		const destino = llegaron[0];
 		const despues = resolverFase(e, [{ rol: 'futbolista', nota: '', destino }], 'cartas').estado;
