@@ -93,13 +93,34 @@ h1 {
 	margin: 0 0 0.35rem;
 }
 
+/*
+ * El rótulo de sección.
+ *
+ * Era texto blanco de 1,15rem con una línea arriba, y no se distinguía del
+ * título de una tarjeta: en una pantalla con quince tarjetas, el cartel que
+ * dice "acá empieza la fase" tiene que verse distinto a todo lo demás, no un
+ * poco más grande.
+ *
+ * Ahora es un rótulo: chico, en mayúsculas, muy espaciado y del color del
+ * acento, con una línea que lo cruza de lado a lado. Se lee como un separador
+ * de capítulo y no compite con los títulos de las tarjetas.
+ */
 h2 {
-	font-size: 1.15rem;
-	font-weight: 700;
-	letter-spacing: -0.01em;
-	margin: 2.5rem 0 0.85rem;
-	padding-top: 1.1rem;
-	border-top: 1px solid var(--borde);
+	display: flex;
+	align-items: center;
+	gap: 0.85rem;
+	font-size: 0.78rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.16em;
+	color: var(--acento);
+	margin: 2.25rem 0 0.9rem;
+}
+h2::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: linear-gradient(90deg, var(--borde), transparent);
 }
 
 .bajada {
@@ -163,10 +184,19 @@ h2 {
 
 /* --- Números grandes ----------------------------------------------------- */
 
+/*
+ * La fila de números grandes.
+ *
+ * El tope es para las tarjetas anchas: con `1fr` y setecientos píxeles de
+ * ancho, cuatro números se estiran a ciento setenta cada uno y quedan como
+ * cuatro carteles. Un número grande se lee igual de bien en una caja de diez
+ * rem, y agrupados ocupan lo que tienen que ocupar.
+ */
 .cifras {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
 	gap: 0.85rem;
+	max-width: 42rem;
 }
 
 .cifra {

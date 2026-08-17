@@ -198,14 +198,27 @@
 		transform: rotate(180deg);
 	}
 
+	/*
+	 * El titular no es un rótulo de sección: es el titular de un diario.
+	 *
+	 * `h2` en `app.css` es el cartel de "acá empieza otra parte" —chico, verde, en
+	 * mayúsculas espaciadas, con una línea al costado—. Acá hay que apagar todo
+	 * eso a mano, incluida la línea del `::after`, o la tapa sale con una raya
+	 * verde cruzándole el titular.
+	 */
 	.titular {
+		display: block;
 		margin: 0.5rem 0 0.7rem;
 		font-size: clamp(1.7rem, 8.5vw, 2.5rem);
 		line-height: 0.98;
 		font-weight: 800;
+		text-transform: none;
 		letter-spacing: -0.02em;
 		color: var(--tinta);
 		border: none;
+	}
+	.titular::after {
+		content: none;
 	}
 
 	.cuerpo {

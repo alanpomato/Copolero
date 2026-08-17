@@ -375,12 +375,10 @@
 			scrollbar-width: thin;
 		}
 
-		/* El primer título de la columna del medio no lleva la línea de arriba:
-		   ahí no separa nada, arranca la columna. */
+		/* El primer rótulo de la columna del medio no necesita el aire de arriba:
+		   ahí no separa nada de nada, arranca la columna. */
 		.alCentro :global(h2.primerTitulo) {
 			margin-top: 0;
-			padding-top: 0;
-			border-top: 0;
 		}
 	}
 </style>

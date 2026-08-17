@@ -82,7 +82,7 @@
 				</div>
 				<strong class="queria">{s.nombre}</strong>
 				<span class="barraFinal"><span class="rellenoFinal" style="width:{s.pct}%"></span></span>
-				<span class="numeros">{s.lleva}</span>
+				<span class="cuantoLleva">{s.lleva}</span>
 				<p class="cierre">{s.cierre}</p>
 			</div>
 		{/each}
@@ -214,6 +214,7 @@
 		flex: 1;
 		min-width: 0;
 	}
+	/* El nombre del jugador, no un rótulo de sección: ver la nota en Portada. */
 	.ficha h2 {
 		display: flex;
 		align-items: center;
@@ -222,6 +223,12 @@
 		border: none;
 		padding: 0;
 		font-size: 1.1rem;
+		text-transform: none;
+		letter-spacing: -0.01em;
+		color: var(--texto);
+	}
+	.ficha h2::after {
+		content: none;
 	}
 	.numeros {
 		display: grid;
@@ -305,7 +312,12 @@
 	.veredicto.logrado .rellenoFinal {
 		background: linear-gradient(90deg, #fbbf24, #fde68a);
 	}
-	.numeros {
+	/*
+	 * Se llamaba `.numeros`, igual que la grilla de la ficha de arriba, y como
+	 * iba después en el archivo la pisaba: los seis números de la carrera
+	 * —partidos, goles, títulos— se apilaban en una sola columna.
+	 */
+	.cuantoLleva {
 		display: block;
 		margin-top: 0.35rem;
 		font-size: 0.78rem;

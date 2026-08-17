@@ -61,16 +61,17 @@
 				{puesto.nombre} · {f.edad} años · {donde.club.nombre}
 			</span>
 		</div>
-		<span class="fase">
-			{#if estado.carreraTerminada}
-				<span class="temporada">{estado.temporada - 1}</span>
-				<span class="nombrefase">temporadas</span>
-			{:else}
-				<span class="temporada">T{estado.temporada}</span>
-				<span class="nombrefase">{NOMBRE_FASE[estado.fase]}</span>
-			{/if}
-		</span>
 	</div>
+
+	<span class="fase">
+		{#if estado.carreraTerminada}
+			<span class="temporada">{estado.temporada - 1}</span>
+			<span class="nombrefase">temporadas</span>
+		{:else}
+			<span class="temporada">T{estado.temporada}</span>
+			<span class="nombrefase">{NOMBRE_FASE[estado.fase]}</span>
+		{/if}
+	</span>
 
 	<div class="cifras">
 		{#each cifras as c (c.etiqueta)}
@@ -83,10 +84,19 @@
 </div>
 
 <style>
+	/*
+	 * En el celular son dos filas —el nombre arriba, los cuatro números abajo—
+	 * porque no entran de otra forma. Las tres partes son hermanas y envuelven
+	 * solas: con eso, en monitor se acomodan en una línea sin duplicar marcado.
+	 */
 	.cabecera {
 		position: sticky;
 		top: 0;
 		z-index: 20;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.55rem 0.6rem;
 		margin: -1.5rem -1rem 1.25rem;
 		padding: 0.7rem 1rem 0.6rem;
 		background: rgba(13, 17, 23, 0.94);
@@ -97,6 +107,8 @@
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
+		flex: 1;
+		min-width: 0;
 	}
 	.quien {
 		display: flex;
@@ -153,8 +165,18 @@
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 0.4rem;
-		margin-top: 0.55rem;
+		/* Ancho completo: fuerza el salto de línea en el celular. */
+		width: 100%;
 	}
+
+	/*
+	 * En monitor, una sola línea.
+	 *
+	 * En el celular la cabecera mide ciento veinte píxeles y está bien: es todo
+	 * el ancho que hay. En un monitor son ciento veinte píxeles de barra fija
+	 * comiéndose lo de arriba mientras sobra ancho a los costados. Los números se
+	 * corren al lado del nombre y la barra baja a la mitad.
+	 */
 	.cifra {
 		display: flex;
 		flex-direction: column;
@@ -183,5 +205,29 @@
 	}
 	.valor.mal {
 		color: var(--malo);
+	}
+
+	@media (min-width: 60rem) {
+		.cabecera {
+			flex-wrap: nowrap;
+			gap: 1rem;
+			padding: 0.5rem 1rem;
+		}
+		.cifras {
+			display: flex;
+			width: auto;
+			flex: none;
+			gap: 0.35rem;
+			order: 2;
+		}
+		.cifra {
+			min-width: 4.7rem;
+			padding: 0.15rem 0.5rem;
+		}
+		.fase {
+			order: 3;
+			padding-left: 1rem;
+			border-left: 1px solid var(--borde);
+		}
 	}
 </style>

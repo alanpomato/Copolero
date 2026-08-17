@@ -28,22 +28,29 @@
 	/*
 	 * Grilla del dibujo.
 	 *
-	 * El ancho total es siempre el mismo y lo que cambia es el paso: con tres
-	 * temporadas las barras son anchas y con veinte son finitas, pero el gráfico
-	 * ocupa la tarjeta entera en los dos casos. La alternativa —paso fijo y
-	 * scroll— dejaba un dibujo diminuto en el medio de la tarjeta las primeras
-	 * temporadas, que es justo cuando hay que engancharse.
+	 * El viewBox mide siempre lo mismo. Antes crecía con la cantidad de
+	 * temporadas —`ancho = cuantas * paso + 8`— y con una sola temporada quedaba
+	 * en 52 unidades, que estiradas al ancho de la tarjeta son catorce veces:
+	 * una barra roja gigante y un "6.7" de treinta píxeles. El dibujo no puede
+	 * cambiar de escala según cuánto lleve jugado.
+	 *
+	 * Y el marco no arranca en una temporada sino en diez, aunque haya jugado
+	 * una. Con eso la primera barra se ve chica dentro de un gráfico que todavía
+	 * está casi vacío, que es exactamente lo que está pasando en la partida.
 	 */
 	const ALTO = 96;
 	const PISO = 78;
-	const ANCHO = 340;
+	const ANCHO = 520;
+	/** Temporadas que el marco muestra desde el primer día. */
+	const RANURAS_MINIMAS = 10;
 
 	const cuantas = $derived(Math.max(1, historial.length));
-	const paso = $derived(Math.min(44, (ANCHO - 8) / cuantas));
-	const medioAncho = $derived(Math.min(8.5, paso * 0.28));
-	const ancho = $derived(cuantas * paso + 8);
+	const ranuras = $derived(Math.max(cuantas, RANURAS_MINIMAS));
+	const paso = $derived(Math.min(44, (ANCHO - 8) / ranuras));
+	const medioAncho = $derived(Math.min(9, paso * 0.3));
+	const ancho = ANCHO;
 	/** Con pocas temporadas entra la nota escrita arriba de cada barra. */
-	const conNumeros = $derived(paso >= 26);
+	const conNumeros = $derived(paso >= 22);
 
 	function x(i: number): number {
 		return 4 + i * paso + paso / 2;
@@ -285,6 +292,17 @@
 		display: block;
 		width: 100%;
 		height: auto;
+		/*
+		 * Un tope, porque en la columna del medio la tarjeta tiene setecientos y
+		 * pico de píxeles y un viewBox de 520 estirado a eso agranda todo un 40%
+		 * —los números, las barras, los 🏆—. Con el tope el dibujo se ve al tamaño
+		 * para el que está pensado y no se deforma en pantallas grandes.
+		 */
+		max-width: 34rem;
+		/* Centrado: con el tope, en una tarjeta ancha queda aire a la derecha, y
+		   un dibujo pegado a la izquierda con un hueco al lado se lee como un
+		   error de maquetación en vez de una decisión. */
+		margin: 0 auto;
 	}
 	.leyenda {
 		color: var(--plata);

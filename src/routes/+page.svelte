@@ -121,7 +121,7 @@
 	<title>Copolero</title>
 </svelte:head>
 
-<div class="angosta">
+<div class="angosta crear">
 	<h1>Copolero</h1>
 	<p class="bajada">
 		Una carrera de futbolista para dos. Uno juega al futbolista, el otro a su representante. Por
@@ -260,34 +260,38 @@
 					no lo fabrica. Lo que define la carrera es el potencial, que nadie ve.
 				</p>
 
-				{#each ATRIBUTOS as atributo (atributo)}
-					<div class="rasgo">
-						<span class="rasgo-nombre">
-							{NOMBRE_ATRIBUTO[atributo]}
-							{#if propiosDelPuesto.includes(atributo)}
-								<span class="propio" title="El puesto ya te da esto">del puesto</span>
-							{/if}
-						</span>
-						<span class="mando">
-							<button
-								type="button"
-								class="paso"
-								onclick={() => mover(atributo, -1)}
-								disabled={reparto[atributo] === 0}
-								aria-label={`Sacar un punto de ${NOMBRE_ATRIBUTO[atributo]}`}>−</button
-							>
-							<span class="puntos" class:puestos={reparto[atributo] > 0}>+{reparto[atributo]}</span>
-							<button
-								type="button"
-								class="paso"
-								onclick={() => mover(atributo, 1)}
-								disabled={quedan === 0 || reparto[atributo] === TOPE_POR_ATRIBUTO}
-								aria-label={`Sumar un punto a ${NOMBRE_ATRIBUTO[atributo]}`}>+</button
-							>
-						</span>
-						<input type="hidden" name={`reparto-${atributo}`} value={reparto[atributo]} />
-					</div>
-				{/each}
+				<div class="rasgos">
+					{#each ATRIBUTOS as atributo (atributo)}
+						<div class="rasgo">
+							<span class="rasgo-nombre">
+								{NOMBRE_ATRIBUTO[atributo]}
+								{#if propiosDelPuesto.includes(atributo)}
+									<span class="propio" title="El puesto ya te da esto">del puesto</span>
+								{/if}
+							</span>
+							<span class="mando">
+								<button
+									type="button"
+									class="paso"
+									onclick={() => mover(atributo, -1)}
+									disabled={reparto[atributo] === 0}
+									aria-label={`Sacar un punto de ${NOMBRE_ATRIBUTO[atributo]}`}>−</button
+								>
+								<span class="puntos" class:puestos={reparto[atributo] > 0}
+									>+{reparto[atributo]}</span
+								>
+								<button
+									type="button"
+									class="paso"
+									onclick={() => mover(atributo, 1)}
+									disabled={quedan === 0 || reparto[atributo] === TOPE_POR_ATRIBUTO}
+									aria-label={`Sumar un punto a ${NOMBRE_ATRIBUTO[atributo]}`}>+</button
+								>
+							</span>
+							<input type="hidden" name={`reparto-${atributo}`} value={reparto[atributo]} />
+						</div>
+					{/each}
+				</div>
 			</div>
 
 			<label>
@@ -379,9 +383,24 @@
 		letter-spacing: 0.1em;
 		color: var(--tenue);
 	}
+	/*
+	 * La pantalla de creación es más ancha que las otras de una columna: tiene
+	 * los once puestos y los ocho atributos, y en 34rem eso son tres pantallas y
+	 * media de scroll en un monitor con novecientos píxeles de aire al costado.
+	 */
+	.crear {
+		max-width: 48rem;
+	}
+
 	.puestos {
 		display: grid;
-		grid-template-columns: repeat(2, 1fr);
+		/*
+		 * Los once puestos. En el celular entran de a dos; en monitor, de a tres o
+		 * cuatro según el ancho. Once tarjetas en dos columnas son seis filas de
+		 * scroll para una decisión que se toma comparando: hay que poder verlas
+		 * juntas.
+		 */
+		grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
 		gap: 0.5rem;
 	}
 	.puesto {
@@ -454,6 +473,12 @@
 		border-radius: 12px;
 		padding: 0.9rem 1rem;
 		margin-bottom: 1rem;
+	}
+	/* Los ocho atributos, de a dos cuando hay lugar. */
+	.reparto .rasgos {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		gap: 0 1.4rem;
 	}
 	.reparto-cabecera {
 		display: flex;

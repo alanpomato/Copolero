@@ -181,18 +181,36 @@
 		line-height: 1.45;
 	}
 
-	/* Los temas pintan solo el borde de arriba: adentro ya hay tarjetas de color
-	   y dos fondos teñidos uno encima del otro no se leen. */
+	/*
+	 * La franja de color a la izquierda, la misma que usan las tarjetas.
+	 *
+	 * Antes acá era un borde de arriba y allá una franja al costado: dos sistemas
+	 * distintos para decir lo mismo, y en una pantalla con las dos cosas se leía
+	 * como un error de maquetación. Los colores salen de las variables de
+	 * `app.css`, así que cambiar el tema de "plata" lo cambia en todo el juego.
+	 */
+	.paso[data-tema] {
+		position: relative;
+		border-left-color: transparent;
+	}
+	.paso[data-tema]::before {
+		content: '';
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 3px;
+		background: var(--tema, var(--borde));
+		z-index: 1;
+	}
 	.paso[data-tema='cancha'] {
-		border-top: 2px solid rgba(74, 222, 128, 0.45);
+		--tema: var(--cancha);
 	}
 	.paso[data-tema='plata'] {
-		border-top: 2px solid rgba(251, 191, 36, 0.45);
+		--tema: var(--plata);
 	}
 	.paso[data-tema='relacion'] {
-		border-top: 2px solid rgba(129, 140, 248, 0.5);
+		--tema: var(--relacion);
 	}
 	.paso[data-tema='mercado'] {
-		border-top: 2px solid rgba(56, 189, 248, 0.5);
+		--tema: var(--mercado);
 	}
 </style>
