@@ -158,7 +158,23 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 			edad: futbolista.edadInicial,
 
 			atributos,
-			potencial: rng.entero(58, 94),
+			/*
+			 * El techo con el que arranca. Ver `techo.ts`, que es donde se mueve.
+			 *
+			 * El piso subió de 58 a 66, y el motivo es que 58 no era una carrera:
+			 * era una pared. Midiendo veinticinco carreras enteras, una de cada tres
+			 * salía con el techo abajo de 68, y esas partidas se terminaban a los
+			 * veintidós —el jugador tocaba su tope y pasaba diez temporadas con la
+			 * media clavada, jugando bien y sin que nada se moviera—. Un pibe que a
+			 * los dieciséis ya tiene contrato en un club profesional pasó un filtro
+			 * antes de llegar acá: repartir su techo desde 58 con la misma
+			 * probabilidad que 90 era decir que un tercio de las partidas no valía
+			 * la pena jugarlas.
+			 *
+			 * Sigue siendo ancho y sigue estando oculto, así que adivinarlo sigue
+			 * siendo medio juego. Lo que ya no hay es el fondo del que no se sale.
+			 */
+			potencial: rng.entero(66, 94),
 
 			forma: rng.entero(45, 60),
 			moral: 60,

@@ -15,6 +15,7 @@ import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { RENOVACION, aplicarMomento, momentosDelRepresentante, resolverMomento } from './momentos';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { filtrar, type Filtrado } from './cartas';
+import { empujarElTecho, loQueEmpujaElTecho, loQueSeCuenta } from './techo';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
@@ -667,6 +668,22 @@ function cerrarTemporada(
 	// hecho, pero antes de que el cuerpo envejezca: la media que se guarda es la
 	// que tuvo ese año, no la que le queda para el siguiente.
 	anotarEnElHistorial(estado, clubDondeJugo, novedad?.mundial ?? null);
+
+	/*
+	 * --- Y si el año le movió el techo ---------------------------------------
+	 *
+	 * Va acá, con la fila del año recién escrita, porque lo que empuja el techo
+	 * es exactamente lo que dice esa fila: el Mundial que jugó, la nota que
+	 * sacó, el título que ganó jugando. Ver `techo.ts`.
+	 */
+	const elAnio = estado.historial[estado.historial.length - 1];
+	if (elAnio) {
+		const empujones = loQueEmpujaElTecho(estado, elAnio);
+		if (empujarElTecho(estado, elAnio) > 0) {
+			const linea = loQueSeCuenta(empujones, estado.futbolista.nombre);
+			if (linea) log.push({ tipo: 'techo', visiblePara: linea.visiblePara, texto: linea.texto });
+		}
+	}
 
 	// --- ¿Alguno llegó? ------------------------------------------------------
 	// Lo último de la temporada, con todo ya contado: los goles del año, el
