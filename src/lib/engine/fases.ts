@@ -14,6 +14,7 @@ import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { RENOVACION, aplicarMomento, momentosDelRepresentante, resolverMomento } from './momentos';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
+import { filtrar, type Filtrado } from './cartas';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
@@ -47,7 +48,8 @@ import {
 	type Fase,
 	type ResultadoFase,
 	type ResumenTemporada,
-	type Rol
+	type Rol,
+	type VisiblePara
 } from './tipos';
 
 /** El objetivo pedido, o el que el motor toma si mandaron cualquier cosa. */
@@ -74,6 +76,19 @@ export function estadoSincronizacion(
 ): EstadoSincronizacion {
 	if (estado.carreraTerminada) return 'CAREER_OVER';
 
+	/*
+	 * En el mercado no deciden los dos, y por eso la espera no se calcula igual.
+	 *
+	 * Si el que tiene que jugar es uno solo, esperar al otro no significa nada:
+	 * lo que hay que decir es a quién se está esperando, y es al único que
+	 * puede mover. Ver `quienesDeciden`.
+	 */
+	const deben = quienesDeciden(estado);
+	if (deben.length === 1) {
+		if (cerraron.includes(deben[0])) return 'BOTH_READY';
+		return deben[0] === 'futbolista' ? 'WAITING_FOR_PLAYER' : 'WAITING_FOR_AGENT';
+	}
+
 	const futbolista = cerraron.includes('futbolista');
 	const representante = cerraron.includes('representante');
 
@@ -81,6 +96,29 @@ export function estadoSincronizacion(
 	if (futbolista) return 'WAITING_FOR_AGENT';
 	if (representante) return 'WAITING_FOR_PLAYER';
 	return 'WAITING_FOR_BOTH';
+}
+
+/** En qué tiempo del mercado está. Fuera de la fase 3 no significa nada. */
+export function pasoDelMercado(estado: Estado): 'filtro' | 'eleccion' {
+	return estado.mercado?.paso ?? 'filtro';
+}
+
+/**
+ * Quién tiene que decidir para que esto avance.
+ *
+ * Casi siempre son los dos, y por eso la barrera existe. El mercado es la
+ * excepción y es a propósito: primero trabaja el representante —le llegan seis
+ * clubes y deja pasar tres— y el futbolista espera de verdad, sin nada que
+ * tocar. Después decide el futbolista entre lo que le quedó, y el que espera
+ * es el otro.
+ *
+ * Que uno espere sin poder hacer nada es la parte incómoda y es la que hace que
+ * el rol del representante exista: si el futbolista pudiera adelantar algo, el
+ * filtro sería una formalidad y no una decisión que le cambia el mundo.
+ */
+export function quienesDeciden(estado: Estado): readonly Rol[] {
+	if (estado.fase !== 3) return ROLES;
+	return pasoDelMercado(estado) === 'filtro' ? ['representante'] : ['futbolista'];
 }
 
 export function faseSiguiente(fase: Fase): Fase {
@@ -93,9 +131,11 @@ export function faseSiguiente(fase: Fase): Fase {
  * Función pura: mismo estado y mismas decisiones dan siempre el mismo
  * resultado, sin importar en qué orden llegaron. El azar sale de la semilla.
  *
- * Exige las decisiones de los dos roles. La barrera es responsabilidad de quien
- * llama (ver `src/lib/server/partidas.ts`), pero acá se vuelve a verificar para
- * que el motor no pueda quedar en un estado a medias.
+ * Exige las decisiones de los roles que tienen que decidir en esta fase —los
+ * dos, salvo en el mercado, donde juega uno por vez—. La barrera es
+ * responsabilidad de quien llama (ver `src/lib/server/partidas.ts`), pero acá
+ * se vuelve a verificar para que el motor no pueda quedar en un estado a
+ * medias. Ver `quienesDeciden`.
  */
 export function resolverFase(
 	estado: Estado,
@@ -105,7 +145,9 @@ export function resolverFase(
 	if (estado.carreraTerminada) {
 		throw new Error('La carrera ya terminó: no hay más fases para resolver');
 	}
-	for (const rol of ROLES) {
+	// Los que tienen que estar, no siempre los dos: en el mercado juega uno por
+	// vez. Ver `quienesDeciden`.
+	for (const rol of quienesDeciden(estado)) {
 		if (!decisiones.some((d) => d.rol === rol)) {
 			throw new Error(`Falta la decisión de: ${rol}`);
 		}
@@ -127,13 +169,23 @@ export function resolverFase(
 	/** Con qué la consiguió: pedir una mejora no es lo mismo que aceptar lo que haya. */
 	let comoRenovo = '';
 
-	const delFutbolista = decisiones.find((d) => d.rol === 'futbolista')!;
-	const delRepresentante = decisiones.find((d) => d.rol === 'representante')!;
+	/*
+	 * En el mercado juega uno por vez, así que del otro puede no venir nada.
+	 *
+	 * Un vacío en vez de un `!`: pedirle a `find` que encuentre algo que la
+	 * barrera no exigió es un `undefined` esperando a explotar dos pantallas
+	 * más abajo. Lo que no vino se lee como "no eligió nada", que es
+	 * exactamente lo que pasó.
+	 */
+	const vacia = (rol: Rol): Decision => ({ rol, nota: '' });
+	const delFutbolista = decisiones.find((d) => d.rol === 'futbolista') ?? vacia('futbolista');
+	const delRepresentante =
+		decisiones.find((d) => d.rol === 'representante') ?? vacia('representante');
 
 	// Las notas son privadas mientras la fase está abierta y se revelan a los dos
 	// al cerrarla.
 	for (const rol of ROLES) {
-		const nota = decisiones.find((d) => d.rol === rol)!.nota.trim();
+		const nota = (decisiones.find((d) => d.rol === rol)?.nota ?? '').trim();
 		if (nota.length > 0) {
 			log.push({ tipo: 'nota', visiblePara: 'ambos', texto: `${etiqueta(rol)}: ${nota}` });
 		}
@@ -288,21 +340,18 @@ export function resolverFase(
 		});
 	}
 
-	// --- El mercado: lo que le pasa a cada uno mientras se define el pase -----
-	// Va antes de que se resuelva el pase, a propósito: lo que se dice acá cae
-	// sobre la relación con el técnico, con la gente y con el otro, que es
-	// exactamente lo que después pesa en cómo se cierra el año.
-	if (estado.fase === 3) {
-		const suyas = ocasionesDe(siguiente, semilla);
-		const elegidas = delFutbolista.ocasiones ?? [];
-		for (const [i, ocasion] of suyas.entries()) {
-			const cual = resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i);
-			aplicarEfecto(siguiente, cual.efecto);
-			if (cual.texto) {
-				log.push({ tipo: 'mercado_momento', visiblePara: 'futbolista', texto: cual.texto });
-			}
-		}
-
+	/*
+	 * --- El mercado, primer tiempo: el representante --------------------------
+	 *
+	 * Acá trabaja él solo. Juega sus momentos —incluida la mesa de renovación,
+	 * que define si hay contrato— y después deja pasar hasta tres de los seis
+	 * clubes que le llegaron. Cada uno se juega su probabilidad por separado.
+	 *
+	 * Todo esto pasa antes de que el futbolista vea nada, y termina sin cerrar
+	 * la temporada: lo que queda escrito en `siguiente.mercado` es lo que el
+	 * futbolista va a encontrar cuando le toque.
+	 */
+	if (estado.fase === 3 && pasoDelMercado(estado) === 'filtro') {
 		const delOtro = momentosDelRepresentante(siguiente, semilla);
 		const suyos = delRepresentante.momentos ?? [];
 		for (const [i, momento] of delOtro.entries()) {
@@ -318,6 +367,52 @@ export function resolverFase(
 				quisieronRenovar = cual.opcionId !== 'no-renovar';
 				comoRenovo = cual.opcionId;
 			}
+		}
+
+		const filtrado = filtrar(siguiente, delRepresentante.filtradas ?? [], semilla);
+		siguiente.mercado = {
+			paso: 'eleccion',
+			llegaron: filtrado.llegaron,
+			seCayeron: filtrado.seCayeron,
+			renovacion: { conseguida: renovacionConseguida, quisieron: quisieronRenovar, como: comoRenovo }
+		};
+
+		for (const linea of contarElFiltro(filtrado)) {
+			log.push({ tipo: 'mercado', visiblePara: linea.visiblePara, texto: linea.texto });
+		}
+
+		// Y hasta acá llega el primer tiempo. La fase sigue siendo la 3: lo que
+		// cambió es de quién es el turno.
+		return { estado: siguiente, log };
+	}
+
+	/*
+	 * --- El mercado, segundo tiempo: el futbolista ----------------------------
+	 *
+	 * Sus momentos del mercado van acá y no en el primer tiempo, para que tenga
+	 * algo suyo que jugar cuando por fin le toca. Y van antes de que se resuelva
+	 * el pase, a propósito: lo que pasa acá cae sobre la relación con el
+	 * técnico, con la gente y con el otro, que es exactamente lo que después
+	 * pesa en cómo se cierra el año.
+	 */
+	if (estado.fase === 3) {
+		const suyas = ocasionesDe(siguiente, semilla);
+		const elegidas = delFutbolista.ocasiones ?? [];
+		for (const [i, ocasion] of suyas.entries()) {
+			const cual = resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i);
+			aplicarEfecto(siguiente, cual.efecto);
+			if (cual.texto) {
+				log.push({ tipo: 'mercado_momento', visiblePara: 'futbolista', texto: cual.texto });
+			}
+		}
+
+		// Lo que salió de la mesa en el primer tiempo manda sobre lo que el
+		// cierre decidiría por su cuenta.
+		const mesa = estado.mercado?.renovacion;
+		if (mesa) {
+			renovacionConseguida = mesa.conseguida;
+			quisieronRenovar = mesa.quisieron;
+			comoRenovo = mesa.como;
 		}
 	}
 
@@ -338,16 +433,73 @@ export function resolverFase(
 	if (estado.fase === 3) {
 		siguiente = cerrarTemporada(siguiente, semilla, log, {
 			futbolista: delFutbolista.destino,
-			representante: delRepresentante.destino,
+			// Solo puede ir a donde el representante lo dejó llegar. Ver `cartas.ts`.
+			llegaron: estado.mercado?.llegaron ?? [],
 			renovacionConseguida,
 			quisieronRenovar,
 			comoRenovo
 		});
+		// El mercado del año que viene arranca de cero, por el primer tiempo.
+		delete siguiente.mercado;
 	} else {
 		siguiente.fase = faseSiguiente(estado.fase);
 	}
 
 	return { estado: siguiente, log };
+}
+
+/**
+ * Lo que se cuenta del filtro, y a quién.
+ *
+ * Al representante se le dice todo: cuáles pasaron y cuáles se le cayeron, con
+ * nombre y apellido. Es su trabajo y tiene que poder mirarlo.
+ *
+ * Al futbolista se le dice cuántas llegaron y nada más. No se entera de cuáles
+ * se cayeron ni de que hubo seis: sabe que su representante estuvo trabajando y
+ * ve el resultado, igual que en la vida. Si viera la lista completa, el filtro
+ * dejaría de ser una decisión del otro y pasaría a ser una excusa.
+ */
+function contarElFiltro(filtrado: Filtrado): { visiblePara: VisiblePara; texto: string }[] {
+	const lineas: { visiblePara: VisiblePara; texto: string }[] = [];
+	const pasaron = filtrado.llegaron.length;
+	const cayeron = filtrado.seCayeron.length;
+
+	if (pasaron + cayeron === 0) {
+		lineas.push({
+			visiblePara: 'representante',
+			texto: 'No moviste ninguna. El mercado pasó y no lo llamaste a nadie.'
+		});
+		lineas.push({
+			visiblePara: 'futbolista',
+			texto: 'Tu representante no te trajo nada. Vas a tener que arreglarte con lo que hay.'
+		});
+		return lineas;
+	}
+
+	const nombres = (ids: string[]) => ids.map((id) => club(id).nombre).join(', ');
+
+	if (pasaron > 0) {
+		lineas.push({
+			visiblePara: 'representante',
+			texto: `Te prosperaron ${pasaron} de ${pasaron + cayeron}: ${nombres(filtrado.llegaron)}.`
+		});
+	}
+	if (cayeron > 0) {
+		lineas.push({
+			visiblePara: 'representante',
+			texto: `Se te cayeron ${cayeron}: ${nombres(filtrado.seCayeron)}. No dieron el sí.`
+		});
+	}
+
+	lineas.push({
+		visiblePara: 'futbolista',
+		texto:
+			pasaron === 0
+				? 'Tu representante se movió y no cerró ninguna. No hay ofertas sobre la mesa.'
+				: `Tu representante te consiguió ${pasaron} ${pasaron === 1 ? 'oferta' : 'ofertas'}.`
+	});
+
+	return lineas;
 }
 
 /**
@@ -399,7 +551,8 @@ function cerrarTemporada(
 	log: EntradaLog[],
 	destinos: {
 		futbolista?: string;
-		representante?: string;
+		/** A qué clubes lo dejó llegar el representante. Ver `cartas.ts`. */
+		llegaron?: readonly string[];
 		/** Qué salió de la mesa de renovación. `null` si no la hubo. */
 		renovacionConseguida?: boolean | null;
 		/** Si en la mesa eligieron intentar renovar o salir al mercado. */
@@ -465,11 +618,17 @@ function cerrarTemporada(
 		enElMercado.contratoRepresentacion.duracionTemporadas;
 
 	// Se resuelve después de cobrar el año, porque el sueldo que se cobró es el
-	// del club donde se jugó. El pase se hace solamente si los dos eligieron el
-	// mismo club: es la única decisión del juego que necesita que se hayan
-	// hablado antes de apretar el botón.
+	// del club donde se jugó. Y se resuelve solo con lo que eligió el
+	// futbolista: el representante ya tuvo su parte, y la tuvo antes, decidiendo
+	// cuáles de estas ofertas iban a existir. Ver `cartas.ts`.
 	const ofertas = ofertasPara(estado, semilla);
-	resolverPase(estado, ofertas, destinos.futbolista, destinos.representante, log);
+	const alcance = destinos.llegaron ?? ofertas.map((o) => o.clubId);
+	resolverPase(
+		estado,
+		ofertas.filter((o) => alcance.includes(o.clubId)),
+		destinos.futbolista,
+		log
+	);
 
 	// --- El que quedó sin contrato -------------------------------------------
 	// Si se le terminó el contrato y no hubo pase, el club no lo renueva solo:

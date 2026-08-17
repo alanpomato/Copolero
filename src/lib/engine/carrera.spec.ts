@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial, media } from './estado';
-import { resolverFase } from './fases';
-import { aplicarPase, ofertasPara } from './pases';
+import { pasoDelMercado, quienesDeciden, resolverFase } from './fases';
+import { CARTAS_QUE_DEJA_PASAR, cartasDelMercado } from './cartas';
+import { aplicarPase, ofertasPara, type Oferta } from './pases';
 import { resumirRetiro } from './retiro';
 import { brechaCon, crecerPorJugar } from './temporada';
 import { rngPara } from './rng';
@@ -58,29 +59,58 @@ function correrCarrera(
 	const notas: number[] = [];
 	let vueltas = 0;
 
-	while (!estado.carreraTerminada && vueltas < 30) {
-		for (const fase of [1, 2, 3] as const) {
-			let destino = 'quedarse';
-			if (fase === 3) {
-				const ofertas = ofertasPara(estado, semilla);
-				const enElBanco = brechaCon(estado.futbolista, estado.futbolista.contrato.clubId) < -6;
+	/**
+	 * A qué club se iría, entre los que tenga a mano.
+	 *
+	 * Es la misma cabeza en los dos tiempos del mercado: el representante la usa
+	 * para elegir cuáles deja pasar y el futbolista para elegir entre las que
+	 * llegaron. Devuelve `quedarse` si ninguna vale la pena.
+	 */
+	function loQueMasLeConviene(entre: readonly Oferta[]): string {
+		const enElBanco = brechaCon(estado.futbolista, estado.futbolista.contrato.clubId) < -6;
 
-				if (estrategia.priorizaJugar && enElBanco) {
-					const dondeJuega = [...ofertas].sort((a, b) => b.brecha - a.brecha)[0];
-					if (dondeJuega && dondeJuega.brecha > 0) destino = dondeJuega.clubId;
-				} else {
-					const mejor = ofertas
-						.filter((o) => o.brecha > -6)
-						.sort((a, b) => b.salarioMensual - a.salarioMensual)[0];
-					if (
-						mejor &&
-						mejor.salarioMensual >
-							estado.futbolista.contrato.salarioMensual * estrategia.mejoraMinima
-					) {
-						destino = mejor.clubId;
-					}
-				}
-			}
+		if (estrategia.priorizaJugar && enElBanco) {
+			const dondeJuega = [...entre].sort((a, b) => b.brecha - a.brecha)[0];
+			return dondeJuega && dondeJuega.brecha > 0 ? dondeJuega.clubId : 'quedarse';
+		}
+
+		const mejor = [...entre]
+			.filter((o) => o.brecha > -6)
+			.sort((a, b) => b.salarioMensual - a.salarioMensual)[0];
+		const vale =
+			mejor &&
+			mejor.salarioMensual > estado.futbolista.contrato.salarioMensual * estrategia.mejoraMinima;
+		return vale ? mejor.clubId : 'quedarse';
+	}
+
+	while (!estado.carreraTerminada && vueltas < 30) {
+		const arranco = estado.temporada;
+
+		/*
+		 * Se avanza hasta que cambie la temporada y no un número fijo de fases:
+		 * el mercado son dos resoluciones y no una. Ver `probar.ts`.
+		 */
+		while (!estado.carreraTerminada && estado.temporada === arranco) {
+			const deben = quienesDeciden(estado);
+
+			// Primer tiempo del mercado: el representante deja pasar las tres que
+			// más le convienen a la carrera que está corriendo esta estrategia.
+			const filtradas =
+				estado.fase === 3 && pasoDelMercado(estado) === 'filtro'
+					? cartasDelMercado(estado, semilla)
+							.filter((c) => loQueMasLeConviene([c]) !== 'quedarse')
+							.slice(0, CARTAS_QUE_DEJA_PASAR)
+							.map((c) => c.clubId)
+					: undefined;
+
+			// Segundo tiempo: el futbolista elige entre lo que sobrevivió.
+			const llegaron = estado.mercado?.llegaron ?? [];
+			const destino =
+				estado.fase === 3 && pasoDelMercado(estado) === 'eleccion'
+					? loQueMasLeConviene(
+							ofertasPara(estado, semilla).filter((o) => llegaron.includes(o.clubId))
+						)
+					: 'quedarse';
 
 			const decisiones: Decision[] = [
 				{
@@ -95,11 +125,15 @@ function correrCarrera(
 					rol: 'representante',
 					nota: '',
 					gestion: estrategia.gestion,
-					destino,
+					filtradas,
 					trato: estrategia.trato
 				}
 			];
-			estado = resolverFase(estado, decisiones, semilla).estado;
+			estado = resolverFase(
+				estado,
+				decisiones.filter((d) => deben.includes(d.rol)),
+				semilla
+			).estado;
 		}
 
 		const resumen = estado.ultimaTemporada!;
@@ -339,13 +373,25 @@ describe('una carrera entera', () => {
 		expect(estado.representante.prestigio).toBeGreaterThan(10);
 	});
 
+	/*
+	 * Sobre varias semillas, por lo mismo que el test de acá arriba: una carrera
+	 * puede salir pareja de casualidad y eso no significa que las notas estén
+	 * clavadas. Medido sobre una sola, este test pasaba o fallaba según qué otra
+	 * cosa del motor hubiera movido el azar, que es la peor clase de test que
+	 * hay. Lo que tiene que ser cierto es que en una carrera cualquiera haya
+	 * años buenos y años malos.
+	 */
 	it('las notas se mueven: no es siempre 5 ni siempre 9', () => {
-		const { notas } = correrCarrera('c6', 'centrodelantero', 'ar2-moron', AMBICIOSO);
-		expect(Math.max(...notas) - Math.min(...notas)).toBeGreaterThan(1.5);
-		for (const nota of notas) {
-			expect(nota).toBeGreaterThanOrEqual(1);
-			expect(nota).toBeLessThanOrEqual(10);
+		const rangos: number[] = [];
+		for (const semilla of ['c6', 'c6b', 'c6c', 'c6d', 'c6e']) {
+			const { notas } = correrCarrera(semilla, 'centrodelantero', 'ar2-moron', AMBICIOSO);
+			rangos.push(Math.max(...notas) - Math.min(...notas));
+			for (const nota of notas) {
+				expect(nota).toBeGreaterThanOrEqual(1);
+				expect(nota).toBeLessThanOrEqual(10);
+			}
 		}
+		expect(promedio(rangos)).toBeGreaterThan(1.5);
 	});
 
 	it('la misma semilla da la misma carrera', () => {

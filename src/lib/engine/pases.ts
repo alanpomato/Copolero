@@ -13,11 +13,17 @@ import type { EntradaLog, Estado } from './tipos';
  * Es el momento del juego. Todo lo demás —la pretemporada, la rueda de
  * ocasión, la temporada— existe para llegar acá con algo para vender.
  *
- * La regla es una sola y es la que obliga a los dos a hablar: **el pase se hace
- * solamente si los dos eligen el mismo club**. El representante consigue las
- * ofertas y sabe cuál le conviene a él; el futbolista sabe dónde quiere jugar.
- * Si no coinciden, no hay pase y la confianza se paga. No hay forma de que uno
- * arrastre al otro, y ésa es exactamente la tensión que el juego quiere.
+ * El mercado tiene dos tiempos y cada uno es de uno. Primero el representante:
+ * de las seis ofertas que le llegan deja pasar tres, y cada una se juega su
+ * probabilidad. Después el futbolista, que elige entre lo que quedó y elige
+ * solo.
+ *
+ * Antes elegían los dos y el pase se hacía únicamente si coincidían. La idea
+ * era obligarlos a hablar, pero lo que producía era otra cosa: la decisión más
+ * importante del juego se resolvía por fuera del juego, y el representante no
+ * tenía ningún trabajo propio acá —Bebo lo dijo jugando: "ahí el representante
+ * no tiene ningún rol de negociación"—. Ahora sí lo tiene, y es anterior:
+ * decide cuáles de estas ofertas van a existir. Ver `cartas.ts`.
  */
 
 export type Oferta = {
@@ -38,7 +44,14 @@ export type Oferta = {
 };
 
 export const QUEDARSE = 'quedarse';
-export const OFERTAS_POR_MERCADO = 3;
+/**
+ * Cuántas ofertas hay sobre la mesa.
+ *
+ * Seis y no tres porque las primeras seis son las del representante, que tiene
+ * que poder descartar: filtrar tres de tres no es filtrar. De esas seis pasan
+ * como mucho tres, y son las que ve el futbolista. Ver `cartas.ts`.
+ */
+export const OFERTAS_POR_MERCADO = 6;
 
 /**
  * Cuánto vale hoy.
@@ -244,25 +257,25 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 }
 
 /**
- * Resuelve el mercado con lo que eligieron los dos.
+ * Resuelve el mercado con lo que eligió el futbolista.
  *
- * Los dos tienen que elegir el mismo club. Si uno dice quedarse y el otro dice
- * irse, no hay pase: el futbolista se queda y la confianza se rompe un poco. Es
- * el precio de no haberlo hablado.
+ * Elige solo, y entre las ofertas que le llegaron. Antes elegían los dos y el
+ * pase se hacía únicamente si coincidían: la decisión más importante del juego
+ * se resolvía poniéndose de acuerdo por fuera del juego, y el representante no
+ * tenía ningún trabajo propio en el mercado. Ahora lo tiene, y es anterior:
+ * decide cuáles de estas ofertas van a existir. Ver `cartas.ts`.
  */
 export function resolverPase(
 	estado: Estado,
 	ofertas: readonly Oferta[],
 	eligeFutbolista: string | undefined,
-	eligeRepresentante: string | undefined,
 	log: EntradaLog[]
 ): void {
 	if (ofertas.length === 0) return;
 
-	const delFutbolista = eligeFutbolista ?? QUEDARSE;
-	const delRepresentante = eligeRepresentante ?? QUEDARSE;
+	const elegido = eligeFutbolista ?? QUEDARSE;
 
-	// Los dos quieren quedarse: no pasa nada, y está bien que no pase nada.
+	// Se queda: no pasa nada, y está bien que no pase nada.
 	//
 	// Salvo que no haya con qué quedarse. Con el contrato terminado, "quedarse"
 	// es un deseo y no un hecho: lo decide la mesa de renovación, y contarlo acá
@@ -270,38 +283,21 @@ export function resolverPase(
 	// más abajo —"se quedó, los dos estuvieron de acuerdo" y enseguida "hubo que
 	// firmar a las apuradas", en la misma temporada y para otro club—. Es el bug
 	// que encontró Bebo. Ver `buscarEquipo` en `fases.ts`.
-	if (delFutbolista === QUEDARSE && delRepresentante === QUEDARSE) {
-		if (estado.futbolista.contrato.temporadasRestantes > 0) {
-			log.push({
-				tipo: 'mercado',
-				visiblePara: 'ambos',
-				texto: `Hubo ${ofertas.length} ${ofertas.length === 1 ? 'oferta' : 'ofertas'} y se quedó en ${club(estado.futbolista.contrato.clubId).nombre}. Los dos estuvieron de acuerdo.`
-			});
-		} else {
-			log.push({
-				tipo: 'mercado',
-				visiblePara: 'ambos',
-				texto:
-					`Hubo ${ofertas.length} ${ofertas.length === 1 ? 'oferta' : 'ofertas'} y las dejaron pasar: ` +
-					`querían seguir en ${club(estado.futbolista.contrato.clubId).nombre}. Falta que el club diga que sí.`
-			});
-		}
-		return;
-	}
-
-	if (delFutbolista !== delRepresentante) {
-		estado.confianza = Math.max(0, estado.confianza - 8);
+	if (elegido === QUEDARSE) {
+		const cuantas = `${ofertas.length} ${ofertas.length === 1 ? 'oferta' : 'ofertas'}`;
 		log.push({
 			tipo: 'mercado',
 			visiblePara: 'ambos',
 			texto:
-				'No se pusieron de acuerdo en el mercado y el pase se cayó. ' +
-				`${estado.futbolista.nombre} se queda en ${club(estado.futbolista.contrato.clubId).nombre}, con la relación golpeada.`
+				estado.futbolista.contrato.temporadasRestantes > 0
+					? `Le llegaron ${cuantas} y se quedó en ${club(estado.futbolista.contrato.clubId).nombre}.`
+					: `Le llegaron ${cuantas} y las dejó pasar: quería seguir en ` +
+						`${club(estado.futbolista.contrato.clubId).nombre}. Falta que el club diga que sí.`
 		});
 		return;
 	}
 
-	const oferta = ofertas.find((o) => o.clubId === delFutbolista);
+	const oferta = ofertas.find((o) => o.clubId === elegido);
 	if (!oferta) return;
 
 	aplicarPase(estado, oferta, log);

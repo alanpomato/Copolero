@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
+import { unaTemporada } from './probar';
 import { ofertasPara } from './pases';
 import { opcionesDeFase } from './pantalla';
 import { rngPara } from './rng';
@@ -114,15 +115,9 @@ describe('pedir la salida', () => {
 		expect(log.some((l) => l.tipo === 'salida' && l.visiblePara === 'ambos')).toBe(true);
 
 		// Cierra el mercado y el pedido se apaga: vale para ese mercado, no para
-		// siempre.
-		e = resolverFase(
-			jugada,
-			[
-				{ rol: 'futbolista', nota: '' },
-				{ rol: 'representante', nota: '' }
-			],
-			'sal'
-		).estado;
+		// siempre. El mercado son dos resoluciones —el representante y después
+		// él—, así que se avanza hasta que arranque la temporada que viene.
+		e = unaTemporada(jugada, undefined, 'sal');
 		expect(e.pidioLaSalida).toBe(false);
 	});
 });

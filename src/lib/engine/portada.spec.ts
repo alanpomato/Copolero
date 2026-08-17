@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
-import { ofertasPara } from './pases';
+import { unaTemporada } from './probar';
+import { CARTAS_QUE_DEJA_PASAR, cartasDelMercado } from './cartas';
 import { opcionesDeFase } from './pantalla';
 import { diarioDe, portadaDe } from './portada';
 import { rngPara } from './rng';
@@ -35,9 +36,7 @@ const NADA: Decision[] = [
 function jugar(estado: Estado, temporadas: number, semilla = 'tapa'): Estado {
 	let e = estado;
 	for (let i = 0; i < temporadas && !e.carreraTerminada; i++) {
-		for (let fase = 0; fase < 3; fase++) {
-			e = resolverFase(e, NADA, semilla).estado;
-		}
+		e = unaTemporada(e, NADA, semilla);
 	}
 	return e;
 }
@@ -97,22 +96,27 @@ describe('el historial de la carrera', () => {
 	});
 
 	it('anota el club donde jugó, no el club al que lo transfirieron', () => {
-		// El pase se hace solo si los dos eligen lo mismo, así que hay que forzarlo:
-		// una carrera en piloto automático no cambia nunca de club.
+		/*
+		 * Hay que forzar los pases: una carrera en piloto automático no cambia
+		 * nunca de club. Y forzarlos ahora es el mercado en dos tiempos completo,
+		 * porque el futbolista no puede ir a donde el representante no lo dejó
+		 * llegar: primero él deja pasar todo lo que le ofrecen, y recién después
+		 * el futbolista elige entre lo que sobrevivió. Ver `cartas.ts`.
+		 */
 		let e = unPibe();
 		for (let t = 0; t < 10 && !e.carreraTerminada; t++) {
 			e = resolverFase(e, NADA, 'tapa').estado; // fase 1 → 2
 			e = resolverFase(e, NADA, 'tapa').estado; // fase 2 → 3
-			const otra = ofertasPara(e, 'tapa').find((o) => o.clubId !== e.futbolista.contrato.clubId);
-			const destino = otra?.clubId;
-			e = resolverFase(
-				e,
-				[
-					{ rol: 'futbolista', nota: '', destino },
-					{ rol: 'representante', nota: '', destino }
-				],
-				'tapa'
-			).estado;
+
+			// Primer tiempo: el representante deja pasar las tres que puede.
+			const filtradas = cartasDelMercado(e, 'tapa')
+				.slice(0, CARTAS_QUE_DEJA_PASAR)
+				.map((c) => c.clubId);
+			e = resolverFase(e, [{ rol: 'representante', nota: '', filtradas }], 'tapa').estado;
+
+			// Segundo tiempo: el futbolista se va a la primera que haya llegado.
+			const destino = e.mercado?.llegaron[0];
+			e = resolverFase(e, [{ rol: 'futbolista', nota: '', destino }], 'tapa').estado;
 		}
 
 		// La invariante: el año quedó anotado con la camiseta con la que se jugó,

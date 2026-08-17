@@ -4,7 +4,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from './db/cliente';
 import { decisiones, jugadores, log, partidas, snapshots, tiradas } from './db/schema';
 import { estadoInicial, type ConfigPartida } from '$lib/engine/estado';
-import { estadoSincronizacion, resolverFase } from '$lib/engine/fases';
+import { estadoSincronizacion, quienesDeciden, resolverFase } from '$lib/engine/fases';
 import { ocasionesDe, resolverOcasion } from '$lib/engine/ocasiones';
 import { momentosDelRepresentante, resolverMomento } from '$lib/engine/momentos';
 import { opcionesDeFase, type OpcionesDeFase, type Tirada } from '$lib/engine/pantalla';
@@ -467,6 +467,29 @@ export function enviarDecision(
 			const fase = partida.fase as Fase;
 
 			/*
+			 * Que le toque.
+			 *
+			 * En el mercado juega uno por vez —primero el representante filtra, y
+			 * recién después elige el futbolista— y el que espera no puede
+			 * adelantar nada. No es solo cosmético: la clave de la tabla de
+			 * decisiones es (partida, temporada, fase, rol), y los dos tiempos del
+			 * mercado comparten la fase 3. Si el que no juega pudiera guardar su
+			 * fila, esa fila contaría como "ya cerré" cuando le toque de verdad y
+			 * el segundo tiempo se resolvería sin que haya elegido nada.
+			 *
+			 * Se deja pasar cuando viene con `tambienPorElOtro`: ahí el que espera
+			 * no está mandando lo suyo, está destrabando la partida. Ver más abajo.
+			 */
+			const deben = quienesDeciden(estado);
+			if (!deben.includes(jugador.rol) && !opciones.tambienPorElOtro) {
+				throw new ErrorDePartida(
+					'Todavía no te toca: en el mercado decide primero el representante. ' +
+						'La pantalla se actualiza sola cuando termine.',
+					'pantalla-vieja'
+				);
+			}
+
+			/*
 			 * Que lo que llega sea de esta fase y no de una anterior.
 			 *
 			 * Una pestaña abierta desde antes muestra la fase vieja, y su formulario
@@ -500,33 +523,42 @@ export function enviarDecision(
 			}
 
 			// El índice único es la barrera de verdad: si ya había decisión de este
-			// rol para esta fase, no se pisa.
-			tx.insert(decisiones)
-				.values({
-					partidaId: partida.id,
-					temporada,
-					fase,
-					rol: jugador.rol,
-					payloadJson: JSON.stringify(payload)
-				})
-				.onConflictDoNothing()
-				.run();
-
-			// Avanzar sin el otro: se cierra también por él, con lo que el motor
-			// toma por defecto. Queda anotado en el diario, porque una fase que
-			// avanzó sin que el otro la jugara tiene que poder verse.
-			if (opciones.tambienPorElOtro) {
-				const otro = elOtroRol(jugador.rol);
+			// rol para esta fase, no se pisa. Y solo se guarda si le toca: el que
+			// espera en el mercado no deja fila.
+			if (deben.includes(jugador.rol)) {
 				tx.insert(decisiones)
 					.values({
 						partidaId: partida.id,
 						temporada,
 						fase,
-						rol: otro,
-						payloadJson: JSON.stringify({ rol: otro, nota: '' } satisfies Decision)
+						rol: jugador.rol,
+						payloadJson: JSON.stringify(payload)
 					})
 					.onConflictDoNothing()
 					.run();
+			}
+
+			// Avanzar sin el otro: se cierra también por él, con lo que el motor
+			// toma por defecto. Queda anotado en el diario, porque una fase que
+			// avanzó sin que el otro la jugara tiene que poder verse.
+			//
+			// En el mercado esto es lo único que el que espera puede hacer, y sirve
+			// para lo mismo de siempre: que la partida no quede muerta si el otro
+			// desaparece.
+			if (opciones.tambienPorElOtro) {
+				const otro = elOtroRol(jugador.rol);
+				for (const rol of deben) {
+					tx.insert(decisiones)
+						.values({
+							partidaId: partida.id,
+							temporada,
+							fase,
+							rol,
+							payloadJson: JSON.stringify({ rol, nota: '' } satisfies Decision)
+						})
+						.onConflictDoNothing()
+						.run();
+				}
 
 				tx.insert(log)
 					.values({
@@ -552,17 +584,17 @@ export function enviarDecision(
 				)
 				.all();
 
-			if (filas.length < ROLES.length) {
+			// La barrera es contra los que tenían que decidir, no contra "los dos":
+			// en el mercado alcanza con el que juega ese tiempo. Ver `quienesDeciden`.
+			const cerraron = filas.map((f) => f.rol);
+			if (!deben.every((rol) => cerraron.includes(rol))) {
 				return {
 					faseCerrada: false,
-					sincronizacion: estadoSincronizacion(
-						estado,
-						filas.map((f) => f.rol)
-					)
+					sincronizacion: estadoSincronizacion(estado, cerraron)
 				};
 			}
 
-			// --- Están las dos: se cierra la fase ---------------------------------
+			// --- Están los que faltaban: se cierra la fase -------------------------
 			const tomadas = filas.map((f) => JSON.parse(f.payloadJson) as Decision);
 			const { estado: nuevoEstado, log: entradas } = resolverFase(estado, tomadas, partida.semilla);
 

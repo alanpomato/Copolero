@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
+import { unPaso, unaTemporada } from './probar';
 import { opcionesDeFase } from './pantalla';
 import { portadaDe } from './portada';
 import { resumirRetiro } from './retiro';
@@ -104,7 +105,7 @@ describe('su carrera', () => {
 			let e = unaPartida(semilla);
 			let vueltas = 0;
 			while (!e.carreraTerminada && vueltas < 15) {
-				for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, semilla).estado;
+				e = unaTemporada(e, NADA, semilla);
 				expect(e.rival!.clubId, semilla).not.toBe(e.futbolista.contrato.clubId);
 				vueltas++;
 			}
@@ -115,7 +116,7 @@ describe('su carrera', () => {
 		let e = unaPartida();
 		let vueltas = 0;
 		while (!e.carreraTerminada && vueltas < 12) {
-			for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'riv').estado;
+			e = unaTemporada(e, NADA, 'riv');
 			vueltas++;
 		}
 		const r = e.rival!;
@@ -132,7 +133,7 @@ describe('cómo se cuenta', () => {
 
 	it('la línea dice el año del otro y cómo va el general', () => {
 		let e = unaPartida();
-		for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'riv').estado;
+		e = unaTemporada(e, NADA, 'riv');
 
 		const linea = comoVaElDuelo(e)!;
 		expect(linea).toContain(e.rival!.nombre);
@@ -141,7 +142,7 @@ describe('cómo se cuenta', () => {
 
 	it('llega a la tapa del diario', () => {
 		let e = unaPartida();
-		for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'riv').estado;
+		e = unaTemporada(e, NADA, 'riv');
 
 		const p = portadaDe(e)!;
 		expect(p.notas.some((n) => n.titulo === 'El de la camada')).toBe(true);
@@ -158,7 +159,7 @@ describe('cómo se cuenta', () => {
 
 		for (const s of semillas) {
 			let e = unaPartida(s);
-			while (!e.carreraTerminada) e = resolverFase(e, NADA, s).estado;
+			while (!e.carreraTerminada) e = unPaso(e, NADA, s);
 
 			const r = e.rival!;
 			const total = r.ganadasPorVos + r.ganadasPorEl;
@@ -171,7 +172,7 @@ describe('cómo se cuenta', () => {
 
 	it('el retiro cierra el duelo con un resultado', () => {
 		let e = unaPartida();
-		while (!e.carreraTerminada) e = resolverFase(e, NADA, 'riv').estado;
+		while (!e.carreraTerminada) e = unPaso(e, NADA, 'riv');
 
 		const d = resumirRetiro(e).duelo!;
 		expect(d.nombre).toBe(e.rival!.nombre);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { rngPara } from './rng';
 import { estadoInicial, media, type ConfigPartida } from './estado';
 import { estadoSincronizacion, resolverFase, TEMPORADAS_MAXIMAS } from './fases';
+import { temporadas, unaTemporada } from './probar';
 import type { Decision, Estado } from './tipos';
 
 const SEMILLA = 'semilla-de-prueba';
@@ -149,9 +150,7 @@ describe('avance de fases y temporadas', () => {
 		let estado = nuevoEstado();
 		const edadInicial = estado.futbolista.edad;
 
-		for (let i = 0; i < 3; i++) {
-			estado = resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA).estado;
-		}
+		estado = unaTemporada(estado, CIERRAN_LOS_DOS, SEMILLA);
 
 		expect(estado.temporada).toBe(2);
 		expect(estado.fase).toBe(1);
@@ -167,9 +166,7 @@ describe('avance de fases y temporadas', () => {
 			(salarioAnual * estado.contratoRepresentacion.pctSalario) / 100
 		);
 
-		for (let i = 0; i < 3; i++) {
-			estado = resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA).estado;
-		}
+		estado = unaTemporada(estado, CIERRAN_LOS_DOS, SEMILLA);
 
 		// El fijo se calcula con el prestigio del día que cobra, y el prestigio se
 		// mueve durante el año: los momentos del representante lo suben y lo bajan.
@@ -184,9 +181,7 @@ describe('avance de fases y temporadas', () => {
 	it('el desgaste sube al pasar la temporada', () => {
 		let estado = nuevoEstado();
 
-		for (let i = 0; i < 3; i++) {
-			estado = resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA).estado;
-		}
+		estado = unaTemporada(estado, CIERRAN_LOS_DOS, SEMILLA);
 
 		expect(estado.futbolista.desgaste).toBeGreaterThan(0);
 	});
@@ -242,10 +237,7 @@ describe('fin de la carrera', () => {
 		let estado = nuevoEstado();
 
 		// Con desgaste apagado, lo único que corta es el tope duro.
-		for (let vuelta = 0; vuelta < TEMPORADAS_MAXIMAS * 3 + 10; vuelta++) {
-			if (estado.carreraTerminada) break;
-			estado = resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA).estado;
-		}
+		estado = temporadas(estado, TEMPORADAS_MAXIMAS + 3, CIERRAN_LOS_DOS, SEMILLA);
 
 		expect(estado.carreraTerminada).toBe(true);
 		expect(() => resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA)).toThrow(/terminó/);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { alertaDe } from './alertas';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
+import { temporadas } from './probar';
 import { opcionesDeFase } from './pantalla';
 import { rngPara } from './rng';
 import type { Decision, Estado, HitoTemporada } from './tipos';
@@ -130,7 +131,7 @@ describe('las alertas', () => {
 			{ rol: 'futbolista', nota: '' },
 			{ rol: 'representante', nota: '' }
 		];
-		for (let i = 0; i < 6; i++) e = resolverFase(e, nada, 'alerta').estado;
+		e = temporadas(e, 2, nada, 'alerta');
 
 		expect(opcionesDeFase(e, 'futbolista', 'alerta').alerta?.id).toBe('no-juega');
 		expect(opcionesDeFase(e, 'representante', 'alerta').alerta?.id).toBe('no-juega');

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
+import { enLaEleccion, unaTemporada } from './probar';
 import { ofertasPara } from './pases';
 import { opcionesDeFase } from './pantalla';
 import {
@@ -167,16 +168,15 @@ describe('salir libre', () => {
 	});
 
 	it('la prima se la queda el futbolista al firmar', () => {
-		const e = libreEnElMercado();
+		// Directo al segundo tiempo del mercado: acá se prueba el pase, y pasar
+		// por el filtro del representante ataría el test a su azar. Ver `probar.ts`.
+		const e = enLaEleccion(libreEnElMercado());
 		const oferta = ofertasPara(e, 'renov')[0];
 		const antes = e.futbolista.dineroUsd;
 
 		const despues = resolverFase(
 			e,
-			[
-				{ rol: 'futbolista', nota: '', destino: oferta.clubId },
-				{ rol: 'representante', nota: '', destino: oferta.clubId }
-			],
+			[{ rol: 'futbolista', nota: '', destino: oferta.clubId }],
 			'renov'
 		).estado;
 
@@ -193,7 +193,7 @@ describe('lo que se ve es lo que se firma', () => {
 		// firmaba uno libre: los dos jugadores decidían sobre números que no eran.
 		let e = unJugador();
 		e.futbolista.contrato.temporadasRestantes = 1;
-		e.fase = 3;
+		e = enLaEleccion(e);
 
 		const mostradas = opcionesDeFase(e, 'futbolista', 'renov').ofertas!;
 		expect(mostradas.length).toBeGreaterThan(0);
@@ -201,10 +201,7 @@ describe('lo que se ve es lo que se firma', () => {
 		const elegida = mostradas[0];
 		const despues = resolverFase(
 			e,
-			[
-				{ rol: 'futbolista', nota: '', destino: elegida.clubId },
-				{ rol: 'representante', nota: '', destino: elegida.clubId }
-			],
+			[{ rol: 'futbolista', nota: '', destino: elegida.clubId }],
 			'renov'
 		).estado;
 
@@ -216,10 +213,13 @@ describe('lo que se ve es lo que se firma', () => {
 	it('al que le quedaba una temporada, el mercado lo encuentra libre', () => {
 		const e = unJugador();
 		e.futbolista.contrato.temporadasRestantes = 1;
+		// El primer tiempo del mercado, que es cuando el representante ve las seis.
 		e.fase = 3;
 
-		// La temporada que se acaba de jugar consumió el último año.
-		for (const o of opcionesDeFase(e, 'representante', 'renov').ofertas!) {
+		// La temporada que se acaba de jugar consumió el último año. Se miran las
+		// cartas del representante, que es lo que él ve en el mercado: las ofertas
+		// del futbolista son el subconjunto que él deje pasar.
+		for (const o of opcionesDeFase(e, 'representante', 'renov').cartas!) {
 			expect(o.montoUsd).toBe(0);
 			expect(o.primaUsd).toBeGreaterThan(0);
 		}
@@ -243,7 +243,7 @@ describe('en una partida de verdad', () => {
 
 		let vueltas = 0;
 		while (!e.carreraTerminada && vueltas < 8) {
-			for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'quedarse').estado;
+			e = unaTemporada(e, NADA, 'quedarse');
 			vueltas++;
 			expect(e.futbolista.contrato.clubId.length).toBeGreaterThan(0);
 			expect(e.futbolista.contrato.temporadasRestantes).toBeGreaterThanOrEqual(0);
@@ -279,7 +279,7 @@ describe('en una partida de verdad', () => {
 
 		let vueltas = 0;
 		while (!e.carreraTerminada && vueltas < 30) {
-			for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'larga').estado;
+			e = unaTemporada(e, NADA, 'larga');
 			vueltas++;
 			// El contrato nunca queda en un estado imposible.
 			expect(e.futbolista.contrato.temporadasRestantes).toBeGreaterThanOrEqual(0);

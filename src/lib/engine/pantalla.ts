@@ -31,6 +31,12 @@ import {
 } from './suenos';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
 import {
+	CARTAS_QUE_DEJA_PASAR,
+	cartasDelMercado,
+	loQueValenJuntos,
+	type Carta
+} from './cartas';
+import {
 	TRATOS,
 	loQueLeConviene,
 	tocaRenegociar,
@@ -49,6 +55,7 @@ import { loQuePasaSiLoPide, puedePedirLaSalida } from './salida';
 import { chanceDeConvocatoria, loQueFalta, proximoMundial } from './seleccion';
 import { brechaCon } from './temporada';
 import { elOtroRol } from './estado';
+import { pasoDelMercado, quienesDeciden } from './fases';
 import type { Estado, HitoTemporada, Rol } from './tipos';
 
 /**
@@ -120,8 +127,39 @@ export type OpcionesDeFase = {
 	momentos?: MomentoDelRepresentante[];
 	/** Cuánto le salva el carisma cuando algo sale mal, para poder mostrarlo. */
 	carisma?: { cuanto: number; salva: number };
-	/** Los dos, fase 3. */
+	/**
+	 * Futbolista, segundo tiempo del mercado: entre las que le llegaron.
+	 *
+	 * Las que le llegaron y nada más: de las seis que hubo sobre la mesa no se
+	 * entera nunca. Ver `cartas.ts`.
+	 */
 	ofertas?: Oferta[];
+
+	/**
+	 * Representante, primer tiempo del mercado: las seis, con su probabilidad.
+	 *
+	 * Es su trabajo del año y es lo único que decide en el mercado: cuáles deja
+	 * pasar. El futbolista no las ve.
+	 */
+	cartas?: Carta[];
+	/** Cuántas puede dejar pasar de esas seis. */
+	cuantasDejaPasar?: number;
+	/** La calificación con la que se mide contra la fama de cada club. */
+	loQueValenJuntos?: number;
+
+	/**
+	 * En qué tiempo del mercado está y a quién le toca.
+	 *
+	 * La fase 3 dejó de ser simétrica, así que la pantalla necesita saber si
+	 * está esperando o si le toca. Ver `quienesDeciden`.
+	 */
+	mercado?: {
+		paso: 'filtro' | 'eleccion';
+		meToca: boolean;
+		/** Cuántas dejó pasar el representante y cuántas prosperaron de verdad. */
+		llegaron: number;
+		seCayeron: number;
+	};
 	valorDeMercadoUsd?: number;
 	/** Cuánto va a jugar donde está hoy. Se muestra para poder comparar. */
 	brechaActual?: number;
@@ -336,29 +374,55 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 		campeon: (estado.seleccion?.mundiales ?? []).some((m) => m.resultado === 'campeon')
 	};
 
-	// El mercado lo ven los dos, con exactamente los mismos números. Es a
-	// propósito: la regla es que tienen que elegir lo mismo, así que tienen que
-	// estar mirando lo mismo.
+	/*
+	 * El mercado, en dos tiempos y cada uno de uno.
+	 *
+	 * Antes lo veían los dos con los mismos números, porque la regla era que
+	 * tenían que elegir lo mismo. Ya no: primero el representante deja pasar
+	 * hasta tres de las seis que le llegaron, y recién después el futbolista
+	 * elige entre las que prosperaron. Cada uno ve lo suyo y nada más, y eso es
+	 * la mitad de por qué el filtro pesa: el futbolista no sabe qué descartó el
+	 * otro. Ver `cartas.ts`.
+	 */
 	if (estado.fase === 3) {
 		// Con el año ya descontado del contrato, que es como va a estar cuando el
 		// mercado se resuelva. Si acá se mirara el contrato sin descontar, la
 		// pantalla mostraría un pase millonario y después se firmaría uno libre.
 		const enElMercado = comoLlegaAlMercado(estado);
-		opciones.ofertas = ofertasPara(enElMercado, semilla);
+		const paso = pasoDelMercado(estado);
+		const meToca = quienesDeciden(estado).includes(rol);
+
 		opciones.valorDeMercadoUsd = valorDeMercado(enElMercado);
 		opciones.brechaActual = Math.round(
 			brechaCon(estado.futbolista, estado.futbolista.contrato.clubId)
 		);
+		opciones.mercado = {
+			paso,
+			meToca,
+			llegaron: estado.mercado?.llegaron.length ?? 0,
+			seCayeron: estado.mercado?.seCayeron.length ?? 0
+		};
 
-		// Y lo que le pasa a cada uno mientras se define el pase. Uno solo, y
-		// distinto para cada rol: al futbolista lo para un hincha en la calle, al
-		// representante lo llaman por abajo de la mesa. Va antes de elegir club
-		// porque es parte de con qué se llega a esa charla.
-		if (rol === 'futbolista') {
-			opciones.ocasiones = ocasionesDe(estado, semilla);
-		} else {
+		if (rol === 'representante') {
+			if (paso === 'filtro') {
+				opciones.cartas = cartasDelMercado(enElMercado, semilla);
+				opciones.cuantasDejaPasar = CARTAS_QUE_DEJA_PASAR;
+				opciones.loQueValenJuntos = loQueValenJuntos(enElMercado);
+			}
+			// Sus momentos del mercado van en el primer tiempo, que es cuando
+			// trabaja: lo llaman por abajo de la mesa mientras decide a quién
+			// contesta el teléfono.
 			opciones.momentos = momentosDelRepresentante(estado, semilla);
 			opciones.carisma = { cuanto: carismaDe(estado), salva: cuantoSalvaElCarisma(estado) };
+		} else if (paso === 'eleccion') {
+			// Las que llegaron, sin probabilidades: de su lado ya no se apuesta
+			// nada, se elige. Con escudo, sueldo, pase y años.
+			const llegaron = estado.mercado?.llegaron ?? [];
+			opciones.ofertas = ofertasPara(enElMercado, semilla).filter((o) =>
+				llegaron.includes(o.clubId)
+			);
+			// Y su momento del mercado, que es lo suyo mientras decide.
+			opciones.ocasiones = ocasionesDe(estado, semilla);
 		}
 	}
 

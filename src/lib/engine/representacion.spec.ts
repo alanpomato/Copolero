@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
+import { temporadas, unaTemporada } from './probar';
 import {
 	SIN_TRATO,
 	TRATOS,
@@ -40,7 +41,7 @@ describe('el contrato entre los dos', () => {
 			{ rol: 'representante', nota: '' }
 		];
 		// Dos temporadas completas: el contrato inicial dura dos.
-		for (let i = 0; i < 6; i++) estado = resolverFase(estado, cierran, 'mesa').estado;
+		estado = temporadas(estado, 2, cierran, 'mesa');
 
 		expect(tocaRenegociar(estado)).toBe(true);
 	});
@@ -127,13 +128,11 @@ describe('el contrato entre los dos', () => {
 				{ rol: 'futbolista', nota: '', trato: 'socios' },
 				{ rol: 'representante', nota: '', trato }
 			];
+			// La fase 1 lleva el trato firmado; el resto del año se juega solo. La
+			// comisión se cobra al cerrar la temporada, así que hay que llegar
+			// hasta ahí y no contar fases: el mercado son dos. Ver `probar.ts`.
 			e = resolverFase(e, d, 'mesa').estado;
-			const seguir: Decision[] = [
-				{ rol: 'futbolista', nota: '' },
-				{ rol: 'representante', nota: '' }
-			];
-			e = resolverFase(e, seguir, 'mesa').estado;
-			e = resolverFase(e, seguir, 'mesa').estado;
+			e = unaTemporada(e, undefined, 'mesa');
 			return e.representante.dineroUsd;
 		};
 

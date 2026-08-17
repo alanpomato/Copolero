@@ -8,6 +8,7 @@ import {
 	vistaPara
 } from './partidas';
 import { log } from './db/schema';
+import { quienesDeciden } from '$lib/engine/fases';
 import type { ConfigPartida } from '$lib/engine/estado';
 
 const CONFIG: ConfigPartida = {
@@ -30,6 +31,26 @@ function partidaCompleta() {
 	const { codigo, token: tokenFutbolista } = crearPartida(db, CONFIG, 'futbolista', 'Alan', 2026);
 	const tokenRepresentante = unirseAPartida(db, codigo, 'Hernán');
 	return { codigo, tokenFutbolista, tokenRepresentante };
+}
+
+/**
+ * Juega una temporada entera respetando los turnos.
+ *
+ * No cuenta fases: manda la decisión del que le toca hasta que arranque la
+ * temporada siguiente. En el mercado juega uno por vez —el representante
+ * filtra y después elige el futbolista—, así que mandar las dos siempre no
+ * solo sobra: el servidor rechaza la del que está esperando.
+ */
+function unaTemporada(tokens: { tokenFutbolista: string; tokenRepresentante: string }) {
+	const desde = vistaPara(db, tokens.tokenFutbolista)!.estado.temporada;
+	for (let vueltas = 0; vueltas < 12; vueltas++) {
+		const vista = vistaPara(db, tokens.tokenFutbolista)!;
+		if (vista.estado.carreraTerminada || vista.estado.temporada !== desde) return;
+		for (const rol of quienesDeciden(vista.estado)) {
+			const token = rol === 'futbolista' ? tokens.tokenFutbolista : tokens.tokenRepresentante;
+			enviarDecision(db, token, { rol, nota: '' });
+		}
+	}
 }
 
 beforeEach(() => {
@@ -141,13 +162,10 @@ describe('la barrera', () => {
 		);
 	});
 
-	it('cierra la temporada después de las tres fases', () => {
+	it('cierra la temporada cuando se jugaron todas sus fases', () => {
 		const { tokenFutbolista, tokenRepresentante } = partidaCompleta();
 
-		for (let fase = 0; fase < 3; fase++) {
-			enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: '' });
-			enviarDecision(db, tokenRepresentante, { rol: 'representante', nota: '' });
-		}
+		unaTemporada({ tokenFutbolista, tokenRepresentante });
 
 		const vista = vistaPara(db, tokenFutbolista)!;
 		expect(vista.estado.temporada).toBe(2);
@@ -198,10 +216,7 @@ describe('la pantalla que quedó vieja', () => {
 	it('rechaza una decisión mandada desde la temporada anterior', () => {
 		const { tokenFutbolista, tokenRepresentante } = partidaCompleta();
 
-		for (let fase = 0; fase < 3; fase++) {
-			enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: '' });
-			enviarDecision(db, tokenRepresentante, { rol: 'representante', nota: '' });
-		}
+		unaTemporada({ tokenFutbolista, tokenRepresentante });
 		expect(vistaPara(db, tokenFutbolista)!.estado.temporada).toBe(2);
 
 		expect(() =>
@@ -289,10 +304,7 @@ describe('información por rol', () => {
 	it('los ingresos de cada uno son privados', () => {
 		const { tokenFutbolista, tokenRepresentante } = partidaCompleta();
 
-		for (let fase = 0; fase < 3; fase++) {
-			enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: '' });
-			enviarDecision(db, tokenRepresentante, { rol: 'representante', nota: '' });
-		}
+		unaTemporada({ tokenFutbolista, tokenRepresentante });
 
 		const delFutbolista = vistaPara(db, tokenFutbolista)!.diario.filter(
 			(e) => e.tipo === 'ingresos'

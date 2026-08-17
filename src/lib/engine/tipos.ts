@@ -282,6 +282,33 @@ export type Estado = {
 	pidioLaSalida: boolean;
 
 	/**
+	 * El mercado en dos tiempos. Ver `cartas.ts`.
+	 *
+	 * La fase 3 dejó de ser simétrica: primero juega el representante solo —le
+	 * llegan seis clubes y deja pasar tres— y recién cuando termina decide el
+	 * futbolista, que hasta ese momento espera. Eso obliga a que la fase tenga
+	 * un adentro, porque son dos resoluciones distintas de la misma fase y lo
+	 * que pasó en la primera tiene que sobrevivir hasta la segunda.
+	 *
+	 * Opcional porque las partidas que empezaron antes no lo tienen guardado: si
+	 * falta, la fase 3 arranca por el primer tiempo, que es lo correcto.
+	 */
+	mercado?: {
+		paso: 'filtro' | 'eleccion';
+		/** Los clubes que el representante dejó pasar y de verdad llegaron. */
+		llegaron: string[];
+		/** Los que eligió y se le cayeron. Se cuentan: la falla tiene que verse. */
+		seCayeron: string[];
+		/**
+		 * Lo que salió de la mesa de renovación, resuelta en el primer tiempo.
+		 *
+		 * `conseguida: null` significa que no se sentaron —no vencía el contrato—
+		 * y que el cierre decide como decidía siempre.
+		 */
+		renovacion: { conseguida: boolean | null; quisieron: boolean; como: string };
+	};
+
+	/**
 	 * Qué atributos subieron desde la última vez que se miró la tarjeta.
 	 *
 	 * Sirve para la flechita del ▲ al lado del número. Sin esto, subir dos puntos
@@ -469,12 +496,23 @@ export type Decision = {
 	pedirSalida?: string;
 
 	/**
-	 * Los dos, fase 3: a qué club quiere ir, o `quedarse`.
+	 * Futbolista, segundo tiempo del mercado: a qué club va, o `quedarse`.
 	 *
-	 * El pase se hace solo si los dos eligen lo mismo. Es la regla que obliga a
-	 * hablar antes de cerrar la fase.
+	 * Elige solo, y entre lo que le quedó. Antes elegían los dos y el pase se
+	 * hacía únicamente si coincidían, lo que convertía la decisión más
+	 * importante del juego en un ejercicio de ponerse de acuerdo por fuera del
+	 * juego. Ahora el representante ya tuvo su parte, y fue antes: ver `cartas.ts`.
 	 */
 	destino?: string;
+
+	/**
+	 * Representante, primer tiempo del mercado: cuáles deja pasar.
+	 *
+	 * Hasta tres de las seis que le llegaron. Cada una se juega su probabilidad
+	 * por separado, así que al futbolista pueden llegarle tres, dos, una o
+	 * ninguna. Ver `cartas.ts`.
+	 */
+	filtradas?: string[];
 };
 
 export type VisiblePara = 'ambos' | Rol;

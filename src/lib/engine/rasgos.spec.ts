@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial, media } from './estado';
 import { resolverFase } from './fases';
+import { temporadas, unaTemporada } from './probar';
 import { opcionesDeFase } from './pantalla';
 import {
 	CUANTOS_SE_OFRECEN,
@@ -175,7 +176,7 @@ describe('en una partida de verdad', () => {
 				e.futbolista.atributos[k as keyof typeof e.futbolista.atributos] = 60;
 			}
 			e.rasgo = id;
-			for (let i = 0; i < 6; i++) e = resolverFase(e, NADA, 'nota').estado;
+			e = temporadas(e, 2, NADA, 'nota');
 			return e.futbolista.goles;
 		}
 		expect(conRasgo('olfato')).toBeGreaterThan(conRasgo('pulmon'));
@@ -185,7 +186,7 @@ describe('en una partida de verdad', () => {
 		let e = unPibe();
 		let vueltas = 0;
 		while (!e.carreraTerminada && vueltas < 30) {
-			for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'larga').estado;
+			e = unaTemporada(e, NADA, 'larga');
 			vueltas++;
 		}
 		expect(e.carreraTerminada).toBe(true);

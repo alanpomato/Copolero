@@ -13,6 +13,8 @@ import {
 	resolverMomento
 } from './momentos';
 import { opcionesDeFase } from './pantalla';
+import { CARTAS_QUE_DEJA_PASAR } from './cartas';
+import { enLaEleccion } from './probar';
 import { rngPara } from './rng';
 import type { Decision, Estado } from './tipos';
 
@@ -208,22 +210,60 @@ describe('lo que dejan', () => {
 });
 
 describe('el mercado', () => {
-	/**
+	/*
+	 * A cada uno le pasa lo suyo, y en su tiempo del mercado.
+	 *
 	 * La fase 3 era la única donde no pasaba nada más que elegir club: la misma
 	 * pantalla con tres ofertas, quince años seguidos.
+	 *
+	 * El mercado tiene dos tiempos y no son simultáneos: primero el
+	 * representante deja pasar hasta tres de las seis que le llegaron, y recién
+	 * después el futbolista elige entre las que prosperaron. El momento de cada
+	 * uno va en su tiempo, para que el que juega tenga algo suyo y no sea un
+	 * trámite. Ver `cartas.ts`.
 	 */
-	it('a los dos les pasa algo mientras se define el pase', () => {
+	it('al representante le pasa algo mientras filtra', () => {
 		const e = unaPartida();
 		e.fase = 3;
 
 		const suyos = opcionesDeFase(e, 'representante', 'merc');
-		const delOtro = opcionesDeFase(e, 'futbolista', 'merc');
 
 		expect(suyos.momentos?.length).toBe(MOMENTOS_EN_EL_MERCADO);
+		// Y las cartas siguen estando: el momento no reemplaza al trabajo.
+		expect(suyos.cartas?.length).toBeGreaterThan(0);
+		expect(suyos.cuantasDejaPasar).toBe(CARTAS_QUE_DEJA_PASAR);
+	});
+
+	it('y al futbolista le pasa algo mientras elige', () => {
+		const e = enLaEleccion(unaPartida());
+
+		const delOtro = opcionesDeFase(e, 'futbolista', 'merc');
+
 		expect(delOtro.ocasiones?.length).toBe(OCASIONES_EN_EL_MERCADO);
-		// Y las ofertas siguen estando: el momento no reemplaza al mercado.
-		expect(suyos.ofertas).toBeDefined();
 		expect(delOtro.ofertas).toBeDefined();
+	});
+
+	/*
+	 * Y ésta es la mitad de por qué el filtro pesa: el futbolista no se entera
+	 * de que hubo seis ni de cuáles descartó el otro. Ve lo que le llegó, igual
+	 * que en la vida. Si viera la lista completa, el filtro dejaría de ser una
+	 * decisión del representante y pasaría a ser una excusa.
+	 */
+	it('el futbolista nunca ve las cartas del representante', () => {
+		const e = unaPartida();
+		e.fase = 3;
+
+		expect(opcionesDeFase(e, 'futbolista', 'merc').cartas).toBeUndefined();
+		expect(opcionesDeFase(enLaEleccion(e), 'futbolista', 'merc').cartas).toBeUndefined();
+	});
+
+	it('mientras el representante filtra, el futbolista no tiene nada para elegir', () => {
+		const e = unaPartida();
+		e.fase = 3;
+
+		const delOtro = opcionesDeFase(e, 'futbolista', 'merc');
+		expect(delOtro.mercado?.meToca).toBe(false);
+		expect(delOtro.ofertas).toBeUndefined();
 	});
 
 	it('los del mercado no son los de la temporada', () => {
