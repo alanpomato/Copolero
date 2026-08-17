@@ -159,6 +159,7 @@
 										: i.modo === 'fijar'
 											? (i.fijo?.detalle ?? i.detalle)
 											: i.detalle}
+									marca={i.modo === 'fijar' ? 'siempre' : i.dura ? `×${i.dura}` : 'siempre'}
 									bind:elegidas={compras}
 									deshabilitada={!alcanza}
 								>

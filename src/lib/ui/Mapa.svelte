@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { contexto } from '../../../content/mundo';
+	import { TIERRAS, contornoDe, dondeJuega, proyectar } from './planisferio';
 	import Escudo from './Escudo.svelte';
 	import type { HitoTemporada } from '$lib/engine/tipos';
 
@@ -17,38 +18,18 @@
 	 * grande, el segundo es un puñado de puntos chicos. Eso no se puede leer en
 	 * una lista.
 	 *
-	 * El mapa es esquemático a propósito y no un mapa de verdad: no hace falta
-	 * geografía para que se entienda, y un planisferio real sería un archivo
-	 * enorme para decir lo mismo. Las posiciones son las justas para que
-	 * Sudamérica esté abajo a la izquierda y Europa arriba a la derecha, que es
-	 * lo único que el dibujo necesita contar.
+	 * El mapa es un mapa: costas de verdad y cada club en la longitud y la
+	 * latitud de su ciudad. La primera versión eran cuatro óvalos grises y no se
+	 * leían como continentes porque no lo eran —Alan lo dijo mirándolo: "¿y esto
+	 * qué sería?"—. Con la costa dibujada, Sudamérica se reconoce sin que nadie
+	 * la señale, y recién ahí el mapa empieza a decir algo. Ver `planisferio.ts`.
 	 */
 	let { historial }: { historial: HitoTemporada[] } = $props();
-
-	/**
-	 * Dónde va cada país en el dibujo, en porcentaje del ancho y del alto.
-	 *
-	 * A ojo, y alcanza: lo que se lee es "cruzó el charco", no la latitud.
-	 */
-	const DONDE: Record<string, { x: number; y: number }> = {
-		ar: { x: 26, y: 84 },
-		uy: { x: 33, y: 78 },
-		cl: { x: 19, y: 76 },
-		br: { x: 34, y: 62 },
-		mx: { x: 12, y: 36 },
-		pt: { x: 55, y: 40 },
-		es: { x: 59, y: 42 },
-		en: { x: 61, y: 24 },
-		fr: { x: 64, y: 34 },
-		nl: { x: 66, y: 25 },
-		de: { x: 71, y: 29 },
-		it: { x: 71, y: 43 },
-		tr: { x: 84, y: 46 }
-	};
 
 	type Parada = {
 		clubId: string;
 		pais: string;
+		ciudad: string;
 		nombre: string;
 		temporadas: number;
 		/** La primera temporada en la que estuvo ahí: ordena el recorrido. */
@@ -63,15 +44,16 @@
 	 *
 	 * Se cuenta por club y no por país porque un club es un lugar y un país es
 	 * una zona: dos años en Boca y dos en River no son cuatro años en Argentina.
-	 * Pero se dibuja en la posición del país, con un desvío por club para que
-	 * dos clubes del mismo lugar no se pisen.
+	 * Y se dibuja en la ciudad del club, no en la del país: entre Rosario y
+	 * Tucumán hay mil kilómetros, y con el país una carrera entera en Argentina
+	 * era un solo punto donde no se veía nada.
 	 */
 	const paradas = $derived.by<Parada[]>(() => {
 		const porClub = new Map<string, Parada>();
 
 		for (const hito of historial) {
 			const { club, pais } = contexto(hito.clubId);
-			const donde = DONDE[pais.id] ?? { x: 50, y: 50 };
+			const donde = proyectar(dondeJuega(club.ciudad, pais.id));
 			const ya = porClub.get(hito.clubId);
 			if (ya) {
 				ya.temporadas += 1;
@@ -84,12 +66,16 @@
 			porClub.set(hito.clubId, {
 				clubId: hito.clubId,
 				pais: pais.id,
+				ciudad: club.ciudad,
 				nombre: club.nombre,
 				temporadas: 1,
 				desde: hito.temporada,
 				titulos: hito.titulo ? 1 : 0,
-				x: donde.x + ((semilla % 7) - 3) * 1.6,
-				y: donde.y + ((Math.floor(semilla / 7) % 5) - 2) * 1.8
+				// Un desvío chico para que dos clubes del mismo país no se pisen. Sale
+				// del id, así que es el mismo siempre: al azar, el mapa se
+				// reacomodaría solo en cada render.
+				x: donde.x + ((semilla % 7) - 3) * 1.1,
+				y: donde.y + ((Math.floor(semilla / 7) % 5) - 2) * 1.3
 			});
 		}
 
@@ -100,7 +86,7 @@
 
 	/** El radio crece con las temporadas, pero con raíz: si no, quince años tapan el mapa. */
 	function radio(temporadas: number): number {
-		return 1.9 + Math.sqrt(temporadas / masLargo) * 3.4;
+		return 1.6 + Math.sqrt(temporadas / masLargo) * 2.6;
 	}
 
 	const total = $derived(paradas.reduce((suma, p) => suma + p.temporadas, 0));
@@ -126,21 +112,12 @@
 		</summary>
 
 		<div class="adentro">
-			<!--
-				El viewBox recorta el aire de arriba y de abajo: con 0 0 100 100 el
-				mapa salía cuadrado y en la columna del medio eso son setecientos
-				píxeles para decir dónde jugó.
-			-->
-			<svg viewBox="0 14 100 78" role="img" aria-label="Mapa de la carrera">
-				<!--
-					Los continentes, apenas insinuados. No es geografía: es para que los
-					círculos no floten en un rectángulo vacío.
-				-->
+			<svg viewBox="0 0 100 100" role="img" aria-label="Mapa de la carrera">
+				<!-- Las costas, de verdad. Ver `planisferio.ts`. -->
 				<g class="tierra">
-					<ellipse cx="27" cy="74" rx="13" ry="21" />
-					<ellipse cx="14" cy="36" rx="9" ry="10" />
-					<ellipse cx="67" cy="34" rx="17" ry="15" />
-					<ellipse cx="83" cy="46" rx="7" ry="6" />
+					{#each TIERRAS as tierra (tierra.nombre)}
+						<path d={contornoDe(tierra.puntos)} />
+					{/each}
 				</g>
 
 				<!-- El recorrido, en orden. Es la carrera dibujada como viaje. -->
@@ -161,7 +138,10 @@
 				{#each [...paradas].sort((a, b) => b.temporadas - a.temporadas) as p (p.clubId)}
 					<li>
 						<Escudo clubId={p.clubId} tamano={22} />
-						<span class="donde">{p.nombre}</span>
+						<span class="donde">
+							{p.nombre}
+							<i>{p.ciudad}</i>
+						</span>
 						<span class="cuanto">
 							{p.temporadas}
 							{p.temporadas === 1 ? 'temporada' : 'temporadas'}
@@ -238,8 +218,11 @@
 		background: rgba(255, 255, 255, 0.02);
 		border-radius: 10px;
 	}
-	.tierra ellipse {
-		fill: rgba(255, 255, 255, 0.045);
+	.tierra path {
+		fill: rgba(255, 255, 255, 0.055);
+		stroke: rgba(255, 255, 255, 0.12);
+		stroke-width: 0.25;
+		stroke-linejoin: round;
 	}
 	/* El camino: se ve el orden en que pasó por cada lugar. */
 	.camino {
@@ -277,6 +260,14 @@
 		flex: 1;
 		min-width: 0;
 		font-weight: 700;
+		line-height: 1.2;
+	}
+	.donde i {
+		display: block;
+		font-style: normal;
+		font-weight: 400;
+		font-size: 0.74rem;
+		color: var(--tenue);
 	}
 	.cuanto {
 		flex: none;

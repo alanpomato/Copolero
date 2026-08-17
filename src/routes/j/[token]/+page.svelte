@@ -313,16 +313,6 @@
 								tiradas={vista.tiradas}
 							/>
 
-							<Paso
-								titulo="Dejarle una nota a {vista.elOtro.nombre}"
-								nota="Queda privada hasta que los dos cierren la fase. Después la ven los dos."
-							>
-								<label style="margin:0">
-									<textarea name="nota" maxlength="280" placeholder="Lo que quieras dejarle dicho…"
-									></textarea>
-								</label>
-							</Paso>
-
 							<button type="submit">Cerrar mi parte de la fase</button>
 
 							<button

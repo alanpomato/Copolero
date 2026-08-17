@@ -1,3 +1,4 @@
+import { atributosQueUsa } from './puestos';
 import type { Estado, InversionComprada, Rol } from './tipos';
 
 /**
@@ -146,6 +147,35 @@ export const INVERSIONES: Inversion[] = [
 		}
 	},
 
+	{
+		id: 'mudanza',
+		de: 'futbolista',
+		nombre: 'Mudarte al lado del predio',
+		detalle: 'Dejar de perder dos horas por día en el auto. Se nota en el cuerpo antes que en la cabeza.',
+		efecto: 'Tres temporadas: −3 de desgaste y +4 de moral por año',
+		peso: 3,
+		dura: 3,
+		fijo: {
+			nombre: 'La casa al lado del predio',
+			detalle: 'Comprarla en vez de alquilarla. Ya no te mudás más.',
+			efecto: 'Siempre: −3 de desgaste y +4 de moral por año'
+		}
+	},
+	{
+		id: 'especialista',
+		de: 'futbolista',
+		nombre: 'Un profe solo para vos',
+		detalle: 'Media hora más, todos los días, sobre lo único que de verdad te hace falta.',
+		efecto: 'Tres temporadas: +2 por año en lo que más usás de tu puesto',
+		peso: 4,
+		dura: 3,
+		fijo: {
+			nombre: 'Tu entrenador personal',
+			detalle: 'Que viaje con vos y esté todos los años, no tres.',
+			efecto: 'Siempre: +2 por año en lo que más usás de tu puesto'
+		}
+	},
+
 	// --- Del representante ---------------------------------------------------
 	{
 		id: 'oficina',
@@ -178,6 +208,52 @@ export const INVERSIONES: Inversion[] = [
 		detalle: 'Que las notas salgan como tienen que salir.',
 		efecto: 'La prensa del futbolista sube sola: +3 por temporada',
 		peso: 2
+	},
+
+	// --- Consumibles del representante ---------------------------------------
+	// Le faltaban: tenía cuatro cosas para siempre y ninguna decisión de plazo,
+	// así que después de la cuarta temporada no le quedaba nada para comprar.
+	{
+		id: 'socio-europa',
+		de: 'representante',
+		nombre: 'Un socio en Europa',
+		detalle: 'Alguien que atienda del otro lado del charco mientras vos dormís.',
+		efecto: 'Tres temporadas: +3 de contactos por año',
+		peso: 3,
+		dura: 3,
+		fijo: {
+			nombre: 'Oficina en Europa',
+			detalle: 'Poner la tuya allá en vez de depender de un socio.',
+			efecto: 'Siempre: +3 de contactos por año'
+		}
+	},
+	{
+		id: 'campana',
+		de: 'representante',
+		nombre: 'Una campaña para instalarlo',
+		detalle: 'Que aparezca donde tiene que aparecer hasta que el nombre suene solo.',
+		efecto: 'Tres temporadas: +4 de fama por año',
+		peso: 2,
+		dura: 3,
+		fijo: {
+			nombre: 'Una agencia de imagen',
+			detalle: 'Que el nombre no deje de sonar nunca más.',
+			efecto: 'Siempre: +4 de fama por año'
+		}
+	},
+	{
+		id: 'viajes',
+		de: 'representante',
+		nombre: 'Viajar a verlos jugar',
+		detalle: 'Estar en la cancha y no mirar el video. Se ve otra cosa y te ven a vos.',
+		efecto: 'Dos temporadas: +3 de scouting por año',
+		peso: 2,
+		dura: 2,
+		fijo: {
+			nombre: 'Viajar siempre',
+			detalle: 'Que ir a verlos deje de ser una excepción.',
+			efecto: 'Siempre: +3 de scouting por año'
+		}
 	}
 ];
 
@@ -541,6 +617,10 @@ export function cobrarMantenimiento(estado: Estado): Mantenimiento {
 			if (item.dura && !comprada.fijo) {
 				const restan = (comprada.quedan ?? 1) - 1;
 				if (restan > 0) {
+					// Lo que hace todos los años lo hace también mientras dura: un
+					// consumible que se paga por tres temporadas tiene que rendir las
+					// tres, no solo la primera.
+					aplicarPorTemporada(estado, item);
 					quedan.push({ ...comprada, quedan: restan });
 				} else {
 					lineas.push({
@@ -587,6 +667,20 @@ function aplicarPorTemporada(estado: Estado, item: Inversion): void {
 	if (item.id === 'oficina') r.atributos.contactos = acotar(r.atributos.contactos + 1);
 	if (item.id === 'ojeadores') r.atributos.scouting = acotar(r.atributos.scouting + 1);
 	if (item.id === 'prensa-propia') f.prensa = acotar(f.prensa + 3, -100, 100);
+
+	// Los de tres temporadas, que rinden mientras duran.
+	if (item.id === 'mudanza') {
+		f.desgaste = acotar(f.desgaste - 3);
+		f.moral = acotar(f.moral + 4);
+	}
+	if (item.id === 'especialista') {
+		// Lo que más usa su puesto, que es distinto para un nueve y para un cinco.
+		const cual = atributosQueUsa(f.posicion)[0];
+		f.atributos[cual] = acotar(f.atributos[cual] + 2);
+	}
+	if (item.id === 'socio-europa') r.atributos.contactos = acotar(r.atributos.contactos + 3);
+	if (item.id === 'campana') f.fama = acotar(f.fama + 4);
+	if (item.id === 'viajes') r.atributos.scouting = acotar(r.atributos.scouting + 3);
 }
 
 /** El piso de moral que da el psicólogo, para que lo use la temporada. */

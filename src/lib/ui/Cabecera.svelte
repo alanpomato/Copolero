@@ -100,7 +100,12 @@
 			<span class="temporada">{estado.temporada - 1}</span>
 			<span class="nombrefase">temporadas</span>
 		{:else}
-			<span class="temporada">T{estado.temporada}</span>
+			<!--
+				La temporada y el año, juntos. "T2" solo no dice en qué año estás, y
+				el año es lo que hace que la carrera se sienta una vida y no una
+				planilla: llegar a 2041 con 31 años es otra cosa que llegar a la T16.
+			-->
+			<span class="temporada">T{estado.temporada} <b>{estado.anio}</b></span>
 			<span class="nombrefase">{NOMBRE_FASE[estado.fase]}</span>
 		{/if}
 	</span>
@@ -188,6 +193,12 @@
 	.temporada {
 		font-weight: 800;
 		font-size: 0.95rem;
+		font-variant-numeric: tabular-nums;
+	}
+	/* El año, apenas más callado que la temporada: acompaña, no compite. */
+	.temporada b {
+		font-weight: 700;
+		color: var(--tenue);
 	}
 	.nombrefase {
 		font-size: 0.66rem;

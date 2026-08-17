@@ -13,6 +13,7 @@
 		titulo,
 		detalle = '',
 		probabilidad = null,
+		marca = '',
 		deshabilitada = false,
 		bloqueado = false,
 		multiple = false,
@@ -26,6 +27,14 @@
 		titulo: string;
 		detalle?: string;
 		probabilidad?: number | null;
+		/**
+		 * Un rótulo corto arriba a la derecha, donde iría la probabilidad.
+		 *
+		 * Para lo que hay que ver de un vistazo y no leer: cuántas temporadas dura
+		 * un consumible, por ejemplo. Metido en el texto del efecto se perdía entre
+		 * lo demás; acá se compara de arriba abajo sin leer una palabra.
+		 */
+		marca?: string;
 		/** Se muestra igual pero no se puede elegir: por ejemplo, no le alcanza. */
 		deshabilitada?: boolean;
 		/**
@@ -95,6 +104,8 @@
 			<span class="titulo">{titulo}</span>
 			{#if probabilidad !== null}
 				<span class="prob {tono}">{probabilidad}%</span>
+			{:else if marca}
+				<span class="marca">{marca}</span>
 			{/if}
 		</span>
 		{#if detalle}<span class="detalle">{detalle}</span>{/if}
@@ -189,6 +200,17 @@
 	}
 	.prob.baja {
 		color: var(--malo);
+	}
+	.marca {
+		flex: none;
+		font-size: 0.72rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.04em;
+		color: var(--espera);
+		background: rgba(251, 191, 36, 0.14);
+		border-radius: 999px;
+		padding: 0.1rem 0.5rem;
 	}
 	.relleno.alta {
 		background: var(--acento);
