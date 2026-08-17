@@ -14,9 +14,11 @@
 	import type { Atributos, Estado, Rol } from '$lib/engine/tipos';
 	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
+	import Momento from './Momento.svelte';
 	import Opcion from './Opcion.svelte';
 	import Paso from './Paso.svelte';
-	import Minijuego from './Minijuego.svelte';
+	import { media } from '$lib/engine/estado';
+	import { CARISMA_POR_DEFECTO } from '$lib/engine/momentos';
 
 	/**
 	 * El cuerpo del formulario de la fase: cambia según la fase y el rol.
@@ -78,8 +80,18 @@
 	 */
 	let abierta = $state(0);
 
+	/**
+	 * Y si el momento está abierto de verdad, tapando todo lo demás.
+	 *
+	 * No se abre solo al entrar. Una pantalla que te tira un cuadro modal en la
+	 * cara apenas cargó no se siente como que llegó el momento: se siente como
+	 * un aviso. Se abre cuando lo abrís, y ahí sí ocupa todo.
+	 */
+	let jugando = $state(false);
+
 	function seguir(cuantas: number) {
 		if (abierta < cuantas - 1) abierta += 1;
+		else jugando = false;
 	}
 
 	$effect(() => {
@@ -121,20 +133,6 @@
 		quiz: 1500
 	};
 
-	/** Cómo se llama jugársela en cada uno. */
-	const VERBO: Record<string, string> = {
-		ruleta: 'Jugártela',
-		arco: 'Patear',
-		dado: 'Tirar',
-		quiz: 'Decírselo'
-	};
-	const MIENTRAS: Record<string, string> = {
-		ruleta: 'Girando…',
-		arco: 'Va la pelota…',
-		dado: 'Tirando…',
-		quiz: 'Te está mirando…'
-	};
-
 	/**
 	 * Los momentos de este rol.
 	 *
@@ -146,6 +144,51 @@
 	 */
 	const losMomentos = $derived(opciones.ocasiones ?? opciones.momentos);
 	const campoDelMomento = $derived(opciones.ocasiones ? 'ocasion' : 'momento');
+
+	/**
+	 * Lo que no se puede perder de vista mientras se decide.
+	 *
+	 * Alan lo marcó aparte del pedido del popup, y es la advertencia que hace
+	 * que el popup no sea un retroceso: "que no se pierda de vista el OVR y
+	 * otros datos clave de la tarjeta del jugador". Un cuadro que tapa la
+	 * pantalla te deja eligiendo entre dos opciones sin lo que necesitás para
+	 * elegir, y ahí la decisión se vuelve un volantazo.
+	 *
+	 * Cada rol lleva lo suyo, y lo suyo es lo que los momentos mueven: al
+	 * futbolista le importa cómo está el técnico y cuánto lleva gastado el
+	 * cuerpo; al representante, con qué números se sienta a hablar.
+	 */
+	const cinta = $derived.by(() => {
+		if (rol === 'representante') {
+			const r = estado.representante;
+			return {
+				numero: String(r.prestigio),
+				pie: 'Prestigio',
+				datos: [
+					{ rotulo: 'Negociación', valor: String(r.atributos.negociacion) },
+					{ rotulo: 'Scouting', valor: String(r.atributos.scouting) },
+					{ rotulo: 'Contactos', valor: String(r.atributos.contactos) },
+					{ rotulo: 'Carisma', valor: String(r.atributos.carisma ?? CARISMA_POR_DEFECTO) }
+				]
+			};
+		}
+		const f = estado.futbolista;
+		return {
+			numero: String(media(f.atributos, f.posicion)),
+			pie: 'Media',
+			clubId: f.contrato.clubId,
+			datos: [
+				{ rotulo: 'Edad', valor: String(f.edad) },
+				{ rotulo: 'Moral', valor: String(f.moral) },
+				{ rotulo: 'Desgaste', valor: String(f.desgaste) },
+				{ rotulo: 'Técnico', valor: String(f.dt) },
+				{ rotulo: 'Gente', valor: String(f.hinchada) }
+			]
+		};
+	});
+
+	/** De qué club son los colores de las escenas: del que lo tiene. */
+	const clubDeLasEscenas = $derived(estado.futbolista.contrato.clubId);
 
 	/**
 	 * Todo lo tirado: lo que vino con la página más lo que se tiró sin recargarla.
@@ -693,7 +736,7 @@
 {#if losMomentos}
 	{@const cuantas = losMomentos.length}
 	<div class="momentos">
-		<p class="sutil" style="margin:0 0 1rem">
+		<p class="sutil" style="margin:0 0 .9rem">
 			{#if cuantas === 1}
 				Un momento {estado.fase === 3 ? 'del mercado' : 'de la temporada'}.
 			{:else}
@@ -707,131 +750,101 @@
 			{/if}
 		</p>
 
-		{#each losMomentos as ocasion, i (ocasion.id)}
-			{@const tirada = hechas[i]}
-			{@const elegida =
-				ocasion.opciones.find((o) => o.id === (tirada?.opcionId ?? ocasiones[i])) ??
-				ocasion.opciones[0]}
-			{@const yaPaso = i < destapadas}
-			{@const esLaDeAhora = i === abierta && yaPaso}
+		<!--
+			La lista de momentos, que es el año visto de afuera.
 
-			{#if !yaPaso}
-				<!-- Todavía no pasó. Se sabe que viene, y nada más. -->
-				<p class="porVenir">
-					{i + 1} · Todavía no pasó
-				</p>
-			{:else if !esLaDeAhora}
-				<!-- Ya la jugó: una línea con lo que eligió y cómo le fue. -->
-				<button
-					type="button"
-					class="resuelta"
-					class:fallo={tirada && !tirada.salio}
-					onclick={() => (abierta = i)}
-				>
-					<span class="cual">{i + 1} · {ocasion.titulo}</span>
-					<span class="loQueElegi">{elegida.etiqueta}</span>
-					<span class="pct">
-						{#if tirada}{tirada.salio ? 'Entró' : 'No'}{:else}{elegida.probabilidad}%{/if}
-					</span>
-				</button>
-			{:else}
-				<div class="tarjeta ocasion" class:jugada={!!tirada}>
-					<p class="numeroDeMomento">Momento {i + 1} de {cuantas}</p>
-					<h3>{ocasion.titulo}</h3>
-					<p style="margin:0 0 .9rem">{ocasion.contexto}</p>
+			Antes acá abajo venía el momento entero desplegado, y ése era el
+			problema que marcó Alan: la decisión más pesada del año se leía igual
+			que el resto del formulario. Ahora esto es solo el índice —qué pasó,
+			qué toca y qué falta— y el momento en sí se abre encima de todo. Ver
+			`Momento.svelte`.
+		-->
+		<ol class="linea">
+			{#each losMomentos as ocasion, i (ocasion.id)}
+				{@const tirada = hechas[i]}
+				{@const elegida =
+					ocasion.opciones.find((o) => o.id === (tirada?.opcionId ?? ocasiones[i])) ??
+					ocasion.opciones[0]}
+				{@const yaPaso = i < destapadas}
+				{@const listo = terminada(i)}
 
-					<!--
-						La rueda al costado de las opciones, no arriba.
-						Estaba arriba y era un problema de verdad: la rueda muestra la
-						probabilidad de la opción elegida, así que al bajar a leer la tercera
-						opción ya no se veía el número que esa opción produce. Al costado se
-						mira la rueda y la opción al mismo tiempo, que es de lo que se trata
-						elegir acá.
-					-->
-					<div class="apuesta">
-						<div class="rueda">
-							<Minijuego
-								juego={ocasion.juego}
-								probabilidad={elegida.probabilidad}
-								etiqueta={elegida.etiqueta}
-								salio={tirada ? tirada.salio : null}
-								tirando={tirando === i}
-								yaEstaba={!!tirada && recienTirada !== i}
-								carisma={opciones.carisma?.salva ?? 0}
-							/>
-							{#if !tirada}
-								<p class="sutil siSale">{elegida.siSale}</p>
-							{/if}
-						</div>
-
-						<div class="cuales">
-							{#each ocasion.opciones as opcion (opcion.id)}
-								<Opcion
-									grupo={`${campoDelMomento}-${i}`}
-									valor={opcion.id}
-									titulo={opcion.etiqueta}
-									detalle={opcion.detalle}
-									probabilidad={opcion.probabilidad}
-									bind:elegido={ocasiones[i]}
-									bloqueado={!!tirada}
-								/>
-							{/each}
-						</div>
-					</div>
-
-					{#if tirada && (recienTirada !== i || contado === i)}
-						<!--
-							Lo que pasó. Aparece cuando la rueda frenó: contarlo antes sería
-							contar el final con la pelota todavía en el aire.
-						-->
-						{#if tirada.texto}
-							<p class="loQuePaso" class:mal={!tirada.salio}>{tirada.texto}</p>
-						{/if}
-						{#if i < cuantas - 1}
-							<button type="button" class="secundario siguiente" onclick={() => seguir(cuantas)}>
-								¿Y qué pasó después?
-							</button>
-						{/if}
-					{:else if tirada}
-						<p class="loQuePaso esperando">…</p>
+				<li class:pendiente={!yaPaso}>
+					{#if !yaPaso}
+						<!-- Todavía no pasó. Se sabe que viene, y nada más. -->
+						<span class="fila porVenir">
+							<span class="n">{i + 1}</span>
+							<span class="que">Todavía no pasó</span>
+						</span>
 					{:else}
 						<button
 							type="button"
-							class="tirarla"
-							disabled={tirando === i}
-							onclick={() => tirar(i, ocasion.juego)}
+							class="fila"
+							class:jugado={listo}
+							class:fallo={listo && tirada && !tirada.salio}
+							class:ahora={!listo}
+							onclick={() => {
+								abierta = i;
+								jugando = true;
+							}}
 						>
-							{tirando === i
-								? (MIENTRAS[ocasion.juego] ?? 'Girando…')
-								: `${VERBO[ocasion.juego] ?? 'Jugártela'} · ${elegida.probabilidad}%`}
+							<span class="n">{i + 1}</span>
+							<span class="que">
+								<b>{ocasion.titulo}</b>
+								<i>{listo ? elegida.etiqueta : 'Te toca decidir'}</i>
+							</span>
+							<span class="comoSalio">
+								{#if listo && tirada}
+									{tirada.salio ? 'Salió' : 'No salió'}
+								{:else}
+									Jugarlo
+								{/if}
+							</span>
 						</button>
-						<p class="aviso">Una sola vez. Lo que salga, salió.</p>
 					{/if}
+				</li>
+			{/each}
+		</ol>
 
-					{#if problema && tirando !== i}
-						<p class="problema">{problema}</p>
-					{/if}
-				</div>
-			{/if}
+		<!--
+			El momento abierto. Uno solo por vez, que es como pasan: en un año no
+			ocurren tres cosas al mismo tiempo.
+		-->
+		{#if jugando && losMomentos[abierta]}
+			{@const ocasion = losMomentos[abierta]}
+			<Momento
+				momento={ocasion}
+				indice={abierta}
+				total={cuantas}
+				campo={campoDelMomento}
+				clubId={clubDeLasEscenas}
+				{cinta}
+				carisma={opciones.carisma?.salva ?? 0}
+				tirada={hechas[abierta]}
+				tirando={tirando === abierta}
+				contado={recienTirada !== abierta || contado === abierta}
+				{problema}
+				bind:elegida={ocasiones[abierta]}
+				onTirar={(juego) => tirar(abierta, juego)}
+				onSeguir={() => seguir(cuantas)}
+				onCerrar={() => (jugando = false)}
+			/>
+		{/if}
 
-			<!--
-				Las que no están abiertas igual mandan su elección.
-				Un input escondido con `display:none` se envía igual que uno visible
-				—lo que no se envía es uno deshabilitado—, así que la fase se resuelve
-				completa aunque el jugador no haya vuelto a mirar la primera. Y si el
-				navegador no tiene JavaScript, acá quedan las tres con su opción por
-				defecto, que es lo mismo que toma el motor cuando nadie elige.
+		<!--
+			Las elecciones viajan siempre, esté el popup abierto o cerrado.
 
-				También hace falta para la que está abierta y ya se tiró: ahí los radios
-				quedan deshabilitados, y un radio deshabilitado no viaja. Igual, lo que
-				manda es lo que el servidor tiene escrito.
-			-->
-			{#if !esLaDeAhora || tirada}
-				<div hidden>
-					<input type="radio" name={`${campoDelMomento}-${i}`} value={ocasiones[i] ?? ''} checked />
-				</div>
-			{/if}
-		{/each}
+			Un input escondido con `hidden` se envía igual que uno visible —lo que
+			no se envía es uno deshabilitado—, así que la fase se resuelve completa
+			aunque el jugador no haya abierto ningún momento, y sin JavaScript
+			quedan las opciones por defecto, que es lo mismo que toma el motor
+			cuando nadie elige. Igual, lo que manda de verdad es lo que el servidor
+			tiene escrito: ver `tirarOcasion`.
+		-->
+		<div hidden>
+			{#each losMomentos as ocasion, i (ocasion.id)}
+				<input type="radio" name={`${campoDelMomento}-${i}`} value={ocasiones[i] ?? ''} checked />
+			{/each}
+		</div>
 	</div>
 {/if}
 
@@ -968,156 +981,102 @@
 			gap: 0 0.8rem;
 		}
 	}
-	/* La ocasión se mide a sí misma: en la columna del medio hay lugar para poner
-	   la rueda al costado, en el celular no. */
-	.ocasion {
-		container-type: inline-size;
+	/*
+	 * La línea del año: qué pasó, qué toca y qué falta.
+	 *
+	 * Es un índice, no el contenido. El momento en sí se abre encima de todo
+	 * —ver `Momento.svelte`—; acá abajo solo queda la forma del año, que se lee
+	 * de un vistazo y se puede volver a abrir cualquiera de los que ya pasaron.
+	 */
+	.linea {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.5rem;
 	}
-	.numeroDeMomento {
-		margin: 0 0 0.15rem;
-		font-size: 0.68rem;
-		font-weight: 800;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--acento);
-	}
-	.siguiente {
-		margin-top: 1rem;
-	}
-
-	/* La que todavía no pasó: se sabe que viene y nada más. */
-	.porVenir {
-		margin: 0 0 0.6rem;
-		padding: 0.7rem 1rem;
-		border: 1px dashed var(--borde);
-		border-radius: 12px;
-		font-size: 0.84rem;
-		color: var(--tenue);
-	}
-
-	/* La ya decidida: una línea con lo que eligió, y se puede volver a abrir. */
-	.resuelta {
+	.fila {
 		display: flex;
-		align-items: baseline;
-		gap: 0.6rem;
+		align-items: center;
+		gap: 0.75rem;
 		width: 100%;
-		margin: 0 0 0.6rem;
-		padding: 0.7rem 1rem;
-		background: var(--tarjeta);
-		border: 1px solid var(--borde);
+		padding: 0.7rem 0.9rem;
 		border-radius: 12px;
+		border: 1px solid var(--borde);
+		background: var(--tarjeta);
 		color: var(--texto);
 		text-align: left;
 		font: inherit;
+	}
+	button.fila {
 		cursor: pointer;
 	}
-	.resuelta:hover {
+	button.fila:hover {
 		background: var(--tarjeta-alta);
 	}
-	.resuelta .cual {
+	.n {
 		flex: none;
-		font-size: 0.8rem;
+		width: 1.6rem;
+		height: 1.6rem;
+		display: grid;
+		place-items: center;
+		border-radius: 50%;
+		font-size: 0.78rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		background: rgba(255, 255, 255, 0.07);
 		color: var(--tenue);
 	}
-	.resuelta .loQueElegi {
+	.que {
 		flex: 1;
 		min-width: 0;
-		font-weight: 700;
-		color: var(--acento);
+		line-height: 1.25;
 	}
-	.resuelta .pct {
+	.que b {
+		display: block;
+		font-size: 0.92rem;
+	}
+	.que i {
+		font-style: normal;
+		font-size: 0.78rem;
+		color: var(--tenue);
+	}
+	.comoSalio {
 		flex: none;
-		font-variant-numeric: tabular-nums;
+		font-size: 0.72rem;
 		font-weight: 800;
-		color: var(--acento);
-	}
-	.resuelta.fallo .loQueElegi,
-	.resuelta.fallo .pct {
-		color: var(--malo);
-	}
-
-	/* El botón de tirar. Es el único de la pantalla que hace algo irreversible,
-	   así que es el único que se ve así: ancho, encendido y con el número puesto
-	   adentro, para que no se pueda apretar sin haberlo leído. */
-	.tirarla {
-		width: 100%;
-		margin-top: 1.1rem;
-		padding: 0.95rem 1rem;
-		font-size: 1.02rem;
-		font-weight: 800;
-		letter-spacing: 0.01em;
-	}
-	.tirarla:disabled {
-		opacity: 0.75;
-		cursor: progress;
-	}
-	.aviso {
-		margin: 0.5rem 0 0;
-		text-align: center;
-		font-size: 0.76rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		color: var(--tenue);
 	}
 
-	/* La crónica, cuando la rueda ya frenó. */
-	.loQuePaso {
-		margin: 1.1rem 0 0;
-		padding: 0.85rem 1rem;
-		border-radius: 12px;
-		border-left: 3px solid var(--acento);
+	/* El que toca: es el único que pide algo, así que es el único encendido. */
+	.fila.ahora {
+		border-color: var(--acento);
 		background: rgba(74, 222, 128, 0.08);
-		font-size: 0.98rem;
-		line-height: 1.45;
 	}
-	.loQuePaso.mal {
-		border-left-color: var(--malo);
-		background: rgba(248, 113, 113, 0.07);
+	.fila.ahora .n {
+		background: var(--acento);
+		color: #0b0e13;
 	}
-	.loQuePaso.esperando {
-		border-left-color: var(--borde);
+	.fila.ahora .comoSalio {
+		color: var(--acento);
+	}
+
+	/* Los ya jugados: se leen, y se pueden volver a mirar. */
+	.fila.jugado .comoSalio {
+		color: var(--acento);
+	}
+	.fila.fallo .comoSalio {
+		color: var(--malo);
+	}
+
+	/* La que todavía no pasó: se sabe que viene y nada más. */
+	.fila.porVenir {
+		border-style: dashed;
 		background: transparent;
 		color: var(--tenue);
-		text-align: center;
-		letter-spacing: 0.3em;
-	}
-	.problema {
-		margin: 0.7rem 0 0;
 		font-size: 0.84rem;
-		color: var(--malo);
-	}
-	/* Ya jugada: la tarjeta deja de ser una pregunta. */
-	.ocasion.jugada {
-		border-color: var(--borde);
-	}
-
-	.apuesta {
-		display: grid;
-		gap: 0.9rem;
-	}
-	.rueda {
-		min-width: 0;
-	}
-	.siSale {
-		margin: 0.6rem 0 0;
-		text-align: center;
-	}
-	.cuales {
-		min-width: 0;
-	}
-	@container (min-width: 30rem) {
-		.apuesta {
-			grid-template-columns: 10.5rem minmax(0, 1fr);
-			gap: 1.2rem;
-			align-items: center;
-		}
-		.siSale {
-			font-size: 0.78rem;
-			line-height: 1.35;
-		}
-		/* La última opción no arrastra el margen de abajo: deja un hueco raro
-		   cuando la columna de al lado ya terminó. */
-		.cuales :global(.opcion:last-child) {
-			margin-bottom: 0;
-		}
 	}
 
 	/* El objetivo ya cerrado: se lee, no se toca. */
