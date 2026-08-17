@@ -151,7 +151,8 @@ export const INVERSIONES: Inversion[] = [
 		id: 'mudanza',
 		de: 'futbolista',
 		nombre: 'Mudarte al lado del predio',
-		detalle: 'Dejar de perder dos horas por día en el auto. Se nota en el cuerpo antes que en la cabeza.',
+		detalle:
+			'Dejar de perder dos horas por día en el auto. Se nota en el cuerpo antes que en la cabeza.',
 		efecto: 'Tres temporadas: −3 de desgaste y +4 de moral por año',
 		peso: 3,
 		dura: 3,

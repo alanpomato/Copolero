@@ -304,7 +304,9 @@ describe('comprar varias en el mismo año', () => {
 		const e = conPlata(500_000);
 		const nuevas = loQuePuedeComprar(e, 'futbolista').filter((i) => i.modo === 'comprar');
 		const cara = [...nuevas].sort((x, y) => y.precioUsd - x.precioUsd)[0];
-		const otra = [...nuevas].sort((x, y) => y.precioUsd - x.precioUsd).find((i) => i.id !== cara.id)!;
+		const otra = [...nuevas]
+			.sort((x, y) => y.precioUsd - x.precioUsd)
+			.find((i) => i.id !== cara.id)!;
 
 		e.futbolista.dineroUsd = cara.precioUsd;
 

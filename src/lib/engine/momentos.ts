@@ -620,7 +620,8 @@ function laMesaFinal(estado: Estado): MomentoDelRepresentante {
 			{
 				id: 'renovar-igual',
 				etiqueta: 'Aceptar lo que haya',
-				detalle: 'Un año más en las mismas condiciones. Nadie se hace rico, nadie se queda sin club.',
+				detalle:
+					'Un año más en las mismas condiciones. Nadie se hace rico, nadie se queda sin club.',
 				probabilidad: chance(62 + comoLoVen * 1.2, a.contactos, 0.35),
 				siSale: `Firmaron la continuidad sin discutir números. Sigue en ${donde}.`,
 				siFalla: `Ni así: en el club ya habían decidido no seguir.`,

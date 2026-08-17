@@ -23,7 +23,19 @@ import {
 const ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const LARGO_CODIGO = 6;
 
-export class ErrorDePartida extends Error {}
+export class ErrorDePartida extends Error {
+	/**
+	 * Qué clase de error es, para los pocos casos en que la pantalla tiene que
+	 * hacer algo además de mostrar el texto. Hoy solo `pantalla-vieja`, que
+	 * pide un refresco en el acto en vez de esperar al próximo.
+	 */
+	readonly codigo?: 'pantalla-vieja';
+
+	constructor(mensaje: string, codigo?: 'pantalla-vieja') {
+		super(mensaje);
+		this.codigo = codigo;
+	}
+}
 
 function nuevoCodigo(): string {
 	const bytes = randomBytes(LARGO_CODIGO);
@@ -422,7 +434,7 @@ export function enviarDecision(
 	db: Db,
 	token: string,
 	payload: Decision,
-	opciones: { tambienPorElOtro?: boolean } = {}
+	opciones: { tambienPorElOtro?: boolean; deLaFase?: number; deLaTemporada?: number } = {}
 ): ResultadoEnvio {
 	return db.transaction(
 		(tx) => {
@@ -453,6 +465,26 @@ export function enviarDecision(
 
 			const temporada = partida.temporada;
 			const fase = partida.fase as Fase;
+
+			/*
+			 * Que lo que llega sea de esta fase y no de una anterior.
+			 *
+			 * Una pestaña abierta desde antes muestra la fase vieja, y su formulario
+			 * llega igual: sin esto se guardaba como decisión de la fase actual, con
+			 * los campos de otra pantalla, y la elección desaparecía sin que nadie
+			 * se enterara. Pasa de verdad cuando el otro usa "avanzar sin esperar",
+			 * porque la fase cambia sin que vos hayas tocado nada.
+			 */
+			if (
+				(opciones.deLaFase !== undefined && opciones.deLaFase !== fase) ||
+				(opciones.deLaTemporada !== undefined && opciones.deLaTemporada !== temporada)
+			) {
+				throw new ErrorDePartida(
+					'Esa pantalla ya quedó vieja: la partida avanzó mientras la tenías abierta. ' +
+						'Acá está lo que hay ahora.',
+					'pantalla-vieja'
+				);
+			}
 
 			// Lo que ya se tiró, se tiró. El formulario manda las tres opciones
 			// juntas, así que sin esto alcanzaría con editar un radio para cambiar

@@ -89,6 +89,46 @@
 			<div class="texto">
 				<p class="bajada">{portada.bajada}</p>
 
+				<!--
+					La ficha del año, en la tipografía del diario.
+
+					La tapa cuenta el año como se cuenta una temporada y eso es lo que la
+					hace valer, pero después de leerla uno quiere los números. Estaban en
+					el diario, tres pantallas más abajo y mezclados con todo lo demás.
+				-->
+				{#if portada.ficha.partidos > 0}
+					<dl class="ficha">
+						<div>
+							<dt>PJ</dt>
+							<dd>{portada.ficha.partidos}</dd>
+						</div>
+						<div>
+							<dt>Goles</dt>
+							<dd>{portada.ficha.goles}</dd>
+						</div>
+						<div>
+							<dt>Asist.</dt>
+							<dd>{portada.ficha.asistencias}</dd>
+						</div>
+						<div class="destacada">
+							<dt>G+A</dt>
+							<dd>{portada.ficha.participaciones}</dd>
+						</div>
+						<div>
+							<dt>Gol/PJ</dt>
+							<dd>{portada.ficha.promedio}</dd>
+						</div>
+						<div>
+							<dt>Nota</dt>
+							<dd>{portada.ficha.nota.toFixed(1)}</dd>
+						</div>
+					</dl>
+
+					{#if portada.ficha.seleccion}
+						<p class="seleccion">{portada.ficha.seleccion}</p>
+					{/if}
+				{/if}
+
 				<div class="notas">
 					{#each portada.notas as nota (nota.titulo)}
 						<section>
@@ -260,6 +300,44 @@
 		font-size: 1.02rem;
 		line-height: 1.45;
 		color: var(--tinta);
+	}
+
+	/* La ficha: números de diario, con línea arriba y abajo como una tabla de
+	   resultados de papel. */
+	.ficha {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 1.4rem;
+		margin: 1rem 0 0;
+		padding: 0.6rem 0;
+		border-top: 1px solid rgba(0, 0, 0, 0.25);
+		border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+	}
+	.ficha div {
+		margin: 0;
+	}
+	.ficha dt {
+		font-size: 0.62rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		opacity: 0.6;
+	}
+	.ficha dd {
+		margin: 0;
+		font-size: 1.15rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		line-height: 1.1;
+	}
+	/* Goles más asistencias es el número que de verdad mide un año. */
+	.ficha .destacada dd {
+		font-size: 1.35rem;
+	}
+	.seleccion {
+		margin: 0.55rem 0 0;
+		font-size: 0.82rem;
+		font-style: italic;
+		opacity: 0.75;
 	}
 
 	.notas {

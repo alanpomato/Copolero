@@ -42,14 +42,40 @@
 	);
 
 	/**
-	 * Mientras esperamos al otro, refrescamos solos cada 5 segundos. Con esto
-	 * alcanza para que se sienta en vivo cuando los dos están conectados al mismo
-	 * tiempo, sin meter websockets.
+	 * La pantalla se refresca sola mientras la partida está viva.
+	 *
+	 * Antes se refrescaba solamente cuando uno ya había cerrado y esperaba al
+	 * otro, y eso dejaba un agujero: si el otro usa "avanzar sin esperar", la
+	 * fase avanza sin que vos hayas tocado nada y tu pantalla se queda mostrando
+	 * la anterior para siempre. Alan lo vio así —el futbolista todavía eligiendo
+	 * en una mesa que el representante ya tenía firmada en su diario— y no era la
+	 * barrera fallando: era una pantalla vieja que nadie avisaba que era vieja.
+	 *
+	 * Mientras esperás al otro se mira seguido, porque ahí cada segundo cuenta.
+	 * Mientras estás decidiendo se mira de vez en cuando: alcanza para no quedar
+	 * clavado y no interrumpe a nadie a mitad de una elección.
 	 */
 	$effect(() => {
-		if (!esperandoAlOtro && vista.elOtro) return;
-		const intervalo = setInterval(() => void invalidateAll(), 5000);
+		if (vista.opciones.retiro) return;
+		const cada = esperandoAlOtro || !vista.elOtro ? 5000 : 20000;
+		const intervalo = setInterval(() => void invalidateAll(), cada);
 		return () => clearInterval(intervalo);
+	});
+
+	/*
+	 * Y si el servidor rechazó lo que mandamos porque la pantalla ya era vieja,
+	 * la traemos al día en el acto en vez de esperar al próximo refresco: el que
+	 * acaba de apretar un botón está mirando, y veinte segundos de una pantalla
+	 * que el propio juego acaba de declarar vencida son veinte segundos de más.
+	 *
+	 * `ultimoAviso` es un `let` común y no `$state` a propósito: si fuera
+	 * reactivo, escribirlo acá adentro volvería a disparar el efecto.
+	 */
+	let ultimoAviso: unknown = null;
+	$effect(() => {
+		if (!form?.pantallaVieja || form === ultimoAviso) return;
+		ultimoAviso = form;
+		void invalidateAll();
 	});
 
 	const MENSAJE_SINCRONIZACION: Record<string, string> = {
@@ -306,6 +332,16 @@
 							envíen con este formulario igual. Ver `Bolsillo.svelte`.
 						-->
 						<form id="fase" method="POST" action="?/cerrarFase" use:enhance>
+							<!--
+								De qué fase es lo que se está por mandar.
+
+								Una pestaña abierta desde antes muestra la fase anterior, y sin
+								esto su formulario se guardaba como decisión de la fase actual:
+								la elección de la mesa entraba como si fuera del mercado y no la
+								veía nadie. Con el sello, el servidor se da cuenta y avisa.
+							-->
+							<input type="hidden" name="deLaFase" value={estado.fase} />
+							<input type="hidden" name="deLaTemporada" value={estado.temporada} />
 							<Decisiones
 								opciones={vista.opciones}
 								{estado}

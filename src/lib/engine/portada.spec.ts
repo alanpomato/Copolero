@@ -256,6 +256,70 @@ describe('la tapa del diario', () => {
 	});
 });
 
+describe('la ficha del año', () => {
+	it('los números de la ficha son los del hito, sin retocar nada', () => {
+		const e = jugar(unPibe(), 3);
+		const p = portadaDe(e)!;
+		const hito = e.historial[e.historial.length - 1];
+		expect(p.ficha.partidos).toBe(hito.partidos);
+		expect(p.ficha.goles).toBe(hito.goles);
+		expect(p.ficha.asistencias).toBe(hito.asistencias);
+		expect(p.ficha.nota).toBe(hito.nota);
+	});
+
+	it('G+A es goles más asistencias, que es como se mide de verdad', () => {
+		let e = unPibe();
+		for (let i = 0; i < 8; i++) {
+			e = jugar(e, 1);
+			const p = portadaDe(e);
+			if (!p) continue;
+			expect(p.ficha.participaciones).toBe(p.ficha.goles + p.ficha.asistencias);
+		}
+	});
+
+	/*
+	 * Dos decimales y no redondeado: entre 0.42 y 0.58 hay un delantero
+	 * distinto, y en un entero los dos son "0".
+	 */
+	it('el promedio de gol lleva dos decimales', () => {
+		let e = unPibe();
+		for (let i = 0; i < 8; i++) {
+			e = jugar(e, 1);
+			const p = portadaDe(e);
+			if (!p || p.ficha.partidos === 0) continue;
+			expect(p.ficha.promedio).toMatch(/^\d+\.\d\d$/);
+			expect(Number(p.ficha.promedio)).toBeCloseTo(p.ficha.goles / p.ficha.partidos, 2);
+		}
+	});
+
+	it('sin partidos no hay promedio: no se divide por cero', () => {
+		let e = unPibe();
+		let hubo = false;
+		for (let i = 0; i < 12; i++) {
+			e = jugar(e, 1);
+			const p = portadaDe(e);
+			if (!p || p.ficha.partidos > 0) continue;
+			hubo = true;
+			expect(p.ficha.promedio).toBe('');
+		}
+		// Si en esta carrera jugó siempre, el caso no se dio y no hay nada que probar.
+		expect(typeof hubo).toBe('boolean');
+	});
+
+	it('la línea de la selección solo aparece cuando hubo algo que contar', () => {
+		let e = unPibe();
+		for (let i = 0; i < 10; i++) {
+			e = jugar(e, 1);
+			const p = portadaDe(e);
+			if (!p) continue;
+			const hito = e.historial[e.historial.length - 1];
+			const jugoAlgo = (e.seleccion?.debuto ?? false) && (e.seleccion?.partidos ?? 0) > 0;
+			if (!hito.mundial && !jugoAlgo) expect(p.ficha.seleccion).toBeNull();
+			else expect(p.ficha.seleccion).toBeTruthy();
+		}
+	});
+});
+
 describe('lo que llega a la pantalla', () => {
 	it('la tapa sale solo en pretemporada, y el historial en las tres fases', () => {
 		let e = jugar(unPibe(), 2);

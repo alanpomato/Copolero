@@ -51,14 +51,14 @@ export const actions: Actions = {
 		const opcion = campo(datos, 'opcion');
 
 		if (!Number.isInteger(indice) || indice < 0 || !opcion) {
-			return fail(400, { problema: 'Falta decir qué hacés.' });
+			return fail(400, { problema: 'Falta decir qué hacés.', pantallaVieja: false });
 		}
 
 		try {
 			return { tirada: tirarOcasion(obtenerDb(), params.token, indice, opcion) };
 		} catch (e) {
 			const mensaje = e instanceof ErrorDePartida ? e.message : 'No se pudo tirar la rueda.';
-			return fail(400, { problema: mensaje });
+			return fail(400, { problema: mensaje, pantallaVieja: false });
 		}
 	},
 
@@ -141,14 +141,24 @@ export const actions: Actions = {
 		// para que una partida no quede muerta si el otro desaparece.
 		const sinEsperar = datos.get('sinEsperar') === 'si';
 
+		// De qué fase venía la pantalla que mandó esto. Ver `enviarDecision`.
+		const deLaFase = Number(datos.get('deLaFase'));
+		const deLaTemporada = Number(datos.get('deLaTemporada'));
+
 		try {
 			const resultado = enviarDecision(obtenerDb(), params.token, decision, {
-				tambienPorElOtro: sinEsperar
+				tambienPorElOtro: sinEsperar,
+				deLaFase: Number.isInteger(deLaFase) && deLaFase > 0 ? deLaFase : undefined,
+				deLaTemporada:
+					Number.isInteger(deLaTemporada) && deLaTemporada > 0 ? deLaTemporada : undefined
 			});
 			return { faseCerrada: resultado.faseCerrada };
 		} catch (e) {
 			const mensaje = e instanceof ErrorDePartida ? e.message : 'No se pudo cerrar la fase.';
-			return fail(400, { problema: mensaje });
+			// Si la pantalla quedó vieja, avisamos para que se recargue en el acto:
+			// no tiene sentido dejar al jugador mirando una fase que ya pasó.
+			const vieja = e instanceof ErrorDePartida && e.codigo === 'pantalla-vieja';
+			return fail(400, { problema: mensaje, pantallaVieja: vieja });
 		}
 	}
 };

@@ -37,6 +37,26 @@ export type Portada = {
 	/** Para la fajita de "temporada 4 · 2029". */
 	temporada: number;
 	anio: number;
+	/**
+	 * La ficha del año, para leerla al lado de la crónica.
+	 *
+	 * La tapa cuenta el año como se cuenta una temporada —"lo gritó todo el
+	 * país"— y eso es lo que la hace valer, pero después de leerla uno quiere
+	 * los números. Estaban en el diario, tres pantallas más abajo, mezclados
+	 * con todo lo demás.
+	 */
+	ficha: {
+		partidos: number;
+		goles: number;
+		asistencias: number;
+		/** Goles + asistencias, que es como se mide a un delantero de verdad. */
+		participaciones: number;
+		/** Goles por partido, con dos decimales. Vacío si no jugó. */
+		promedio: string;
+		nota: number;
+		/** Qué hizo con la selección ese año, si hizo algo. */
+		seleccion: string | null;
+	};
 };
 
 /**
@@ -101,8 +121,45 @@ export function portadaDe(estado: Estado): Portada | null {
 		foto: cabeza.foto,
 		clubId: hito.clubId,
 		temporada: hito.temporada,
-		anio: hito.anio
+		anio: hito.anio,
+		ficha: fichaDe(estado, hito)
 	};
+}
+
+/**
+ * Los números del año, al lado de la crónica.
+ *
+ * El promedio de gol va con dos decimales y no redondeado: entre 0.42 y 0.58
+ * hay un delantero distinto, y en un entero los dos son "0". Y las
+ * participaciones —goles más asistencias— porque es como se mide de verdad a
+ * un jugador de ataque: el que da veinte pases gol y hace cinco pesó igual que
+ * el que hizo quince.
+ */
+function fichaDe(estado: Estado, hito: HitoTemporada): Portada['ficha'] {
+	const participaciones = hito.goles + hito.asistencias;
+	return {
+		partidos: hito.partidos,
+		goles: hito.goles,
+		asistencias: hito.asistencias,
+		participaciones,
+		promedio: hito.partidos > 0 ? (hito.goles / hito.partidos).toFixed(2) : '',
+		nota: hito.nota,
+		seleccion: loDeLaSeleccion(estado, hito)
+	};
+}
+
+/**
+ * Qué hizo con la selección ese año.
+ *
+ * `null` cuando no pasó nada, que es la mayoría de los años de la mayoría de
+ * las carreras: escribir "no jugó" todas las temporadas es ruido.
+ */
+function loDeLaSeleccion(estado: Estado, hito: HitoTemporada): string | null {
+	if (hito.mundial) return `Mundial ${hito.anio}: ${hito.mundial}`;
+	const s = estado.seleccion;
+	if (!s?.debuto) return null;
+	if (s.partidos <= 0) return null;
+	return `${s.partidos} ${s.partidos === 1 ? 'partido' : 'partidos'} y ${s.goles} ${s.goles === 1 ? 'gol' : 'goles'} en la selección`;
 }
 
 type Cabeza = { titular: string; bajada: string; tono: Portada['tono']; foto: Foto };

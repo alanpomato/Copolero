@@ -165,6 +165,81 @@ describe('la barrera', () => {
 	});
 });
 
+/*
+ * La pantalla vieja.
+ *
+ * Alan lo vio jugando: "el futbolista todavía no eligió y al repre le aparece
+ * que YA se cerró el acuerdo del 5%". La barrera estaba bien; lo que estaba
+ * mal era que una pestaña abierta desde antes seguía mostrando la fase
+ * anterior y su formulario llegaba igual, con los campos de otra pantalla, y
+ * se guardaba como decisión de la fase actual. Pasa de verdad cuando el otro
+ * usa "avanzar sin esperar", porque la fase cambia sin que vos toques nada.
+ */
+describe('la pantalla que quedó vieja', () => {
+	it('rechaza una decisión mandada desde una fase anterior', () => {
+		const { tokenFutbolista, tokenRepresentante } = partidaCompleta();
+
+		// La fase 1 se cierra entre los dos: el futbolista queda en la fase 2.
+		enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: '' }, { deLaFase: 1 });
+		enviarDecision(db, tokenRepresentante, { rol: 'representante', nota: '' }, { deLaFase: 1 });
+		expect(vistaPara(db, tokenFutbolista)!.estado.fase).toBe(2);
+
+		// Y una pestaña que todavía muestra la fase 1 manda lo suyo.
+		try {
+			enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: 'vieja' }, { deLaFase: 1 });
+			throw new Error('tendría que haber fallado');
+		} catch (e) {
+			expect(e).toBeInstanceOf(ErrorDePartida);
+			// El código es el que hace que la pantalla se recargue en el acto.
+			expect((e as ErrorDePartida).codigo).toBe('pantalla-vieja');
+		}
+	});
+
+	it('rechaza una decisión mandada desde la temporada anterior', () => {
+		const { tokenFutbolista, tokenRepresentante } = partidaCompleta();
+
+		for (let fase = 0; fase < 3; fase++) {
+			enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: '' });
+			enviarDecision(db, tokenRepresentante, { rol: 'representante', nota: '' });
+		}
+		expect(vistaPara(db, tokenFutbolista)!.estado.temporada).toBe(2);
+
+		expect(() =>
+			enviarDecision(
+				db,
+				tokenFutbolista,
+				{ rol: 'futbolista', nota: 'del año pasado' },
+				{ deLaFase: 1, deLaTemporada: 1 }
+			)
+		).toThrow(ErrorDePartida);
+	});
+
+	it('la decisión de la pantalla al día pasa sin problema', () => {
+		const { tokenFutbolista } = partidaCompleta();
+
+		const r = enviarDecision(
+			db,
+			tokenFutbolista,
+			{ rol: 'futbolista', nota: 'al día' },
+			{ deLaFase: 1, deLaTemporada: 1 }
+		);
+
+		expect(r.faseCerrada).toBe(false);
+		expect(vistaPara(db, tokenFutbolista)!.yaCerre).toBe(true);
+	});
+
+	/*
+	 * Sin los campos, todo sigue andando: los clientes viejos —una pestaña
+	 * cargada antes de este deploy— no se quedan afuera.
+	 */
+	it('sin los campos de la pantalla no rechaza nada', () => {
+		const { tokenFutbolista } = partidaCompleta();
+		expect(() =>
+			enviarDecision(db, tokenFutbolista, { rol: 'futbolista', nota: '' })
+		).not.toThrow();
+	});
+});
+
 describe('información por rol', () => {
 	it('cada uno ve solo lo suyo y lo compartido', () => {
 		const { tokenFutbolista, tokenRepresentante } = partidaCompleta();

@@ -12,12 +12,7 @@ import { resolverGestion } from './gestion';
 import { cobrarMantenimiento, comprar } from './inversiones';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
-import {
-	RENOVACION,
-	aplicarMomento,
-	momentosDelRepresentante,
-	resolverMomento
-} from './momentos';
+import { RENOVACION, aplicarMomento, momentosDelRepresentante, resolverMomento } from './momentos';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';

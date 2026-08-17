@@ -247,8 +247,7 @@ describe('el mercado', () => {
 		// La primera opción de cualquiera de los momentos del mercado mueve algo
 		// de lo que el club mira: la gente, el técnico, la prensa o la moral.
 		const premio = suya.opciones[0].premio;
-		const mueve =
-			premio.hinchada ?? premio.dt ?? premio.prensa ?? premio.moral ?? premio.fama ?? 0;
+		const mueve = premio.hinchada ?? premio.dt ?? premio.prensa ?? premio.moral ?? premio.fama ?? 0;
 		expect(Math.abs(mueve)).toBeGreaterThan(0);
 	});
 
