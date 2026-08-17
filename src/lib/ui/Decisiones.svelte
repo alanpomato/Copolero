@@ -378,79 +378,6 @@
 {/if}
 
 <!-- ---------- En qué gastar la plata ---------- -->
-{#if opciones.inversiones}
-	{@const inv = opciones.inversiones}
-	<Paso
-		titulo="Comprar para la temporada"
-		elegido={queCompra}
-		dato={compras.length === 0 ? `Tenés ${plata(inv.plataUsd)}` : ''}
-		tema="plata"
-		nota="Preparador, fisio, botines, la casa de la familia. Podés comprar más de una cosa el mismo año: el límite es la plata. Lo que es para siempre se paga todos los años, y si un año no te alcanza, lo perdés."
-	>
-		<div class="cifras" style="margin-bottom:.9rem">
-			<div class="cifra">
-				<span class="valor" style="font-size:1.1rem">{plata(inv.plataUsd - loQueGasta)}</span>
-				<span class="etiqueta">{compras.length > 0 ? 'Te queda' : 'Tenés'}</span>
-			</div>
-			{#if inv.gastoAnualUsd > 0 || loQueSumaPorAnio > 0}
-				<div class="cifra">
-					<span class="valor" style="font-size:1.1rem"
-						>{plata(inv.gastoAnualUsd + loQueSumaPorAnio)}</span
-					>
-					<span class="etiqueta">Se te va por año</span>
-				</div>
-			{/if}
-		</div>
-		{#if inv.tiene.length > 0}
-			<ul class="tenes" style="margin-bottom:1rem">
-				{#each inv.tiene as i (i.id)}
-					<li>
-						<b>{i.nombre}</b> — {i.efecto}
-						{#if i.dura}<span class="restan">queda{i.dura > 1 ? 'n' : ''} poco</span>{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
-
-		{#if inv.puedeComprar.length > 0}
-			<!--
-				Sin "no gastar nada": con casilleros, no marcar ninguno ya es eso. La
-				opción existía porque antes eran radios y hacía falta una para poder
-				no elegir.
-			-->
-			{#each [{ titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => !i.dura) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.dura) }] as grupo (grupo.titulo)}
-				{#if grupo.cuales.length > 0}
-					<p class="subtitulo">{grupo.titulo}</p>
-					{#each grupo.cuales as i (i.id)}
-						{@const marcada = compras.includes(i.id)}
-						{@const alcanza = marcada || inv.plataUsd - loQueGasta >= i.precioUsd}
-						<Opcion
-							multiple
-							grupo="inversiones"
-							valor={i.id}
-							titulo={i.nombre}
-							detalle={i.detalle}
-							bind:elegidas={compras}
-							deshabilitada={!alcanza}
-						>
-							{#snippet extra()}
-								<span class="sube">
-									<span class="chip-sube gana">{i.efecto}</span>
-									<span class="chip-sube {alcanza ? '' : 'pierde'}">
-										{plata(i.precioUsd)}{alcanza ? '' : ' · no te alcanza'}
-									</span>
-									{#if i.porTemporadaUsd > 0}
-										<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
-									{/if}
-								</span>
-							{/snippet}
-						</Opcion>
-					{/each}
-				{/if}
-			{/each}
-		{/if}
-	</Paso>
-{/if}
 
 <!-- ---------- Cuando vence el contrato con el club ---------- -->
 {#if opciones.renovacion}
@@ -853,53 +780,6 @@
 	</div>
 {/if}
 
-{#if opciones.salida}
-	<!--
-		Pedir salir.
-
-		Va acá abajo y chico, y no arriba con las decisiones del año, porque no es
-		una decisión del año: es algo que se hace una vez en toda una carrera, si
-		se hace. Estaba arriba de todo y ocupaba una tarjeta entera, así que cada
-		temporada la pantalla arrancaba preguntándole al jugador si se quería ir
-		del club —una pregunta que casi siempre se contesta que no—. Lo que se
-		usa siempre va arriba; esto se usa cuando pasa algo, y cuando pasa, se
-		busca.
-	-->
-	<details class="salida" open={salida === PIDE}>
-		<summary>
-			<span class="que">¿Te querés ir de {clubActual}?</span>
-			<span class="como">{salida === PIDE ? 'Lo pediste' : 'Pedir salir del club'}</span>
-		</summary>
-
-		<div class="adentro">
-			<p class="elAviso">{opciones.salida.aviso}</p>
-
-			<Opcion
-				grupo="pedirSalida"
-				valor=""
-				titulo="Seguir como si nada"
-				detalle="No decís nada. El club sigue contando con vos y el mercado, con lo que llegue solo."
-				bind:elegido={salida}
-			/>
-			<Opcion
-				grupo="pedirSalida"
-				valor={PIDE}
-				titulo="Decir que te querés ir"
-				detalle="Se lo decís a tu representante y al club. De ahí en adelante se sabe que estás en venta."
-				bind:elegido={salida}
-			>
-				{#snippet extra()}
-					<span class="sube">
-						<span class="chip-sube gana">Más ofertas en el mercado, y más baratas</span>
-						<span class="chip-sube pierde">El técnico: −{LO_QUE_CUESTA_CON_EL_DT}</span>
-						<span class="chip-sube pierde">La hinchada: −{LO_QUE_CUESTA_CON_LA_HINCHADA}</span>
-					</span>
-				{/snippet}
-			</Opcion>
-		</div>
-	</details>
-{/if}
-
 <!-- ---------- Fases 1 y 2: la gestión del representante ---------- -->
 {#if opciones.gestiones}
 	<Paso
@@ -1100,50 +980,6 @@
 		border-color: var(--borde);
 	}
 
-	/* Pedir salir: una línea al pie, del tamaño de lo que se usa una vez cada
-	   diez temporadas. Cuando se abre, se abre entera. */
-	.salida {
-		margin: 0.2rem 0 1.4rem;
-	}
-	.salida > summary {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.8rem;
-		padding: 0.55rem 0.2rem;
-		list-style: none;
-		cursor: pointer;
-		font-size: 0.84rem;
-		color: var(--tenue);
-		border-top: 1px solid var(--borde);
-	}
-	.salida > summary::-webkit-details-marker {
-		display: none;
-	}
-	.salida > summary:hover .como {
-		color: var(--texto);
-	}
-	.salida .como {
-		flex: none;
-		font-weight: 700;
-		color: var(--mercado);
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-	.salida[open] > summary {
-		border-bottom: 0;
-	}
-	.salida .adentro {
-		padding: 0.2rem 0 0.4rem;
-		border-left: 2px solid var(--mercado);
-		padding-left: 0.9rem;
-		margin-bottom: 0.4rem;
-	}
-	.salida .elAviso {
-		margin: 0 0 0.8rem;
-		font-size: 0.88rem;
-		line-height: 1.45;
-	}
 	.apuesta {
 		display: grid;
 		gap: 0.9rem;
@@ -1258,22 +1094,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.09em;
 		color: var(--tenue);
-	}
-
-	.tenes {
-		list-style: none;
-		margin: 0.85rem 0 0;
-		padding: 0;
-		display: grid;
-		gap: 0.3rem;
-		font-size: 0.85rem;
-		color: var(--tenue);
-	}
-	.tenes b {
-		color: var(--texto);
-	}
-	.restan {
-		color: var(--espera);
 	}
 
 	.acambio {

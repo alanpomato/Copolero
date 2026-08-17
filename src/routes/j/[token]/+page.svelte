@@ -14,6 +14,7 @@
 	import Confianza from '$lib/ui/Confianza.svelte';
 	import Alerta from '$lib/ui/Alerta.svelte';
 	import Sueno from '$lib/ui/Sueno.svelte';
+	import Bolsillo from '$lib/ui/Bolsillo.svelte';
 	import Novedades from '$lib/ui/Novedades.svelte';
 	import Paso from '$lib/ui/Paso.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
@@ -125,6 +126,15 @@
 			<aside class="alCostado">
 				{#if vista.opciones.miSueno}
 					<Sueno mio={vista.opciones.miSueno} delOtro={vista.opciones.elSuenoDelOtro} />
+				{/if}
+
+				<!--
+					Lo que no es del año: comprar y pedir salir. Van acá y no en la
+					columna del medio, que cuenta la temporada en orden. Solo mientras la
+					fase esté abierta: cerrada, no hay formulario al que mandarlos.
+				-->
+				{#if !vista.yaCerre && vista.elOtro && !vista.opciones.retiro}
+					<Bolsillo opciones={vista.opciones} {estado} />
 				{/if}
 
 				{#if vista.rol === 'futbolista'}
@@ -289,7 +299,12 @@
 							</form>
 						</div>
 					{:else}
-						<form method="POST" action="?/cerrarFase" use:enhance>
+						<!--
+							`id="fase"` no es decorativo: es lo que deja que la vidriera y
+							el botón de pedir salir vivan en la columna del costado y se
+							envíen con este formulario igual. Ver `Bolsillo.svelte`.
+						-->
+						<form id="fase" method="POST" action="?/cerrarFase" use:enhance>
 							<Decisiones
 								opciones={vista.opciones}
 								{estado}

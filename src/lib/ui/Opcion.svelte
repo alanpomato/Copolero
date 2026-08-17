@@ -16,6 +16,7 @@
 		deshabilitada = false,
 		bloqueado = false,
 		multiple = false,
+		form = undefined,
 		elegido = $bindable(),
 		elegidas = $bindable(),
 		extra
@@ -41,6 +42,16 @@
 		 * elegir la segunda desmarcaba la primera.
 		 */
 		multiple?: boolean;
+		/**
+		 * A qué formulario pertenece este input.
+		 *
+		 * Sirve para las decisiones que viven fuera del `<form>` de la fase —la
+		 * vidriera y pedir salir, que están en la columna del costado—. Un input
+		 * con `form` se envía con ese formulario aunque esté en otra parte del
+		 * documento, así que se puede sacar una decisión de donde estorba sin
+		 * tener que mover el formulario entero ni duplicarlo.
+		 */
+		form?: string;
 		elegido?: string;
 		elegidas?: string[];
 		extra?: Snippet;
@@ -67,6 +78,7 @@
 			value={valor}
 			bind:group={elegidas}
 			disabled={deshabilitada || bloqueado}
+			{form}
 		/>
 	{:else}
 		<input
@@ -75,6 +87,7 @@
 			value={valor}
 			bind:group={elegido}
 			disabled={deshabilitada || bloqueado}
+			{form}
 		/>
 	{/if}
 	<span class="cuerpo">
