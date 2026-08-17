@@ -2,6 +2,7 @@
 	import type { Minijuego } from '$lib/engine/ocasiones';
 	import Arco from './Arco.svelte';
 	import Dado from './Dado.svelte';
+	import Quiz from './Quiz.svelte';
 	import Ruleta from './Ruleta.svelte';
 
 	/**
@@ -27,6 +28,8 @@
 		salio?: boolean | null;
 		tirando?: boolean;
 		yaEstaba?: boolean;
+		/** Solo el quiz lo usa: cuánto salva caer bien. */
+		carisma?: number;
 	} = $props();
 </script>
 
@@ -34,6 +37,8 @@
 	<Arco {...resto} />
 {:else if juego === 'dado'}
 	<Dado {...resto} />
+{:else if juego === 'quiz'}
+	<Quiz {...resto} />
 {:else}
 	<Ruleta {...resto} />
 {/if}

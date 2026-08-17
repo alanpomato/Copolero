@@ -188,6 +188,15 @@ export const tiradas = sqliteTable(
 
 		temporada: integer('temporada').notNull(),
 
+		/**
+		 * De quién es el momento.
+		 *
+		 * Los dos roles tienen los suyos y son distintos: el futbolista juega tres
+		 * momentos de cancha y el representante dos que pasan fuera de ella. Cada
+		 * uno tira los propios y no ve los del otro.
+		 */
+		rol: text('rol', { enum: ['futbolista', 'representante'] }).notNull().default('futbolista'),
+
 		/** Cuál de los momentos del año: 0, 1, 2. */
 		indice: integer('indice').notNull(),
 
@@ -203,8 +212,8 @@ export const tiradas = sqliteTable(
 		tiradaEn: integer('tirada_en').notNull().default(ahora)
 	},
 	(t) => [
-		unique('tiradas_una_por_momento').on(t.partidaId, t.temporada, t.indice),
-		index('tiradas_por_temporada').on(t.partidaId, t.temporada)
+		unique('tiradas_una_por_momento').on(t.partidaId, t.temporada, t.rol, t.indice),
+		index('tiradas_por_temporada').on(t.partidaId, t.temporada, t.rol)
 	]
 );
 

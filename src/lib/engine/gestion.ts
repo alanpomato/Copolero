@@ -270,7 +270,13 @@ export const ACCIONES: AccionDeGestion[] = [
  * `formarse` pasó a ser tres opciones distintas para que elegir en qué
  * convertirse sea una decisión y no una lotería.
  */
-const LO_QUE_ENTRENA: Record<string, keyof Estado['representante']['atributos']> = {
+/**
+ * Qué atributo entrena cada gestión.
+ *
+ * El carisma no está y no es un olvido: no se entrena golpeando puertas, se
+ * entrena en los momentos donde hay que hablar. Ver `momentos.ts`.
+ */
+const LO_QUE_ENTRENA: Record<string, 'negociacion' | 'scouting' | 'contactos'> = {
 	sondear: 'contactos',
 	renovar: 'negociacion',
 	prensa: 'contactos',

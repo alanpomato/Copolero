@@ -113,6 +113,17 @@ export type Representante = {
 		negociacion: number;
 		scouting: number;
 		contactos: number;
+		/**
+		 * Cuánto cae bien.
+		 *
+		 * No cambia ninguna probabilidad: aparece cuando algo ya salió mal y a
+		 * veces lo salva igual. Lo pidió Hernán con esas palabras —"que haya una
+		 * stat de carisma que aunque contestes mal igual el pibe se sume"— y es
+		 * exactamente lo que hace. Ver `momentos.ts`.
+		 *
+		 * Opcional porque las partidas que empezaron antes no lo tienen guardado.
+		 */
+		carisma?: number;
 	};
 	/** Cantidad de representados además del futbolista principal. */
 	representadosExtra: number;
@@ -430,6 +441,14 @@ export type Decision = {
 	 */
 	inversiones?: string[];
 	inversion?: string;
+
+	/**
+	 * Representante, fase 2: qué contestó en cada uno de sus momentos.
+	 *
+	 * En el mismo orden en que se los mostraron, igual que `ocasiones` del otro
+	 * lado. Ver `momentos.ts`.
+	 */
+	momentos?: string[];
 
 	/** Futbolista, fase 2: si pide que lo dejen ir. Ver `salida.ts`. */
 	pedirSalida?: string;

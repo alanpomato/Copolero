@@ -191,6 +191,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 			prestigio: rng.entero(3, 10),
 			dineroUsd: rng.entero(2_000, 6_000),
 			atributos: {
+				carisma: rng.entero(25, 45),
 				negociacion: rng.entero(25, 40),
 				scouting: rng.entero(25, 40),
 				contactos: rng.entero(15, 30)

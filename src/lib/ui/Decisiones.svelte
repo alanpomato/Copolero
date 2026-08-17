@@ -75,10 +75,10 @@
 	}
 
 	$effect(() => {
-		const cuantas = opciones.ocasiones?.length ?? 0;
+		const cuantas = losMomentos?.length ?? 0;
 		if (ocasiones.length !== cuantas) {
 			// Por defecto, la opción más conservadora: la última de cada lista.
-			ocasiones = (opciones.ocasiones ?? []).map((o) => o.opciones[o.opciones.length - 1].id);
+			ocasiones = (losMomentos ?? []).map((o) => o.opciones[o.opciones.length - 1].id);
 		}
 	});
 
@@ -106,15 +106,38 @@
 	 * menos, la crónica aparece con la pelota todavía en el aire; de más, queda
 	 * un silencio raro después de que ya se vio todo.
 	 */
-	const LO_QUE_TARDA: Record<string, number> = { ruleta: 2700, arco: 1300, dado: 1600 };
+	const LO_QUE_TARDA: Record<string, number> = {
+		ruleta: 2700,
+		arco: 1300,
+		dado: 1600,
+		quiz: 1500
+	};
 
 	/** Cómo se llama jugársela en cada uno. */
-	const VERBO: Record<string, string> = { ruleta: 'Jugártela', arco: 'Patear', dado: 'Tirar' };
+	const VERBO: Record<string, string> = {
+		ruleta: 'Jugártela',
+		arco: 'Patear',
+		dado: 'Tirar',
+		quiz: 'Decírselo'
+	};
 	const MIENTRAS: Record<string, string> = {
 		ruleta: 'Girando…',
 		arco: 'Va la pelota…',
-		dado: 'Tirando…'
+		dado: 'Tirando…',
+		quiz: 'Te está mirando…'
 	};
+
+	/**
+	 * Los momentos de este rol.
+	 *
+	 * Son la misma cosa dibujada igual: el futbolista tiene tres que pasan con la
+	 * pelota y el representante dos que pasan fuera de la cancha, pero los dos
+	 * tienen un planteo, opciones con la probabilidad de verdad y un minijuego
+	 * que la dibuja. El servidor manda uno u otro según quién sea; acá no hace
+	 * falta distinguirlos para nada más que el nombre del campo.
+	 */
+	const losMomentos = $derived(opciones.ocasiones ?? opciones.momentos);
+	const campoDelMomento = $derived(opciones.ocasiones ? 'ocasion' : 'momento');
 
 	/**
 	 * Todo lo tirado: lo que vino con la página más lo que se tiró sin recargarla.
@@ -143,7 +166,7 @@
 	 * estar mirándola.
 	 */
 	const destapadas = $derived.by(() => {
-		const cuantas = opciones.ocasiones?.length ?? 0;
+		const cuantas = losMomentos?.length ?? 0;
 		let listas = 0;
 		for (let i = 0; i < cuantas; i++) if (terminada(i)) listas++;
 		return Math.min(cuantas, listas + 1);
@@ -160,7 +183,7 @@
 	 */
 	let acomodadaPara = $state('');
 	$effect(() => {
-		const temporada = (opciones.ocasiones ?? []).map((o) => o.id).join('|');
+		const temporada = (losMomentos ?? []).map((o) => o.id).join('|');
 		if (temporada === acomodadaPara) return;
 		acomodadaPara = temporada;
 		abierta = Math.max(0, destapadas - 1);
@@ -688,17 +711,21 @@
 	</div>
 {/if}
 
-<!-- ---------- Fase 2: la rueda de ocasión ---------- -->
-{#if opciones.ocasiones}
-	{@const cuantas = opciones.ocasiones.length}
+<!-- ---------- Fase 2: los momentos del año, de cada rol ---------- -->
+{#if losMomentos}
+	{@const cuantas = losMomentos.length}
 	<div class="momentos">
 		<p class="sutil" style="margin:0 0 1rem">
 			{cuantas} momentos de la temporada, uno por vez. Elegís, tirás, y ahí mismo sabés qué pasó. Las
 			probabilidades salen de tus atributos y son las de verdad: lo que dice el número es lo que se tira,
 			y se tira una sola vez.
+			{#if rol === 'representante' && opciones.carisma}
+				Y tenés <b>{opciones.carisma.cuanto} de carisma</b>: cuando algo sale mal, {opciones.carisma
+					.salva}% de las veces caés bien igual y se arregla solo.
+			{/if}
 		</p>
 
-		{#each opciones.ocasiones as ocasion, i (ocasion.id)}
+		{#each losMomentos as ocasion, i (ocasion.id)}
 			{@const tirada = hechas[i]}
 			{@const elegida =
 				ocasion.opciones.find((o) => o.id === (tirada?.opcionId ?? ocasiones[i])) ??
@@ -748,6 +775,7 @@
 								salio={tirada ? tirada.salio : null}
 								tirando={tirando === i}
 								yaEstaba={!!tirada && recienTirada !== i}
+								carisma={opciones.carisma?.salva ?? 0}
 							/>
 							{#if !tirada}
 								<p class="sutil siSale">{elegida.siSale}</p>
@@ -757,7 +785,7 @@
 						<div class="cuales">
 							{#each ocasion.opciones as opcion (opcion.id)}
 								<Opcion
-									grupo={`ocasion-${i}`}
+									grupo={`${campoDelMomento}-${i}`}
 									valor={opcion.id}
 									titulo={opcion.etiqueta}
 									detalle={opcion.detalle}
@@ -818,7 +846,7 @@
 			-->
 			{#if !esLaDeAhora || tirada}
 				<div hidden>
-					<input type="radio" name={`ocasion-${i}`} value={ocasiones[i] ?? ''} checked />
+					<input type="radio" name={`${campoDelMomento}-${i}`} value={ocasiones[i] ?? ''} checked />
 				</div>
 			{/if}
 		{/each}

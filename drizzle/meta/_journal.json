@@ -15,6 +15,13 @@
       "when": 1786992803355,
       "tag": "0001_parched_piledriver",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786995988151,
+      "tag": "0002_noisy_turbo",
+      "breakpoints": true
     }
   ]
 }

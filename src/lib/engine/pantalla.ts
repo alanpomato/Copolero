@@ -7,6 +7,12 @@ import {
 } from './entrenamiento';
 import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
+import {
+	carismaDe,
+	cuantoSalvaElCarisma,
+	momentosDelRepresentante,
+	type MomentoDelRepresentante
+} from './momentos';
 import { gastoAnual, loQuePuedeComprar, loQueTiene, type EnLaVidriera } from './inversiones';
 import {
 	loQueVaAPasar,
@@ -110,6 +116,10 @@ export type OpcionesDeFase = {
 	ocasiones?: Ocasion[];
 	/** Representante, fases 1 y 2. */
 	gestiones?: GestionVisible[];
+	/** Representante, fase 2: sus propios momentos del año. Ver `momentos.ts`. */
+	momentos?: MomentoDelRepresentante[];
+	/** Cuánto le salva el carisma cuando algo sale mal, para poder mostrarlo. */
+	carisma?: { cuanto: number; salva: number };
 	/** Los dos, fase 3. */
 	ofertas?: Oferta[];
 	valorDeMercadoUsd?: number;
@@ -254,6 +264,11 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			opciones.objetivoCerrado = objetivoPorId(estado.objetivoDelAnio);
 		}
 	} else if (estado.fase === 1 || estado.fase === 2) {
+		if (estado.fase === 2) {
+			// Lo que le pasa a él y el otro no ve. Ver `momentos.ts`.
+			opciones.momentos = momentosDelRepresentante(estado, semilla);
+			opciones.carisma = { cuanto: carismaDe(estado), salva: cuantoSalvaElCarisma(estado) };
+		}
 		opciones.gestiones = accionesDe(estado.fase).map((a) => ({
 			id: a.id,
 			nombre: a.nombre,

@@ -163,7 +163,6 @@ describe('avance de fases y temporadas', () => {
 		let estado = nuevoEstado();
 		const salarioAnual = estado.futbolista.contrato.salarioMensual * 12;
 		const cajaPrevia = estado.representante.dineroUsd;
-		const fijoEsperado = 4_000 + 600 * estado.representante.prestigio;
 		const comisionEsperada = Math.round(
 			(salarioAnual * estado.contratoRepresentacion.pctSalario) / 100
 		);
@@ -171,6 +170,12 @@ describe('avance de fases y temporadas', () => {
 		for (let i = 0; i < 3; i++) {
 			estado = resolverFase(estado, CIERRAN_LOS_DOS, SEMILLA).estado;
 		}
+
+		// El fijo se calcula con el prestigio del día que cobra, y el prestigio se
+		// mueve durante el año: los momentos del representante lo suben y lo bajan.
+		// Antes este test lo calculaba con el prestigio del arranque, que funcionaba
+		// solo mientras al representante no le pasara nada en todo el año.
+		const fijoEsperado = 4_000 + 600 * estado.representante.prestigio;
 
 		expect(estado.futbolista.dineroUsd).toBe(salarioAnual);
 		expect(estado.representante.dineroUsd).toBe(cajaPrevia + fijoEsperado + comisionEsperada);

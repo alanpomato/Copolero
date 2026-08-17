@@ -12,6 +12,7 @@ import { resolverGestion } from './gestion';
 import { cobrarMantenimiento, comprar } from './inversiones';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
+import { aplicarMomento, momentosDelRepresentante, resolverMomento } from './momentos';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
@@ -228,6 +229,23 @@ export function resolverFase(
 		const resultados = ocasiones.map((ocasion, i) =>
 			resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i)
 		);
+
+		// --- Los momentos del representante ------------------------------------
+		// Van antes de jugar el año, igual que los del futbolista: lo que se decide
+		// acá —la confianza, la prensa, la moral— entra en cómo se juega la
+		// temporada, no después de que ya se jugó.
+		const momentos = momentosDelRepresentante(siguiente, semilla);
+		const suyas = delRepresentante.momentos ?? [];
+		momentos.forEach((momento, i) => {
+			const cual = resolverMomento(momento, suyas[i], siguiente, semilla, i);
+			aplicarMomento(siguiente, cual.efecto);
+			if (cual.texto) {
+				// Lo ve él y nada más. Que al futbolista lo estén tanteando por atrás,
+				// o que su representante haya pagado para que una foto no salga, es
+				// exactamente la clase de cosa que uno de los dos sabe y el otro no.
+				log.push({ tipo: 'momento', visiblePara: 'representante', texto: cual.texto });
+			}
+		});
 
 		const temporada = jugarTemporada(siguiente, resultados, semilla, siguiente.objetivoDelAnio);
 		siguiente.ultimaTemporada = temporada.resumen;

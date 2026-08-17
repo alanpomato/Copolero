@@ -60,8 +60,10 @@ export type Opcion = {
  *  - `ruleta`: la rueda que gira. Para lo que pasa con la pelota en movimiento.
  *  - `arco`:   el arco y el que ataja. Para definir, patear y atajar.
  *  - `dado`:   un número contra el tuyo. Para lo que se juega fuera de la cancha.
+ *  - `quiz`:   una charla en la que hay que contestar. Para los momentos del
+ *              representante, donde lo que se juega es lo que se dice.
  */
-export type Minijuego = 'ruleta' | 'arco' | 'dado';
+export type Minijuego = 'ruleta' | 'arco' | 'dado' | 'quiz';
 
 export type Ocasion = {
 	id: string;

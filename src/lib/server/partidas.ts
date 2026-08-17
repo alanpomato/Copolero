@@ -6,6 +6,7 @@ import { decisiones, jugadores, log, partidas, snapshots, tiradas } from './db/s
 import { estadoInicial, type ConfigPartida } from '$lib/engine/estado';
 import { estadoSincronizacion, resolverFase } from '$lib/engine/fases';
 import { ocasionesDe, resolverOcasion } from '$lib/engine/ocasiones';
+import { momentosDelRepresentante, resolverMomento } from '$lib/engine/momentos';
 import { opcionesDeFase, type OpcionesDeFase, type Tirada } from '$lib/engine/pantalla';
 import { puesto } from '$lib/engine/puestos';
 import { nuevaSemilla, rngPara } from '$lib/engine/rng';
@@ -245,16 +246,22 @@ export function vistaPara(db: Db, token: string): Vista | null {
 		yaCerre: cerraron.includes(jugador.rol),
 		diario,
 		opciones: opcionesDeFase(estado, jugador.rol, partida.semilla),
-		tiradas: tiradasDe(db, partida.id, partida.temporada)
+		tiradas: tiradasDe(db, partida.id, partida.temporada, jugador.rol)
 	};
 }
 
-/** Lo que ya se tiró este año, en el orden en que pasó. */
-function tiradasDe(db: Db, partidaId: string, temporada: number): Tirada[] {
+/** Lo que ya tiró este rol este año, en el orden en que pasó. */
+function tiradasDe(db: Db, partidaId: string, temporada: number, rol: Rol): Tirada[] {
 	return db
 		.select()
 		.from(tiradas)
-		.where(and(eq(tiradas.partidaId, partidaId), eq(tiradas.temporada, temporada)))
+		.where(
+			and(
+				eq(tiradas.partidaId, partidaId),
+				eq(tiradas.temporada, temporada),
+				eq(tiradas.rol, rol)
+			)
+		)
 		.orderBy(asc(tiradas.indice))
 		.all()
 		.map((t) => ({
@@ -296,9 +303,6 @@ export function tirarOcasion(db: Db, token: string, indice: number, opcionId: st
 		(tx) => {
 			const jugador = tx.select().from(jugadores).where(eq(jugadores.token, token)).get();
 			if (!jugador) throw new ErrorDePartida('Ese link no corresponde a ninguna partida.');
-			if (jugador.rol !== 'futbolista') {
-				throw new ErrorDePartida('La rueda la tira el que juega.');
-			}
 
 			const partida = tx.select().from(partidas).where(eq(partidas.id, jugador.partidaId)).get();
 			if (!partida) throw new ErrorDePartida('La partida ya no existe.');
@@ -317,20 +321,26 @@ export function tirarOcasion(db: Db, token: string, indice: number, opcionId: st
 						eq(decisiones.partidaId, partida.id),
 						eq(decisiones.temporada, partida.temporada),
 						eq(decisiones.fase, 2),
-						eq(decisiones.rol, 'futbolista')
+						eq(decisiones.rol, jugador.rol)
 					)
 				)
 				.get();
 			if (yaCerro) throw new ErrorDePartida('Ya cerraste tu parte de esta fase.');
 
-			const delAnio = ocasionesDe(estado, partida.semilla);
+			// Cada rol tira los suyos: el futbolista los de la cancha, el
+			// representante los que le pasan afuera. Ni los ve ni los puede tirar el
+			// otro, y eso lo decide el rol del token y no lo que mande el navegador.
+			const delAnio =
+				jugador.rol === 'futbolista'
+					? ocasionesDe(estado, partida.semilla)
+					: momentosDelRepresentante(estado, partida.semilla);
 			const ocasion = delAnio[indice];
 			if (!ocasion) throw new ErrorDePartida('Ese momento no existe.');
 			if (!ocasion.opciones.some((o) => o.id === opcionId)) {
 				throw new ErrorDePartida('Esa no es una de las opciones.');
 			}
 
-			const hechas = tiradasDe(tx as unknown as Db, partida.id, partida.temporada);
+			const hechas = tiradasDe(tx as unknown as Db, partida.id, partida.temporada, jugador.rol);
 			const yaEstaba = hechas.find((t) => t.indice === indice);
 			if (yaEstaba) return yaEstaba;
 			// En orden: para tirar el tercero tienen que estar los dos primeros.
@@ -338,12 +348,28 @@ export function tirarOcasion(db: Db, token: string, indice: number, opcionId: st
 				throw new ErrorDePartida('Primero se juega el momento anterior.');
 			}
 
-			const resultado = resolverOcasion(ocasion, opcionId, estado, partida.semilla, indice);
+			const resultado =
+				jugador.rol === 'futbolista'
+					? resolverOcasion(
+							ocasion as ReturnType<typeof ocasionesDe>[number],
+							opcionId,
+							estado,
+							partida.semilla,
+							indice
+						)
+					: resolverMomento(
+							ocasion as ReturnType<typeof momentosDelRepresentante>[number],
+							opcionId,
+							estado,
+							partida.semilla,
+							indice
+						);
 
 			tx.insert(tiradas)
 				.values({
 					partidaId: partida.id,
 					temporada: partida.temporada,
+					rol: jugador.rol,
 					indice,
 					ocasionId: ocasion.id,
 					opcionId: resultado.opcionId,
@@ -355,9 +381,12 @@ export function tirarOcasion(db: Db, token: string, indice: number, opcionId: st
 
 			// Releída: si dos clicks entraron a la vez, gana el que escribió, y los
 			// dos ven lo mismo.
-			const escrita = tiradasDe(tx as unknown as Db, partida.id, partida.temporada).find(
-				(t) => t.indice === indice
-			);
+			const escrita = tiradasDe(
+				tx as unknown as Db,
+				partida.id,
+				partida.temporada,
+				jugador.rol
+			).find((t) => t.indice === indice);
 			if (!escrita) throw new ErrorDePartida('No se pudo tirar la rueda.');
 			return escrita;
 		},
@@ -428,12 +457,13 @@ export function enviarDecision(
 			// Lo que ya se tiró, se tiró. El formulario manda las tres opciones
 			// juntas, así que sin esto alcanzaría con editar un radio para cambiar
 			// una elección de la que ya se vio el resultado. Lo escrito manda.
-			if (fase === 2 && jugador.rol === 'futbolista') {
-				const hechas = tiradasDe(tx as unknown as Db, partida.id, temporada);
+			if (fase === 2) {
+				const hechas = tiradasDe(tx as unknown as Db, partida.id, temporada, jugador.rol);
 				if (hechas.length > 0) {
-					const elegidas = [...(payload.ocasiones ?? [])];
+					const campo = jugador.rol === 'futbolista' ? 'ocasiones' : 'momentos';
+					const elegidas = [...(payload[campo] ?? [])];
 					for (const t of hechas) elegidas[t.indice] = t.opcionId;
-					payload = { ...payload, ocasiones: elegidas };
+					payload = { ...payload, [campo]: elegidas };
 				}
 			}
 
