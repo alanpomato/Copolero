@@ -90,9 +90,27 @@
 </script>
 
 {#if historial.length > 0}
-	<div class="tarjeta" data-tema="historia">
-		<h3>La carrera</h3>
-		<p class="sutil" style="margin:-.35rem 0 .8rem">
+	<!--
+		Plegado, como el mapa.
+
+		El gráfico es la pantalla más linda del juego y también la más alta: mil
+		píxeles que se miran cada tanto y que empujan el diario fuera de la
+		pantalla todas las veces. Se abre cuando se lo quiere mirar, que es
+		exactamente cuando vale la pena.
+	-->
+	<details class="tarjeta laCarrera" data-tema="historia">
+		<summary>
+			<span class="que">
+				<b>La carrera</b>
+				<i>
+					{historial.length}
+					{historial.length === 1 ? 'temporada' : 'temporadas'} · el pico, la meseta y la caída
+				</i>
+			</span>
+			<span class="ver">Ver</span>
+		</summary>
+
+		<p class="sutil" style="margin:.8rem 0 .8rem">
 			Barras: la nota de cada año, con los colores del club. <b class="leyenda">Línea dorada</b>:
 			cómo fue creciendo tu media. Tocá una barra para ver ese año.
 		</p>
@@ -278,10 +296,40 @@
 				</ul>
 			</div>
 		{/if}
-	</div>
+	</details>
 {/if}
 
 <style>
+	/* Plegado: el título, un resumen de una línea, y el gráfico adentro. */
+	.laCarrera > summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		list-style: none;
+		cursor: pointer;
+	}
+	.laCarrera > summary::-webkit-details-marker {
+		display: none;
+	}
+	.laCarrera .que b {
+		display: block;
+		font-size: 0.95rem;
+		line-height: 1.25;
+	}
+	.laCarrera .que i {
+		font-style: normal;
+		font-size: 0.8rem;
+		color: var(--tenue);
+	}
+	.laCarrera .ver {
+		flex: none;
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--acento);
+	}
 	.lienzo {
 		overflow-x: auto;
 		overflow-y: hidden;

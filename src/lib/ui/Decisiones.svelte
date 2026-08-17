@@ -49,6 +49,14 @@
 		const tres = opciones.rasgos ?? [];
 		if (tres.length > 0 && !tres.some((r) => r.id === rasgo)) rasgo = tres[0].id;
 	});
+	/*
+	 * `bind:group` deja la variable en `null` mientras ningún radio está marcado.
+	 * Acá eso significa "no eligió club", que es lo mismo que quedarse: sin esto
+	 * el valor se queda en null hasta que alguien toca algo.
+	 */
+	$effect(() => {
+		if (destino === null || destino === undefined) destino = QUEDARSE;
+	});
 	$effect(() => {
 		const posibles = opciones.suenos ?? [];
 		if (posibles.length > 0 && !posibles.some((s) => s.id === sueno)) sueno = posibles[0].id;
@@ -288,9 +296,23 @@
 			? 'No firmar'
 			: (opciones.tratos?.find((t) => t.id === acuerdo)?.nombre ?? '')
 	);
-	const queDestino = $derived(
-		destino === QUEDARSE ? `Quedarse en ${clubActual}` : contexto(destino).club.nombre
-	);
+	/**
+	 * Adónde va, escrito.
+	 *
+	 * Sale del club de la oferta elegida, salvo que la elegida sea quedarse. Y
+	 * `destino` puede no ser ninguna de las dos cosas: `bind:group` de Svelte lo
+	 * deja en `null` mientras ningún radio está marcado, que es lo que pasa en
+	 * cada render donde las ofertas todavía no se dibujaron. Este derivado se
+	 * evalúa igual —no le importa que el mercado no esté en pantalla— y llamar a
+	 * `contexto(null)` tira: la página quedaba a medias con "No existe el club
+	 * null" en la consola, en todas las fases, y ningún test lo veía porque el
+	 * dato que viaja del servidor está perfecto. Lo que estaba mal era asumir.
+	 */
+	const queDestino = $derived.by(() => {
+		if (!destino || destino === QUEDARSE) return `Quedarse en ${clubActual}`;
+		const cual = opciones.ofertas?.find((o) => o.clubId === destino);
+		return cual ? contexto(cual.clubId).club.nombre : `Quedarse en ${clubActual}`;
+	});
 
 	/*
 	 * Cuál arranca abierto: uno solo, y el que define la fase.

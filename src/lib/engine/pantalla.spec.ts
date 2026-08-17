@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { club } from '../../../content/mundo';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
 import { opcionesDeFase } from './pantalla';
@@ -96,6 +97,68 @@ describe('lo que se le manda a la pantalla', () => {
 		for (const rol of ROLES) {
 			const opciones = opcionesDeFase(e, rol, 'pantalla');
 			expect(JSON.parse(JSON.stringify(opciones))).toEqual(opciones);
+		}
+	});
+});
+
+/**
+ * Y que todo club que la pantalla nombra exista.
+ *
+ * `club()` y `contexto()` tiran si el id no existe, y la pantalla los llama
+ * para dibujar un escudo, un nombre o una bandera. Un `clubId` en `null`
+ * viajando entre las opciones no rompe la serialización —`null` es JSON
+ * perfectamente válido— pero revienta el render del lado del navegador, que es
+ * el peor lugar donde puede reventar: la página queda a medias y los tests del
+ * motor siguen todos en verde.
+ *
+ * Pasó exactamente eso. Se veía en la consola del navegador y en ningún test.
+ */
+function clubesQueNoExisten(valor: unknown, camino = 'opciones'): string[] {
+	const rotos: string[] = [];
+
+	const mirar = (v: unknown, donde: string) => {
+		if (v === null || v === undefined) return;
+		if (Array.isArray(v)) {
+			v.forEach((x, i) => mirar(x, `${donde}[${i}]`));
+			return;
+		}
+		if (typeof v !== 'object') return;
+
+		for (const [clave, dentro] of Object.entries(v as Record<string, unknown>)) {
+			// Los campos que la pantalla va a pasarle a `club()`: por nombre, que es
+			// como los reconoce cualquiera que lea el código.
+			const esUnClub = /clubId$|^clubId|^desde$|^hacia$|clubIdFinal/.test(clave);
+			if (esUnClub && typeof dentro === 'string' && dentro.length > 0) {
+				try {
+					club(dentro);
+				} catch {
+					rotos.push(`${donde}.${clave} = ${dentro}`);
+				}
+			}
+			mirar(dentro, `${donde}.${clave}`);
+		}
+	};
+
+	mirar(valor, camino);
+	return rotos;
+}
+
+describe('los clubes que la pantalla nombra', () => {
+	it('existen todos, en toda la carrera y para los dos roles', () => {
+		for (const puesto of ['centrodelantero', 'cinco', 'central', 'arquero']) {
+			let estado = unPibe(puesto, `real-${puesto}`);
+
+			for (let vuelta = 0; vuelta < 60 && !estado.carreraTerminada; vuelta++) {
+				for (const rol of ROLES) {
+					const opciones = opcionesDeFase(estado, rol, `real-${puesto}`);
+					const rotos = clubesQueNoExisten(opciones);
+					expect(
+						rotos,
+						`${puesto} · ${rol} · temporada ${estado.temporada} fase ${estado.fase}`
+					).toEqual([]);
+				}
+				estado = resolverFase(estado, NADA, `real-${puesto}`).estado;
+			}
 		}
 	});
 });

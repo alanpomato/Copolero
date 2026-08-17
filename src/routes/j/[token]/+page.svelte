@@ -20,6 +20,7 @@
 	import Mundial from '$lib/ui/Mundial.svelte';
 	import Portada from '$lib/ui/Portada.svelte';
 	import Trayectoria from '$lib/ui/Trayectoria.svelte';
+	import Mapa from '$lib/ui/Mapa.svelte';
 	import Diario from '$lib/ui/Diario.svelte';
 	import Retiro from '$lib/ui/Retiro.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -347,6 +348,13 @@
 					de reojo mientras se decide.
 				-->
 				<Trayectoria historial={vista.opciones.historial ?? []} />
+
+				<!--
+					Y por dónde pasó, que el gráfico no cuenta: el gráfico dice qué tan
+					bien le fue y el mapa dice dónde. Los dos plegados, porque son para
+					mirar cuando uno quiere mirar para atrás y no cada vez que entra.
+				-->
+				<Mapa historial={vista.opciones.historial ?? []} />
 
 				<Diario entradas={vista.diario} />
 			</main>
