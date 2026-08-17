@@ -24,20 +24,52 @@
 	const suMedia = $derived(media(f.atributos, f.posicion));
 	const donde = $derived(contexto(f.contrato.clubId));
 
+	/*
+	 * Si la media viene subiendo, se mantiene o baja.
+	 *
+	 * Es el número que cuenta la carrera: a los veinte sube todos los años, a los
+	 * treinta y tres empieza a bajar, y el momento en que deja de subir es el que
+	 * decide cuándo hay que firmar el último buen contrato. Sin la flecha hay que
+	 * acordarse de cuánto era el año pasado.
+	 *
+	 * Sale del historial y no de un campo aparte: la media de cada temporada ya
+	 * queda anotada ahí cuando se cierra el año.
+	 */
+	const tendenciaDeLaMedia = $derived.by(() => {
+		const h = estado.historial ?? [];
+		if (h.length < 2) return '';
+		const cambio = h[h.length - 1].media - h[h.length - 2].media;
+		if (cambio >= 2) return 'sube';
+		if (cambio <= -2) return 'baja';
+		return 'igual';
+	});
+
+	const FLECHA: Record<string, string> = { sube: '▲', baja: '▼', igual: '=' };
+	const TITULO_TENDENCIA: Record<string, string> = {
+		sube: 'Viene creciendo',
+		baja: 'Viene bajando',
+		igual: 'Se mantiene'
+	};
+
 	/** Los cuatro números que uno mira antes de decidir cualquier cosa. */
 	const cifras = $derived(
 		rol === 'futbolista'
 			? [
-					{ etiqueta: 'Media', valor: suMedia, tono: tonoDe(suMedia) },
-					{ etiqueta: 'Forma', valor: f.forma, tono: tonoDe(f.forma) },
-					{ etiqueta: 'Moral', valor: f.moral, tono: tonoDe(f.moral) },
-					{ etiqueta: 'Desgaste', valor: f.desgaste, tono: tonoDe(100 - f.desgaste) }
+					{ etiqueta: 'Media', valor: suMedia, tono: tonoDe(suMedia), va: tendenciaDeLaMedia },
+					{ etiqueta: 'Forma', valor: f.forma, tono: tonoDe(f.forma), va: '' },
+					{ etiqueta: 'Moral', valor: f.moral, tono: tonoDe(f.moral), va: '' },
+					{ etiqueta: 'Desgaste', valor: f.desgaste, tono: tonoDe(100 - f.desgaste), va: '' }
 				]
 			: [
-					{ etiqueta: 'Media', valor: suMedia, tono: tonoDe(suMedia) },
-					{ etiqueta: 'Prestigio', valor: estado.representante.prestigio, tono: '' },
-					{ etiqueta: 'Confianza', valor: estado.confianza, tono: tonoDe(estado.confianza) },
-					{ etiqueta: 'Desgaste', valor: f.desgaste, tono: tonoDe(100 - f.desgaste) }
+					{ etiqueta: 'Media', valor: suMedia, tono: tonoDe(suMedia), va: tendenciaDeLaMedia },
+					{ etiqueta: 'Prestigio', valor: estado.representante.prestigio, tono: '', va: '' },
+					{
+						etiqueta: 'Confianza',
+						valor: estado.confianza,
+						tono: tonoDe(estado.confianza),
+						va: ''
+					},
+					{ etiqueta: 'Desgaste', valor: f.desgaste, tono: tonoDe(100 - f.desgaste), va: '' }
 				]
 	);
 
@@ -77,7 +109,10 @@
 		{#each cifras as c (c.etiqueta)}
 			<span class="cifra">
 				<span class="etiqueta">{c.etiqueta}</span>
-				<span class="valor {c.tono}">{c.valor}</span>
+				<span class="valor {c.tono}">
+					{c.valor}{#if c.va}<i class="va {c.va}" title={TITULO_TENDENCIA[c.va]}>{FLECHA[c.va]}</i
+						>{/if}
+				</span>
 			</span>
 		{/each}
 	</div>
@@ -205,6 +240,23 @@
 	}
 	.valor.mal {
 		color: var(--malo);
+	}
+
+	/* La flecha va chica y al lado del número: es un adjetivo, no un dato. */
+	.va {
+		font-style: normal;
+		font-size: 0.6em;
+		margin-left: 0.15em;
+		vertical-align: 0.25em;
+	}
+	.va.sube {
+		color: var(--acento);
+	}
+	.va.baja {
+		color: var(--malo);
+	}
+	.va.igual {
+		color: var(--tenue);
 	}
 
 	@media (min-width: 60rem) {

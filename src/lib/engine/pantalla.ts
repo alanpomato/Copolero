@@ -8,7 +8,12 @@ import {
 import { accionesDe } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
 import { gastoAnual, loQuePuedeComprar, loQueTiene, type EnLaVidriera } from './inversiones';
-import { loQueVaAPasar, objetivosPara, type Objetivo } from './objetivos';
+import {
+	loQueVaAPasar,
+	objetivo as objetivoPorId,
+	objetivosPara,
+	type Objetivo
+} from './objetivos';
 import { rasgo, rasgosQueLeTocaron, tocaElegirRasgo, type Rasgo } from './rasgos';
 import {
 	comoVaElSueno,
@@ -77,9 +82,11 @@ export type OpcionesDeFase = {
 	suenos?: SuenoOfrecido[];
 	miSueno?: Progreso;
 	elSuenoDelOtro?: Progreso & { deQuien: string };
-	/** Futbolista, fase 2: cómo va a jugar el año, y qué dice de lo elegido. */
+	/** Futbolista, fase 1: cómo va a jugar el año, y qué dice de lo elegido. */
 	objetivos?: Objetivo[];
 	consejoDelObjetivo?: string;
+	/** Y en la fase 2, el que ya eligió: se ve, no se cambia. */
+	objetivoCerrado?: Objetivo;
 	/** Futbolista, fase 2. */
 	ocasiones?: Ocasion[];
 	/** Representante, fases 1 y 2. */
@@ -204,10 +211,15 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 		if (estado.fase === 1) {
 			opciones.planes = PLANES;
 			opciones.intensidades = INTENSIDADES;
-		} else if (estado.fase === 2) {
+			// El plan de juego se decide antes de que arranque el campeonato, no con
+			// el campeonato empezado.
 			opciones.objetivos = objetivosPara(estado.futbolista.posicion);
 			opciones.consejoDelObjetivo = loQueVaAPasar(estado, undefined);
+		} else if (estado.fase === 2) {
 			opciones.ocasiones = ocasionesDe(estado, semilla);
+			// Ya está elegido y cerrado: se muestra para saber con qué se juega, pero
+			// no se toca.
+			opciones.objetivoCerrado = objetivoPorId(estado.objetivoDelAnio);
 		}
 	} else if (estado.fase === 1 || estado.fase === 2) {
 		opciones.gestiones = accionesDe(estado.fase).map((a) => ({

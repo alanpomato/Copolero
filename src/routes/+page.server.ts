@@ -40,9 +40,9 @@ export const actions: Actions = {
 	crear: async ({ request, cookies }) => {
 		const datos = await request.formData();
 
-		const tuNombre = texto(datos, 'tuNombre');
 		const rol = texto(datos, 'rol') as Rol;
 		const nombreFutbolista = texto(datos, 'nombreFutbolista');
+		const nombreRepresentante = texto(datos, 'nombreRepresentante');
 		const nacionalidad = texto(datos, 'nacionalidad', 40) || 'Argentina';
 		const puesto = texto(datos, 'puesto', 40);
 		const pie = texto(datos, 'pie', 20) as Pie;
@@ -51,9 +51,9 @@ export const actions: Actions = {
 		const numero = Number(datos.get('numero') ?? 0);
 
 		const problemas: string[] = [];
-		if (!tuNombre) problemas.push('Poné tu nombre.');
-		if (!ROLES.includes(rol)) problemas.push('Elegí con qué rol querés jugar.');
+		if (!ROLES.includes(rol)) problemas.push('Elegí a cuál de los dos jugás.');
 		if (!nombreFutbolista) problemas.push('Poné el nombre del futbolista.');
+		if (!nombreRepresentante) problemas.push('Poné el nombre del representante.');
 		if (!esPuestoValido(puesto)) problemas.push('Elegí en qué puesto juega.');
 		if (!esPieValido(pie)) problemas.push('Elegí con qué pie juega.');
 		if (!esClubValido(clubId)) problemas.push('Elegí el club donde arranca.');
@@ -83,10 +83,16 @@ export const actions: Actions = {
 						clubId,
 						reparto: repartoDelFormulario(datos)
 					},
-					representante: { nombre: rol === 'representante' ? tuNombre : 'Sin representante' }
+					representante: { nombre: nombreRepresentante }
 				},
 				rol,
-				tuNombre
+				// Quien crea la partida se llama, en la partida, como el personaje que
+				// eligió jugar. Antes se pedía el nombre de la persona por separado y
+				// eran tres nombres para dos personajes: uno de los tres no se usaba
+				// nunca —el del representante, si elegías jugar al futbolista, quedaba
+				// en "Sin representante" hasta que entrara el otro— y los otros dos se
+				// repetían en pantalla.
+				rol === 'futbolista' ? nombreFutbolista : nombreRepresentante
 			);
 		} catch (error) {
 			const mensaje =

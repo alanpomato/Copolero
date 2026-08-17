@@ -8,6 +8,7 @@ import {
 	riesgoDeLesionExtra
 } from './inversiones';
 import { objetivo as objetivoPorId } from './objetivos';
+import { atributosQueUsa } from './puestos';
 import { loQueAporta } from './rasgos';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { rngPara, type Rng } from './rng';
@@ -463,7 +464,7 @@ export function crecerPorJugar(
 
 	// Los puntos se reparten entre los atributos del puesto, así que hacen falta
 	// tantos como atributos para mover la media un punto.
-	const orden = [...ATRIBUTOS_DEL_PUESTO[f.posicion]];
+	const orden = [...atributosQueUsa(f.posicion)];
 	const puntos = Math.round(acercarse * orden.length);
 	if (puntos <= 0) return [];
 
@@ -483,19 +484,6 @@ export function crecerPorJugar(
 	];
 	return lista;
 }
-
-/**
- * Qué atributos usa cada puesto, del que más pesa al que menos.
- *
- * Es el mismo orden que los pesos de la media en `estado.ts`, escrito como una
- * lista porque acá lo que hace falta es repartir puntos de a uno.
- */
-const ATRIBUTOS_DEL_PUESTO: Record<Posicion, (keyof Atributos)[]> = {
-	arquero: ['potencia', 'defensa', 'resistencia', 'liderazgo', 'pase'],
-	defensor: ['defensa', 'potencia', 'resistencia', 'velocidad', 'pase', 'liderazgo'],
-	mediocampista: ['pase', 'regate', 'resistencia', 'definicion', 'defensa', 'liderazgo'],
-	delantero: ['definicion', 'velocidad', 'regate', 'potencia', 'pase']
-};
 
 /**
  * La nota del año, de 1 a 10.

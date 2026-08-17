@@ -145,7 +145,7 @@
 								alto={130}
 							/>
 							<div class="alLado">
-								<AtributosLista atributos={futbolista.atributos} />
+								<AtributosLista atributos={futbolista.atributos} posicion={futbolista.posicion} />
 							</div>
 						</div>
 						<div class="cifras" style="margin-top:.85rem">
@@ -238,7 +238,7 @@
 							</div>
 						</div>
 						<div style="margin-top:.9rem">
-							<AtributosLista atributos={futbolista.atributos} />
+							<AtributosLista atributos={futbolista.atributos} posicion={futbolista.posicion} />
 						</div>
 					</Paso>
 				{/if}

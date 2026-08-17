@@ -69,7 +69,7 @@ function loQueNoViaja(valor: unknown, camino = 'opciones'): string | null {
 
 describe('lo que se le manda a la pantalla', () => {
 	it('es todo JSON, en las tres fases y para los dos roles, toda la carrera', () => {
-		for (const puesto of ['arquero', 'central', 'ocho', 'centrodelantero']) {
+		for (const puesto of ['arquero', 'central', 'enganche', 'centrodelantero']) {
 			let e = unPibe(puesto, `p-${puesto}`);
 			// Una carrera entera: así pasan la pretemporada, la temporada, el
 			// mercado, el retiro y todo lo que aparece una sola vez en el medio.

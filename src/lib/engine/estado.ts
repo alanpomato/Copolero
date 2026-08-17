@@ -1,6 +1,7 @@
 import { salarioTipico } from '../../../content/mundo';
 import { puesto as puestoPorId, repartoValido, ventajaDePie, type Pie } from './puestos';
 import { MUNDO_SIN_CAMBIOS, type Atributos, type Estado, type Posicion, type Rol } from './tipos';
+import { OBJETIVO_POR_DEFECTO } from './objetivos';
 import { inventarRival } from './rival';
 import type { Rng } from './rng';
 
@@ -212,8 +213,10 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		temporadasPorClub: {},
 		temporadasPerdidas: 0,
 		intensidadDeLaPretemporada: 'firme',
+		objetivoDelAnio: OBJETIVO_POR_DEFECTO,
 		atributosQueSubieron: [],
 		rasgo: null,
+		novedades: [],
 		suenos: {
 			futbolista: null,
 			representante: null,

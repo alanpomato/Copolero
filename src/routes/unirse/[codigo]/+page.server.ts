@@ -26,6 +26,16 @@ export const load: PageServerLoad = ({ params }) => {
 		codigo,
 		rolLibre,
 		anfitrion: presentes[0]?.nombre ?? null,
+		/*
+		 * El nombre con el que entra: el del personaje que quedó libre.
+		 *
+		 * Los dos nombres se eligen al crear la partida, así que el que entra no
+		 * tiene nada que escribir. Antes se le pedía el suyo y terminaban siendo
+		 * tres nombres para dos personajes.
+		 */
+		nombreQueLeToca:
+			rolLibre === 'futbolista' ? estado.futbolista.nombre : estado.representante.nombre,
+		representante: estado.representante.nombre,
 		futbolista: {
 			nombre: estado.futbolista.nombre,
 			clubId: estado.futbolista.contrato.clubId,
@@ -38,12 +48,24 @@ export const load: PageServerLoad = ({ params }) => {
 
 export const actions: Actions = {
 	default: async ({ params, request, cookies }) => {
-		const datos = await request.formData();
-		const nombre = String(datos.get('nombre') ?? '')
-			.trim()
-			.slice(0, 60);
+		const partida = obtenerDb()
+			.select()
+			.from(partidas)
+			.where(eq(partidas.codigo, params.codigo.toUpperCase().trim()))
+			.get();
+		if (!partida) return fail(400, { problema: 'No existe ninguna partida con ese código.' });
 
-		if (!nombre) return fail(400, { problema: 'Poné tu nombre.' });
+		// El nombre no se pide: es el del personaje que quedó libre, que se eligió
+		// al crear la partida.
+		const presentes = obtenerDb()
+			.select()
+			.from(jugadores)
+			.where(eq(jugadores.partidaId, partida.id))
+			.all();
+		const libre = ROLES.find((r) => !presentes.some((j) => j.rol === r));
+		const estado = JSON.parse(partida.estadoJson) as Estado;
+		const nombre =
+			libre === 'representante' ? estado.representante.nombre : estado.futbolista.nombre;
 
 		let token: string;
 		try {

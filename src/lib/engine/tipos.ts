@@ -233,6 +233,19 @@ export type Estado = {
 	intensidadDeLaPretemporada: string;
 
 	/**
+	 * Cómo decidió jugar el año. Ver `objetivos.ts`.
+	 *
+	 * Se elige en la pretemporada y se cobra al jugar la temporada, que son dos
+	 * resoluciones distintas, así que tiene que vivir acá.
+	 *
+	 * Antes se elegía en la fase 2, que se llama "Temporada", y eso confundía con
+	 * razón: leído desde la pantalla parecía que se podía cambiar el plan con el
+	 * campeonato ya empezado. Un plan de juego se decide antes de que arranque, y
+	 * después se banca.
+	 */
+	objetivoDelAnio: string;
+
+	/**
 	 * Qué atributos subieron desde la última vez que se miró la tarjeta.
 	 *
 	 * Sirve para la flechita del ▲ al lado del número. Sin esto, subir dos puntos
@@ -275,6 +288,26 @@ export type Estado = {
 		 */
 		tope: { futbolista: number; representante: number };
 	};
+
+	/**
+	 * Lo que pasó en el mundo mientras se jugaba la temporada. Ver `mercado.ts`.
+	 *
+	 * Los pases y retiros de la gente de verdad ya se calculaban y se escribían
+	 * en el diario, pero solo como texto: cuatro líneas grises al pie de la
+	 * pantalla más larga del juego, que nadie lee. Guardando el movimiento
+	 * entero —de qué club a qué club— se puede dibujar con los escudos, que es
+	 * lo que hace que el mundo se sienta vivo en vez de leerse como un registro.
+	 *
+	 * Solo las de la última temporada: es una novedad, no un archivo. El diario
+	 * sigue teniendo todas.
+	 */
+	novedades: {
+		tipo: string;
+		nombre: string;
+		desde: string | null;
+		hacia: string | null;
+		texto: string;
+	}[];
 
 	/**
 	 * El otro pibe de la camada. Ver `rival.ts`.

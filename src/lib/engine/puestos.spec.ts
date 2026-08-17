@@ -65,9 +65,12 @@ describe('los puestos', () => {
 
 describe('el pie', () => {
 	it('el zurdo rinde por la izquierda y el diestro por la derecha', () => {
-		const izquierdo = puesto('lateral-izquierdo');
-		expect(ventajaDePie(izquierdo, 'izquierdo')).toBeGreaterThan(0);
-		expect(ventajaDePie(izquierdo, 'derecho')).toBeLessThan(0);
+		// Los puestos de banda ya no tienen un lado fijo —el lateral y el extremo
+		// son uno solo—, así que el pie no penaliza: premia al zurdo, que escasea.
+		const deBanda = puesto('lateral');
+		expect(ventajaDePie(deBanda, 'izquierdo')).toBeGreaterThan(0);
+		expect(ventajaDePie(deBanda, 'derecho')).toBe(0);
+		expect(ventajaDePie(puesto('central'), 'izquierdo')).toBe(0);
 	});
 
 	it('en el medio de la cancha el pie no cambia nada', () => {
@@ -124,15 +127,15 @@ describe('el reparto de puntos', () => {
 
 describe('el pibe que sale', () => {
 	it('el puesto define la posición con la que trabaja el motor', () => {
-		expect(unPibe('lateral-izquierdo').futbolista.posicion).toBe('defensor');
+		expect(unPibe('lateral').futbolista.posicion).toBe('defensor');
 		expect(unPibe('enganche').futbolista.posicion).toBe('mediocampista');
 		expect(unPibe('arquero').futbolista.posicion).toBe('arquero');
 	});
 
 	it('se guarda el puesto, el número y el pie', () => {
-		const { futbolista } = unPibe('extremo-izquierdo', 'izquierdo');
-		expect(futbolista.puesto).toBe('extremo-izquierdo');
-		expect(futbolista.numero).toBe(11);
+		const { futbolista } = unPibe('extremo', 'izquierdo');
+		expect(futbolista.puesto).toBe('extremo');
+		expect(futbolista.numero).toBe(7);
 		expect(futbolista.pie).toBe('izquierdo');
 	});
 

@@ -43,6 +43,28 @@
 			img.style.display = 'none';
 		}
 	}
+
+	/**
+	 * Marca el marco cuando el escudo propio terminó de cargar, para tapar el
+	 * dibujado.
+	 *
+	 * Chequea `complete` además de escuchar `load` porque una imagen que ya está
+	 * en la caché puede terminar de cargar antes de que se enganche el evento, y
+	 * en ese caso el `load` no llega nunca.
+	 */
+	function avisarCuandoCargue(img: HTMLImageElement) {
+		const marco = img.closest('.marco');
+		const listo = () => {
+			if (img.naturalWidth > 0) marco?.setAttribute('data-propio', 'si');
+		};
+		if (img.complete) listo();
+		img.addEventListener('load', listo);
+		return {
+			destroy() {
+				img.removeEventListener('load', listo);
+			}
+		};
+	}
 </script>
 
 <span class="marco" style="width:{tamano}px; height:{tamano * 1.125}px">
@@ -98,7 +120,14 @@
 	</svg>
 
 	{#key clubId}
-		<img class="propio" src={primera} alt="" aria-hidden="true" onerror={siguiente} />
+		<img
+			class="propio"
+			src={primera}
+			alt=""
+			aria-hidden="true"
+			onerror={siguiente}
+			use:avisarCuandoCargue
+		/>
 	{/key}
 </span>
 
@@ -122,5 +151,15 @@
 	.propio {
 		object-fit: contain;
 		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+	}
+	/*
+	 * Cargó el escudo de verdad: el dibujado sale de escena.
+	 *
+	 * El `:global` va porque el atributo lo pone JavaScript al terminar la carga:
+	 * Svelte revisa los selectores contra el marcado escrito y, sin esto, tira la
+	 * regla por "selector sin uso".
+	 */
+	:global(.marco[data-propio='si']) .escudo {
+		display: none;
 	}
 </style>

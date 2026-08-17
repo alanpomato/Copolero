@@ -36,12 +36,15 @@
 	</div>
 
 	{#if data.rolLibre}
-		<div class="tarjeta">
+		<div class="tarjeta" data-tema="relacion">
 			<h3>Tu rol</h3>
 			<p style="margin:0 0 .5rem">
-				Vas a jugar como <strong>{NOMBRE_ROL[data.rolLibre]}</strong>.
+				Vas a jugar como <strong>{NOMBRE_ROL[data.rolLibre]}</strong>, y en la partida te llamás
+				<strong>{data.nombreQueLeToca}</strong>.
 			</p>
-			<p class="sutil" style="margin:0">Es el rol que quedó libre en esta partida.</p>
+			<p class="sutil" style="margin:0">
+				Es el que quedó libre. Los dos nombres los eligió quien armó la partida.
+			</p>
 		</div>
 
 		{#if form?.problema}
@@ -49,11 +52,7 @@
 		{/if}
 
 		<form method="POST" use:enhance>
-			<label>
-				<span class="titulo">Tu nombre</span>
-				<input name="nombre" maxlength="60" required placeholder="Hernán" />
-			</label>
-			<button type="submit">Entrar como {NOMBRE_ROL[data.rolLibre]}</button>
+			<button type="submit">Entrar como {data.nombreQueLeToca}</button>
 		</form>
 	{:else}
 		<div class="error">Esta partida ya tiene sus dos jugadores.</div>

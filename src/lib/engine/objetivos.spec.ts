@@ -28,17 +28,36 @@ function unJugador(puesto = 'centrodelantero'): Estado {
 		e.futbolista.atributos[k as keyof typeof e.futbolista.atributos] = 58;
 	}
 	e.futbolista.edad = 24;
-	e.fase = 2;
 	return e;
 }
 
-/** Corre una temporada con el objetivo elegido y devuelve el resumen. */
+/**
+ * Corre la pretemporada eligiendo el objetivo y después la temporada.
+ *
+ * Son dos fases porque el objetivo se elige en la pretemporada: se decide cómo
+ * se va a jugar el año antes de que el año arranque, y después no se cambia.
+ */
+function conElObjetivo(id: string, semilla = 'obj'): Estado {
+	const pretemporada = resolverFase(
+		unJugador(),
+		[
+			{ rol: 'futbolista', nota: '', objetivo: id },
+			{ rol: 'representante', nota: '', gestion: 'acompanar' }
+		],
+		semilla
+	).estado;
+	return resolverFase(
+		pretemporada,
+		[
+			{ rol: 'futbolista', nota: '' },
+			{ rol: 'representante', nota: '', gestion: 'acompanar' }
+		],
+		semilla
+	).estado;
+}
+
 function unaTemporadaCon(id: string, semilla = 'obj') {
-	const decisiones: Decision[] = [
-		{ rol: 'futbolista', nota: '', objetivo: id },
-		{ rol: 'representante', nota: '', gestion: 'acompanar' }
-	];
-	return resolverFase(unJugador(), decisiones, semilla).estado.ultimaTemporada!;
+	return conElObjetivo(id, semilla).ultimaTemporada!;
 }
 
 describe('cómo va a jugar el año', () => {
@@ -81,27 +100,13 @@ describe('cómo va a jugar el año', () => {
 	});
 
 	it('cuidarse deja menos desgaste al final del año', () => {
-		const cuidado = resolverFase(
-			unJugador(),
-			[
-				{ rol: 'futbolista', nota: '', objetivo: 'cuidarse' },
-				{ rol: 'representante', nota: '', gestion: 'acompanar' }
-			],
-			'obj'
-		).estado;
-		const exigido = resolverFase(
-			unJugador(),
-			[
-				{ rol: 'futbolista', nota: '', objetivo: 'titular' },
-				{ rol: 'representante', nota: '', gestion: 'acompanar' }
-			],
-			'obj'
-		).estado;
+		const cuidado = conElObjetivo('cuidarse');
+		const exigido = conElObjetivo('titular');
 
 		expect(cuidado.futbolista.desgaste).toBeLessThan(exigido.futbolista.desgaste);
 	});
 
-	it('llega a la pantalla del futbolista en la fase de la temporada', () => {
+	it('se elige en la pretemporada y en la temporada ya está cerrado', () => {
 		const e = unJugador();
 		const suyas = opcionesDeFase(e, 'futbolista', 'obj');
 		expect(suyas.objetivos?.length).toBeGreaterThan(2);
@@ -109,5 +114,18 @@ describe('cómo va a jugar el año', () => {
 
 		// Y no al representante, que no elige cómo juega el otro.
 		expect(opcionesDeFase(e, 'representante', 'obj').objetivos).toBeUndefined();
+
+		// Ya en la temporada no hay nada que elegir: se muestra con qué se juega.
+		const enLaTemporada = resolverFase(
+			e,
+			[
+				{ rol: 'futbolista', nota: '', objetivo: 'gol' },
+				{ rol: 'representante', nota: '', gestion: 'acompanar' }
+			],
+			'obj'
+		).estado;
+		const mirando = opcionesDeFase(enLaTemporada, 'futbolista', 'obj');
+		expect(mirando.objetivos).toBeUndefined();
+		expect(mirando.objetivoCerrado?.id).toBe('gol');
 	});
 });

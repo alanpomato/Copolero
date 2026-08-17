@@ -228,10 +228,11 @@
 {#if opciones.inversiones}
 	{@const inv = opciones.inversiones}
 	<Paso
-		titulo="En qué gastás la plata"
+		titulo="Comprar para la temporada"
 		elegido={queCompra}
+		dato={queCompra === 'No gastar nada' ? `Tenés ${plata(inv.plataUsd)}` : ''}
 		tema="plata"
-		nota="Lo que comprás se paga una vez y después cuesta todos los años. Si un año no te alcanza, lo perdés."
+		nota="Preparador, fisio, botines, la casa de la familia. Lo que comprás se paga una vez y después cuesta todos los años; si un año no te alcanza, lo perdés."
 	>
 		<div class="cifras" style="margin-bottom:.9rem">
 			<div class="cifra">
@@ -451,7 +452,11 @@
 		tema="cancha"
 		abierto={abierto === 'entrenamiento'}
 	>
-		<AtributosLista atributos={estado.futbolista.atributos} destacados={queSube} />
+		<AtributosLista
+			atributos={estado.futbolista.atributos}
+			destacados={queSube}
+			posicion={estado.futbolista.posicion}
+		/>
 		<p class="sutil" style="margin:.6rem 0 1rem">
 			Lo verde es lo que va a subir con <strong>{subeDe(plan).toLowerCase()}</strong>.
 		</p>
@@ -532,6 +537,20 @@
 			</Opcion>
 		{/each}
 	</Paso>
+{/if}
+
+<!-- ---------- Fase 2: con qué está jugando el año ---------- -->
+{#if opciones.objetivoCerrado}
+	{@const o = opciones.objetivoCerrado}
+	<div class="yaElegido">
+		<span class="rotulo">El año se juega así</span>
+		<strong>{o.nombre}</strong>
+		<span class="chip-sube gana">{o.sube}</span>
+		<span class="chip-sube pierde">{o.cuesta}</span>
+		<p class="sutil" style="margin:.5rem 0 0">
+			Se eligió en la pretemporada y ya no se cambia: el campeonato empezó.
+		</p>
+	</div>
 {/if}
 
 <!-- ---------- Fase 2: la rueda de ocasión ---------- -->
@@ -790,6 +809,33 @@
 		.cuales :global(.opcion:last-child) {
 			margin-bottom: 0;
 		}
+	}
+
+	/* El objetivo ya cerrado: se lee, no se toca. */
+	.yaElegido {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.4rem 0.6rem;
+		margin: 0 0 1rem;
+		padding: 0.85rem 1rem;
+		background: rgba(74, 222, 128, 0.06);
+		border: 1px dashed rgba(74, 222, 128, 0.3);
+		border-radius: 12px;
+	}
+	.yaElegido .rotulo {
+		width: 100%;
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--tenue);
+	}
+	.yaElegido strong {
+		font-size: 1.02rem;
+	}
+	.yaElegido p {
+		width: 100%;
 	}
 
 	.oferta {

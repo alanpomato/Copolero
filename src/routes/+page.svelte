@@ -44,7 +44,7 @@
 		puestoElegido = p.id;
 		numeroTocado = false;
 		numero = p.numero;
-		pie = p.lado === 'izquierdo' ? 'izquierdo' : unoDe(PIES).id;
+		pie = unoDe(PIES).id;
 	}
 
 	const mundo = mundoPorPais();
@@ -137,20 +137,28 @@
 	{/if}
 
 	<form method="POST" action="?/crear" use:enhance>
-		<div class="tarjeta">
-			<h3>Vos</h3>
+		<div class="tarjeta" data-tema="relacion">
+			<h3>Los dos</h3>
+			<div class="dosNombres">
+				<label>
+					<span class="titulo">El futbolista se llama</span>
+					<input name="nombreFutbolista" maxlength="60" required placeholder="Damián Correa" />
+				</label>
+				<label>
+					<span class="titulo">Y su representante</span>
+					<input name="nombreRepresentante" maxlength="60" required placeholder="Rubén Bravo" />
+				</label>
+			</div>
 			<label>
-				<span class="titulo">Tu nombre</span>
-				<input name="tuNombre" maxlength="60" required placeholder="Alan" />
-			</label>
-			<label>
-				<span class="titulo">¿Qué rol querés jugar?</span>
+				<span class="titulo">¿A cuál de los dos jugás vos?</span>
 				<select name="rol" required>
-					<option value="futbolista">Futbolista</option>
-					<option value="representante">Representante</option>
+					<option value="futbolista">Al futbolista</option>
+					<option value="representante">Al representante</option>
 				</select>
 			</label>
-			<p class="sutil">El otro rol le queda a quien entre con el código.</p>
+			<p class="sutil" style="margin:0">
+				El otro le queda a quien entre con el código, con el nombre que pusiste acá.
+			</p>
 		</div>
 
 		<div class="tarjeta">
@@ -158,10 +166,6 @@
 				<h3 style="margin:0; border:none; padding:0">El futbolista</h3>
 				<button type="button" class="azar" onclick={alAzar}>🎲 Al azar</button>
 			</div>
-			<label>
-				<span class="titulo">Nombre</span>
-				<input name="nombreFutbolista" maxlength="60" required placeholder="Damián Correa" />
-			</label>
 			<label>
 				<span class="titulo">Nacionalidad</span>
 				<select name="nacionalidad" bind:value={nacionalidad}>
@@ -209,8 +213,8 @@
 			</div>
 			<p class="sutil" style="margin:-.7rem 0 1rem">
 				{PIES.find((p) => p.id === pie)?.detalle}
-				{#if elPuesto.lado}
-					Este puesto es por la {elPuesto.lado === 'izquierdo' ? 'izquierda' : 'derecha'}.
+				{#if elPuesto.deBanda}
+					Es un puesto de banda: los zurdos rinden un poco más.
 				{/if}
 			</p>
 			<div class="fila">
@@ -390,6 +394,13 @@
 	 */
 	.crear {
 		max-width: 48rem;
+	}
+
+	/* Los dos nombres, uno al lado del otro cuando entra. */
+	.dosNombres {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+		gap: 0 1rem;
 	}
 
 	.puestos {

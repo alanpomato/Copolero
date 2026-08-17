@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { ATRIBUTOS, NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
-	import type { Atributos } from '$lib/engine/tipos';
+	import { ATRIBUTOS, NOMBRE_ATRIBUTO, atributosQueUsa } from '$lib/engine/puestos';
+	import type { Atributos, Posicion } from '$lib/engine/tipos';
 
 	/**
 	 * Los ocho atributos, con barra.
@@ -11,9 +11,22 @@
 	 *
 	 * Se pueden marcar algunos para destacarlos: es lo que hace la pantalla de
 	 * pretemporada con los que el plan elegido va a subir.
+	 *
+	 * Con `posicion` se muestran solo los que ese puesto usa. Un arquero tenía
+	 * "Definición 59" y un central "Regate 41": números que no hacen nada en su
+	 * carrera compitiendo por la atención con los cinco que sí deciden todo.
 	 */
-	let { atributos, destacados = [] }: { atributos: Atributos; destacados?: (keyof Atributos)[] } =
-		$props();
+	let {
+		atributos,
+		destacados = [],
+		posicion = null
+	}: {
+		atributos: Atributos;
+		destacados?: (keyof Atributos)[];
+		posicion?: Posicion | null;
+	} = $props();
+
+	const cuales = $derived(posicion ? atributosQueUsa(posicion) : ATRIBUTOS);
 
 	function tono(valor: number): string {
 		if (valor >= 70) return 'bien';
@@ -23,7 +36,7 @@
 </script>
 
 <div class="lista">
-	{#each ATRIBUTOS as atributo (atributo)}
+	{#each cuales as atributo (atributo)}
 		{@const valor = atributos[atributo]}
 		<div class="rasgo" class:destacado={destacados.includes(atributo)}>
 			<span class="nombre">{NOMBRE_ATRIBUTO[atributo]}</span>

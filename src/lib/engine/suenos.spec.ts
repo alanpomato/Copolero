@@ -68,7 +68,7 @@ describe('el catálogo de sueños', () => {
 	it('cada puesto y cada rol tiene al menos dos para elegir', () => {
 		// Ids reales de `puestos.ts`: `puestoPorId` cae al centrodelantero si el id
 		// no existe, así que un id inventado acá haría pasar el test sin probar nada.
-		for (const puesto of ['arquero', 'central', 'ocho', 'centrodelantero']) {
+		for (const puesto of ['arquero', 'central', 'enganche', 'centrodelantero']) {
 			const e = unPibe(puesto);
 			for (const rol of ROLES) {
 				expect(suenosPara(e, rol).length, `${puesto}/${rol}`).toBeGreaterThanOrEqual(2);

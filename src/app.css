@@ -173,13 +173,21 @@ h2::after {
 	border-color: rgba(106, 182, 224, 0.35);
 }
 
+/*
+ * El título de una tarjeta lleva el color de su tema.
+ *
+ * Eran todos del mismo gris, así que "TU SUEÑO", "LA RELACIÓN" y "LA CARRERA"
+ * se leían como el mismo bloque repetido cinco veces. Con el color del tema —el
+ * mismo de la franja del costado— cada tarjeta se reconoce sin leer el título,
+ * que es de lo que se trata tener temas.
+ */
 .tarjeta h3 {
 	margin: 0 0 0.75rem;
 	font-size: 0.78rem;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.09em;
-	color: var(--tenue);
+	color: var(--tema, var(--tenue));
 }
 
 /* --- Números grandes ----------------------------------------------------- */

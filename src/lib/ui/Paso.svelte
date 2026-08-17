@@ -55,7 +55,10 @@
 			{#if elegido}<span class="elegido">{elegido}</span>{/if}
 			{#if dato}<span class="dato">{dato}</span>{/if}
 		</span>
-		<span class="flecha" aria-hidden="true"></span>
+		<span class="accion">
+			<span class="verbo">{abierto ? 'Elegí' : 'Ver'}</span>
+			<span class="flecha" aria-hidden="true"></span>
+		</span>
 	</summary>
 	<div class="cuerpo">
 		{#if nota}<p class="nota">{nota}</p>{/if}
@@ -64,9 +67,19 @@
 </details>
 
 <style>
+	/*
+	 * Un paso es algo que se decide, y tiene que verse distinto de algo que se
+	 * lee.
+	 *
+	 * Antes las decisiones y las tarjetas de información eran el mismo rectángulo
+	 * gris con el mismo borde, y en una pantalla con quince no se sabía si estabas
+	 * mirando tus estadísticas o eligiendo cómo jugar el año. Acá el fondo es más
+	 * claro y el borde más vivo: las cosas que hay que tocar están un escalón más
+	 * adelante que las que hay que mirar.
+	 */
 	.paso {
-		background: var(--tarjeta);
-		border: 1px solid var(--borde);
+		background: var(--tarjeta-alta);
+		border: 1px solid #313a47;
 		border-radius: 14px;
 		margin: 0 0 0.6rem;
 		overflow: hidden;
@@ -96,7 +109,7 @@
 		display: none;
 	}
 	summary:hover {
-		background: var(--tarjeta-alta);
+		background: rgba(255, 255, 255, 0.04);
 	}
 	.paso:has(summary:focus-visible) {
 		outline: 2px solid var(--acento);
@@ -130,6 +143,24 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* Un verbo, para que se lea como algo que hay que hacer. */
+	.accion {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.verbo {
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--tenue);
+	}
+	.paso[open] .verbo {
+		color: var(--acento);
 	}
 
 	.flecha {

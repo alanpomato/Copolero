@@ -9,10 +9,16 @@ import type { Atributos, Posicion } from './tipos';
  * enganche, ni un lateral que un central, y elegirlo es la mitad de la gracia
  * de armar al pibe.
  *
- * Así que acá viven los once puestos de verdad. Cada uno cae en una de las
- * cuatro posiciones del motor, trae su número clásico y sesga los atributos con
- * los que arranca: un lateral nace más rápido, un central más fuerte, un
- * enganche con mejor pase.
+ * Así que acá viven los puestos de verdad. Cada uno cae en una de las cuatro
+ * posiciones del motor, trae su número clásico y sesga los atributos con los
+ * que arranca: un lateral nace más rápido, un central más fuerte, un enganche
+ * con mejor pase.
+ *
+ * Son siete y no once. Estaban separados el lateral derecho del izquierdo y el
+ * extremo por derecha del extremo por izquierda, y también el ocho del cinco y
+ * el segundo delantero del nueve: cuatro pares de tarjetas que se diferenciaban
+ * en un par de puntos de sesgo y en de qué lado juega. Al elegir no era una
+ * decisión, era una lista larga. La banda por la que juega ya la decide el pie.
  */
 
 export type Puesto = {
@@ -25,8 +31,8 @@ export type Puesto = {
 	detalle: string;
 	/** Qué atributos empuja al arrancar, y cuánto. */
 	sesgo: Partial<Record<keyof Atributos, number>>;
-	/** Los zurdos rinden más de este lado. */
-	lado?: 'derecho' | 'izquierdo';
+	/** Se juega pegado a una banda: ahí el pie zurdo vale. */
+	deBanda?: boolean;
 };
 
 export const PUESTOS: Puesto[] = [
@@ -39,13 +45,13 @@ export const PUESTOS: Puesto[] = [
 		sesgo: { potencia: 8, defensa: 6, liderazgo: 5 }
 	},
 	{
-		id: 'lateral-derecho',
-		nombre: 'Lateral derecho',
+		id: 'lateral',
+		nombre: 'Lateral',
 		posicion: 'defensor',
 		numero: 4,
 		detalle: 'Sube y baja la banda los noventa minutos. Vive del fondo físico.',
 		sesgo: { velocidad: 8, resistencia: 8, defensa: 4 },
-		lado: 'derecho'
+		deBanda: true
 	},
 	{
 		id: 'central',
@@ -56,29 +62,12 @@ export const PUESTOS: Puesto[] = [
 		sesgo: { defensa: 10, potencia: 8, liderazgo: 4 }
 	},
 	{
-		id: 'lateral-izquierdo',
-		nombre: 'Lateral izquierdo',
-		posicion: 'defensor',
-		numero: 3,
-		detalle: 'Lo mismo por la otra banda, y hay la mitad de zurdos en el mundo.',
-		sesgo: { velocidad: 8, resistencia: 8, pase: 4 },
-		lado: 'izquierdo'
-	},
-	{
 		id: 'cinco',
-		nombre: 'Volante central',
+		nombre: 'Cinco de marca',
 		posicion: 'mediocampista',
 		numero: 5,
-		detalle: 'El cinco: recupera, ordena y da el primer pase.',
+		detalle: 'Recupera, ordena y da el primer pase. El que sostiene al equipo.',
 		sesgo: { defensa: 8, pase: 7, resistencia: 6 }
-	},
-	{
-		id: 'ocho',
-		nombre: 'Volante mixto',
-		posicion: 'mediocampista',
-		numero: 8,
-		detalle: 'El ocho: va y vuelve todo el partido. Llega al área de segunda línea.',
-		sesgo: { resistencia: 9, pase: 6, definicion: 4 }
 	},
 	{
 		id: 'enganche',
@@ -89,30 +78,13 @@ export const PUESTOS: Puesto[] = [
 		sesgo: { pase: 10, regate: 8, definicion: 4 }
 	},
 	{
-		id: 'extremo-derecho',
-		nombre: 'Extremo por derecha',
+		id: 'extremo',
+		nombre: 'Extremo',
 		posicion: 'delantero',
 		numero: 7,
-		detalle: 'Uno contra uno pegado a la raya. Encarar y tirar el centro.',
-		sesgo: { velocidad: 10, regate: 8, pase: 3 },
-		lado: 'derecho'
-	},
-	{
-		id: 'extremo-izquierdo',
-		nombre: 'Extremo por izquierda',
-		posicion: 'delantero',
-		numero: 11,
-		detalle: 'Lo mismo por la izquierda, con el arco de frente para el zurdo.',
+		detalle: 'Uno contra uno pegado a la raya. Encarar, tirar el centro o entrar.',
 		sesgo: { velocidad: 10, regate: 8, definicion: 3 },
-		lado: 'izquierdo'
-	},
-	{
-		id: 'segundo-delantero',
-		nombre: 'Segundo delantero',
-		posicion: 'delantero',
-		numero: 9,
-		detalle: 'Entre líneas. Juega de espaldas, se da vuelta y define.',
-		sesgo: { definicion: 8, regate: 7, pase: 5 }
+		deBanda: true
 	},
 	{
 		id: 'centrodelantero',
@@ -148,6 +120,26 @@ export const PIES: PerfilDePie[] = [
 	}
 ];
 
+/**
+ * Qué atributos usa cada posición, del que más pesa al que menos.
+ *
+ * Es el mismo orden que los pesos de la media en `estado.ts`, escrito como una
+ * lista porque hace falta en dos lados: para repartir de a uno los puntos que
+ * se ganan jugando, y para no mostrarle a un arquero cuánta definición tiene.
+ * Un número que no hace nada en tu puesto no es información: es ruido que
+ * compite por la atención con los cinco que sí importan.
+ */
+const ATRIBUTOS_DEL_PUESTO: Record<Posicion, (keyof Atributos)[]> = {
+	arquero: ['potencia', 'defensa', 'resistencia', 'liderazgo', 'pase'],
+	defensor: ['defensa', 'potencia', 'resistencia', 'velocidad', 'pase', 'liderazgo'],
+	mediocampista: ['pase', 'regate', 'resistencia', 'definicion', 'defensa', 'liderazgo'],
+	delantero: ['definicion', 'velocidad', 'regate', 'potencia', 'pase']
+};
+
+export function atributosQueUsa(posicion: Posicion): (keyof Atributos)[] {
+	return ATRIBUTOS_DEL_PUESTO[posicion];
+}
+
 export function puesto(id: string): Puesto {
 	return PUESTOS.find((p) => p.id === id) ?? PUESTOS.find((p) => p.id === PUESTO_POR_DEFECTO)!;
 }
@@ -163,14 +155,20 @@ export function esPieValido(id: string): boolean {
 /**
  * Cuánto suma el pie en ese puesto.
  *
- * Un zurdo por la izquierda tiene ventaja real, y un ambidiestro tiene ventaja
- * en todos lados pero más chica. Es poco: cuatro puntos no hacen una carrera,
- * pero explican por qué a los zurdos los buscan.
+ * Antes cada banda era un puesto distinto —lateral derecho y lateral izquierdo,
+ * extremo por derecha y extremo por izquierda— y el pie sumaba o restaba según
+ * si coincidía con el lado. Al unificarlos, la banda dejó de ser algo que se
+ * elige: la elige el pie.
+ *
+ * Así que la ventaja quedó en lo que siempre quiso decir: hay la mitad de
+ * zurdos en el mundo y en los puestos de banda se los pelean. Un ambidiestro
+ * suma en cualquier lado, pero menos. Es poco —cuatro puntos no hacen una
+ * carrera— y alcanza para explicar por qué a los zurdos los buscan.
  */
 export function ventajaDePie(p: Puesto, pie: Pie): number {
 	if (pie === 'ambos') return 3;
-	if (!p.lado) return 0;
-	return p.lado === pie ? 4 : -2;
+	if (!p.deBanda) return 0;
+	return pie === 'izquierdo' ? 4 : 0;
 }
 
 // ---------------------------------------------------------------------------

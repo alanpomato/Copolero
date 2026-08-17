@@ -13,6 +13,7 @@ import { cobrarMantenimiento, comprar } from './inversiones';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
+import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { elegirSueno, revisarSuenos } from './suenos';
 import { correrleElAnio } from './rival';
@@ -40,6 +41,11 @@ import {
 	type ResumenTemporada,
 	type Rol
 } from './tipos';
+
+/** El objetivo pedido, o el que el motor toma si mandaron cualquier cosa. */
+function objetivoValido(id: string | undefined): string {
+	return objetivoPorId(id).id;
+}
 
 /** Lo que se resigna del sueldo por llegar al mercado sin nada arreglado. */
 const DESCUENTO_POR_APURO = 0.75;
@@ -186,6 +192,11 @@ export function resolverFase(
 	}
 
 	if (estado.fase === 1) {
+		// --- Cómo va a jugar el año --------------------------------------------
+		// Se elige acá y se cobra en la fase 2. Un plan de juego se decide antes de
+		// que arranque el campeonato, no con el campeonato empezado.
+		siguiente.objetivoDelAnio = objetivoValido(delFutbolista.objetivo);
+
 		// --- Pretemporada ------------------------------------------------------
 		const resultado = entrenar(
 			siguiente,
@@ -204,7 +215,7 @@ export function resolverFase(
 			resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i)
 		);
 
-		const temporada = jugarTemporada(siguiente, resultados, semilla, delFutbolista.objetivo);
+		const temporada = jugarTemporada(siguiente, resultados, semilla, siguiente.objetivoDelAnio);
 		siguiente.ultimaTemporada = temporada.resumen;
 
 		for (const jugada of temporada.jugadas) {
@@ -437,7 +448,18 @@ function cerrarTemporada(
 		estado.anio
 	);
 	estado.cambiosMundo = mercado.cambios;
-	for (const movimiento of titulares(mercado.movimientos, 4)) {
+	// Se guardan enteras además de escribirlas en el diario: la pantalla las
+	// dibuja con los escudos de los dos clubes, y para eso hace falta saber de
+	// dónde a dónde y no solo la frase.
+	const novedades = titulares(mercado.movimientos, 4);
+	estado.novedades = novedades.map((m) => ({
+		tipo: m.tipo,
+		nombre: m.nombre,
+		desde: m.desde,
+		hacia: m.hacia,
+		texto: m.texto
+	}));
+	for (const movimiento of novedades) {
 		log.push({ tipo: 'mercado', visiblePara: 'ambos', texto: movimiento.texto });
 	}
 
