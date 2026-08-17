@@ -187,8 +187,14 @@ export function resolverFase(
 			['futbolista', delFutbolista],
 			['representante', delRepresentante]
 		] as const) {
-			const compro = comprar(siguiente, rol, decision.inversion);
-			if (compro) log.push({ tipo: 'inversion', visiblePara: rol, texto: compro });
+			// Varias en el mismo año, en el orden en que las eligió. Cada una se
+			// cobra al comprarse, así que si la plata alcanza para dos y no para
+			// tres, entran las dos primeras: el que elige el orden es él.
+			const quiere = decision.inversiones ?? (decision.inversion ? [decision.inversion] : []);
+			for (const id of quiere) {
+				const compro = comprar(siguiente, rol, id);
+				if (compro) log.push({ tipo: 'inversion', visiblePara: rol, texto: compro });
+			}
 		}
 	}
 

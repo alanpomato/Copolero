@@ -98,26 +98,68 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 	 */
 	const seQuiereIr = estado.pidioLaSalida === true;
 
-	const interesados = clubes.filter((c) => {
-		if (c.id === f.contrato.clubId) return false;
-		if (c.prestigio > f.fama + 20) return false;
+	/**
+	 * Hasta dónde puede caer el que está en el banco.
+	 *
+	 * Sin esto, la salida hacia abajo no tenía fondo: un suplente del PSG que
+	 * gana 24.000 por mes recibía ofertas de Alvarado y San Miguel por 4.100,
+	 * porque el único filtro era "que allá seas titular" y donde más titular sos
+	 * es en el club más chico del mundo. Nadie que juega en Francia se va a la
+	 * Primera Nacional argentina para tener minutos: se va al Lyon, al Betis, al
+	 * Sevilla.
+	 *
+	 * Los dos pisos dicen lo mismo desde dos lados. Se puede bajar el sueldo a la
+	 * mitad para volver a jugar; no se puede bajar a un décimo. Y se puede bajar
+	 * de liga; no se puede bajar dos mundos.
+	 */
+	const PLATA_QUE_SE_BANCA_PERDER = 0.4;
+	const LIGAS_QUE_SE_PUEDE_BAJAR = 20;
+	const ligaDeAca = contexto(f.contrato.clubId).liga.fuerza;
 
-		const brechaAlla = brechaCon(f, c.id);
+	/**
+	 * Los que lo llamarían, con el piso puesto en `cuantoAfloja`.
+	 *
+	 * `cuantoAfloja` existe porque el piso no puede dejarlo sin salida: un
+	 * media 60 en el PSG no tiene ningún club de Europa que lo haga titular, y si
+	 * el piso lo deja sin ofertas se queda quince años mirando desde afuera, que
+	 * es justamente lo que la rama del banco vino a evitar. Así que si con el
+	 * piso estricto no aparece nadie, se afloja, y recién al final se saca.
+	 */
+	function losQueLoLlaman(cuantoAfloja: number) {
+		return clubes.filter((c) => {
+			if (c.id === f.contrato.clubId) return false;
+			if (c.prestigio > f.fama + 20) return false;
 
-		if (estaEnElBanco) {
-			// Lo único que importa es que allá sea titular.
-			return brechaAlla > 3;
-		}
+			const brechaAlla = brechaCon(f, c.id);
+			const sueldo = salarioTipico(c.id, suMedia);
 
-		// Al que pidió salir lo llaman igual aunque le paguen lo mismo: lo que
-		// busca no es plata, es irse.
-		const sueldo = salarioTipico(c.id, suMedia);
-		if (!seQuiereIr && sueldo < f.contrato.salarioMensual * 1.1) return false;
+			if (estaEnElBanco) {
+				// Lo que importa es que allá juegue, pero no a cualquier precio.
+				if (brechaAlla <= 3) return false;
+				// `cuantoAfloja` baja los dos pisos: cuanto más grande, más lejos se
+				// puede caer.
+				if (sueldo < (f.contrato.salarioMensual * PLATA_QUE_SE_BANCA_PERDER) / cuantoAfloja) {
+					return false;
+				}
+				const ligaDeAlla = contexto(c.id).liga.fuerza;
+				return ligaDeAlla >= ligaDeAca - LIGAS_QUE_SE_PUEDE_BAJAR * cuantoAfloja;
+			}
 
-		// Y sobre todo: nadie compra a alguien que no puede jugar en su liga. Es
-		// lo que hace que el salto a Europa haya que ganárselo y no elegirlo.
-		return brechaAlla > (seQuiereIr ? -11 : -7);
-	});
+			// Al que pidió salir lo llaman igual aunque le paguen lo mismo: lo que
+			// busca no es plata, es irse.
+			if (!seQuiereIr && sueldo < f.contrato.salarioMensual * 1.1) return false;
+
+			// Y sobre todo: nadie compra a alguien que no puede jugar en su liga. Es
+			// lo que hace que el salto a Europa haya que ganárselo y no elegirlo.
+			return brechaAlla > (seQuiereIr ? -11 : -7);
+		});
+	}
+
+	// Con el piso puesto; si no aparece nadie, aflojándolo; y si aun así nadie,
+	// sin piso, que es como estaba antes: preferimos una oferta mala a ninguna.
+	let interesados = losQueLoLlaman(1);
+	if (estaEnElBanco && interesados.length === 0) interesados = losQueLoLlaman(2.5);
+	if (estaEnElBanco && interesados.length === 0) interesados = losQueLoLlaman(1000);
 
 	if (interesados.length === 0) return [];
 
@@ -125,9 +167,19 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 	// el mercado no es justo, pero tampoco es azar puro.
 	// Si está en el banco, primero los clubes donde más va a jugar; si no, los
 	// que más pagan.
+	/*
+	 * Estando en el banco se ordenaba por brecha, o sea: primero los clubes donde
+	 * más titular vas a ser, que son siempre los más chicos que existen. Con el
+	 * piso puesto arriba eso ya no llega a Alvarado, pero el orden seguía tirando
+	 * para abajo dentro de lo permitido.
+	 *
+	 * Lo que busca el que no juega no es ser la figura del club más chico: es
+	 * seguir jugando lo más arriba que pueda. Así que entre los que lo van a
+	 * poner, primero los más grandes.
+	 */
 	const ordenados = [...interesados].sort((a, b) =>
 		estaEnElBanco
-			? brechaCon(f, b.id) - brechaCon(f, a.id)
+			? b.prestigio - a.prestigio
 			: salarioTipico(b.id, suMedia) - salarioTipico(a.id, suMedia)
 	);
 	const candidatos = ordenados.slice(0, Math.min(28, ordenados.length));

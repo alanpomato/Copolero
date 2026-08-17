@@ -30,8 +30,12 @@
 		/**
 		 * Qué pasó, cuando ya pasó. Mientras sea `null` la rueda está quieta
 		 * mostrando la apuesta.
+		 *
+		 * Es un booleano suelto y no un objeto a propósito: siendo `{ salio }`, el
+		 * padre creaba uno nuevo en cada render y el efecto de abajo se volvía a
+		 * correr, cancelando sus propios `setTimeout`.
 		 */
-		resultado = null,
+		salio = null,
 		/** Mientras el servidor contesta. */
 		tirando = false,
 		/** Si viene ya resuelta de antes —recargó la página—, no hay que girar. */
@@ -40,7 +44,7 @@
 		probabilidad: number;
 		etiqueta?: string;
 		tamano?: number;
-		resultado?: { salio: boolean } | null;
+		salio?: boolean | null;
 		tirando?: boolean;
 		yaEstaba?: boolean;
 	} = $props();
@@ -94,30 +98,29 @@
 	let girado: string | null = null;
 
 	$effect(() => {
-		if (!resultado) return;
-		const firma = `${resultado.salio}`;
+		if (salio === null) return;
+		const firma = `${salio}`;
 		if (girado === firma) return;
 		girado = firma;
 
 		if (yaEstaba) {
 			// Ya la había tirado en otra visita. Se muestra frenada donde
 			// corresponde, sin la vuelta: la sorpresa ya pasó.
-			angulo = dondeFrena(resultado.salio);
+			angulo = dondeFrena(salio);
 			frenada = true;
 			return;
 		}
 
 		animando = true;
 		frenada = false;
-		angulo = VUELTAS * 360 + dondeFrena(resultado.salio);
-		const reloj = setTimeout(() => {
+		angulo = VUELTAS * 360 + dondeFrena(salio);
+		setTimeout(() => {
 			animando = false;
 			frenada = true;
 		}, DURA);
-		return () => clearTimeout(reloj);
 	});
 
-	const canto = $derived(frenada && resultado ? (resultado.salio ? 'entro' : 'no') : '');
+	const canto = $derived(frenada && salio !== null ? (salio ? 'entro' : 'no') : '');
 </script>
 
 <div
@@ -154,16 +157,16 @@
 
 		<circle cx="50" cy="50" r="30" fill="var(--tarjeta)" />
 
-		{#if frenada && resultado}
+		{#if frenada && salio !== null}
 			<text
 				x="50"
 				y="53"
 				text-anchor="middle"
-				class="veredicto {resultado.salio ? 'bien' : 'mal'}"
+				class="veredicto {salio ? 'bien' : 'mal'}"
 				font-size="15"
 				font-weight="800"
 			>
-				{resultado.salio ? 'ENTRÓ' : 'NO'}
+				{salio ? 'SALIÓ' : 'NO'}
 			</text>
 		{:else}
 			<text

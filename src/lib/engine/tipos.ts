@@ -417,7 +417,18 @@ export type Decision = {
 	 */
 	renovacion?: string;
 
-	/** Los dos, fase 1: qué compran esta temporada. Ver `inversiones.ts`. */
+	/**
+	 * Los dos, fase 1: qué compran esta temporada. Ver `inversiones.ts`.
+	 *
+	 * Son varias y no una. Antes era una sola por año y armar el equipo propio
+	 * llevaba una carrera entera: Hernán lo dijo jugando —"solo puedo comprar un
+	 * consumible por temporada, no puedo poner más de uno en simultáneo"—. La
+	 * plata sigue siendo el límite; el calendario no tiene por qué serlo.
+	 *
+	 * `inversion` en singular queda por las decisiones que ya estaban guardadas
+	 * cuando esto cambió: una partida abierta no se rompe por un cambio de forma.
+	 */
+	inversiones?: string[];
 	inversion?: string;
 
 	/** Futbolista, fase 2: si pide que lo dejen ir. Ver `salida.ts`. */

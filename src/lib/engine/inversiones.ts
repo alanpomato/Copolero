@@ -173,9 +173,21 @@ export function ingresoAnual(estado: Estado, rol: Rol): number {
 	return 4_000 + 600 * estado.representante.prestigio + delSueldo;
 }
 
-/** Lo que sale comprarla hoy: unos meses de lo que gana. */
+/**
+ * Lo que sale comprarla hoy: unos meses de lo que gana.
+ *
+ * Estaba en 0.3 por punto de peso, o sea que el analista costaba un año y
+ * cuarto de sueldo entero. Junto con el mantenimiento de abajo, armar el
+ * equipo propio era una carrera entera de ahorro, y la vidriera terminaba
+ * siendo una lista de cosas que se miran y no se compran nunca.
+ */
+const LO_QUE_SALE_POR_PUNTO = 0.18;
+
 export function precioDe(estado: Estado, item: Inversion): number {
-	return Math.max(2_000, Math.round((ingresoAnual(estado, item.de) * item.peso * 0.3) / 500) * 500);
+	return Math.max(
+		2_000,
+		Math.round((ingresoAnual(estado, item.de) * item.peso * LO_QUE_SALE_POR_PUNTO) / 500) * 500
+	);
 }
 
 /**
@@ -186,10 +198,26 @@ export function precioDe(estado: Estado, item: Inversion): number {
  * en su mejor año no los puede sostener cuando el sueldo baja, y eso es
  * exactamente lo que le pasa a la gente.
  */
+/**
+ * Cuánto cuesta sostenerla, por punto de peso y por año.
+ *
+ * Estaba en 0.055, y los pesos del futbolista suman 16: tener todo costaba el
+ * 88% de lo que ganaba en el año. No era una decisión difícil, era una decisión
+ * imposible —Hernán lo dijo jugando: "los precios anuales son impagables"—.
+ *
+ * Con 0.018 tener todo cuesta cerca de un tercio del ingreso. Sigue doliendo,
+ * que es la idea: el que se llena de gastos en su mejor año no los sostiene
+ * cuando el sueldo baja. Pero se puede.
+ */
+const LO_QUE_CUESTA_SOSTENERLA = 0.018;
+
 export function mantenimientoDe(estado: Estado, item: Inversion): number {
 	// Un consumible no se mantiene: se compra, se usa y se termina.
 	if (item.dura) return 0;
-	return Math.max(500, Math.round((ingresoAnual(estado, item.de) * item.peso * 0.055) / 500) * 500);
+	return Math.max(
+		500,
+		Math.round((ingresoAnual(estado, item.de) * item.peso * LO_QUE_CUESTA_SOSTENERLA) / 500) * 500
+	);
 }
 
 /**

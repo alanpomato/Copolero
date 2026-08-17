@@ -15,7 +15,9 @@
 		probabilidad = null,
 		deshabilitada = false,
 		bloqueado = false,
+		multiple = false,
 		elegido = $bindable(),
+		elegidas = $bindable(),
 		extra
 	}: {
 		grupo: string;
@@ -31,29 +33,50 @@
 		 * las otras se apagan, que es lo que se siente al ver la que no elegiste.
 		 */
 		bloqueado?: boolean;
-		elegido: string;
+		/**
+		 * Se pueden marcar varias a la vez.
+		 *
+		 * En la vidriera del futbolista tiene que poder comprarse más de una cosa
+		 * en el mismo año: el límite es la plata, no el calendario. Con radios,
+		 * elegir la segunda desmarcaba la primera.
+		 */
+		multiple?: boolean;
+		elegido?: string;
+		elegidas?: string[];
 		extra?: Snippet;
 	} = $props();
 
 	const tono = $derived(
 		probabilidad === null ? '' : probabilidad >= 70 ? 'alta' : probabilidad >= 40 ? 'media' : 'baja'
 	);
+
+	const marcada = $derived(multiple ? (elegidas ?? []).includes(valor) : elegido === valor);
 </script>
 
 <label
 	class="opcion"
-	class:activa={elegido === valor}
+	class:activa={marcada}
 	class:apagada={deshabilitada}
-	class:sellada={bloqueado && elegido === valor}
-	class:descartada={bloqueado && elegido !== valor}
+	class:sellada={bloqueado && marcada}
+	class:descartada={bloqueado && !marcada}
 >
-	<input
-		type="radio"
-		name={grupo}
-		value={valor}
-		bind:group={elegido}
-		disabled={deshabilitada || bloqueado}
-	/>
+	{#if multiple}
+		<input
+			type="checkbox"
+			name={grupo}
+			value={valor}
+			bind:group={elegidas}
+			disabled={deshabilitada || bloqueado}
+		/>
+	{:else}
+		<input
+			type="radio"
+			name={grupo}
+			value={valor}
+			bind:group={elegido}
+			disabled={deshabilitada || bloqueado}
+		/>
+	{/if}
 	<span class="cuerpo">
 		<span class="cabecera">
 			<span class="titulo">{titulo}</span>

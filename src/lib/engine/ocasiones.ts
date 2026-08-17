@@ -44,11 +44,32 @@ export type Opcion = {
 	castigo: Efecto;
 };
 
+/**
+ * Con qué se juega este momento.
+ *
+ * Los tres momentos del año eran siempre la misma rueda, y tres temporadas más
+ * tarde ya no se miraba: se elegía la opción de arriba y se apretaba. Un
+ * minijuego que se repite quince años seguidos deja de ser un minijuego.
+ *
+ * Así que cada momento se juega con lo que le corresponde. No es variedad por
+ * variedad: un penal no es una ruleta, es un arco con alguien adentro; y una
+ * charla con el técnico no es un arco, es una tirada contra tu número. Lo que
+ * cambia es la forma de mirar la misma probabilidad, que sigue siendo la de
+ * verdad en los tres casos.
+ *
+ *  - `ruleta`: la rueda que gira. Para lo que pasa con la pelota en movimiento.
+ *  - `arco`:   el arco y el que ataja. Para definir, patear y atajar.
+ *  - `dado`:   un número contra el tuyo. Para lo que se juega fuera de la cancha.
+ */
+export type Minijuego = 'ruleta' | 'arco' | 'dado';
+
 export type Ocasion = {
 	id: string;
 	titulo: string;
 	/** El planteo, ya narrado y con los nombres reales del mundo. */
 	contexto: string;
+	/** Con qué se juega. Lo decide el momento, no la pantalla. */
+	juego: Minijuego;
 	opciones: Opcion[];
 };
 
@@ -143,6 +164,7 @@ const aQuien = (quien: string) => (quien.startsWith('el ') ? `al ${quien.slice(3
 const PARA_DELANTERO: Plantilla[] = [
 	(a, e) => ({
 		id: 'mano-a-mano',
+		juego: 'arco',
 		titulo: 'Mano a mano',
 		contexto: `Te quedaste solo contra ${arqueroDelRival(e)}. Sale a achicarte.`,
 		opciones: [
@@ -180,6 +202,7 @@ const PARA_DELANTERO: Plantilla[] = [
 	}),
 	(a, e) => ({
 		id: 'penal',
+		juego: 'arco',
 		titulo: 'El penal',
 		contexto: `Penal en el último minuto contra ${club(e.rival).nombre}. Nadie quiere agarrar la pelota.`,
 		opciones: [
@@ -210,6 +233,7 @@ const PARA_DELANTERO: Plantilla[] = [
 const PARA_MEDIO: Plantilla[] = [
 	(a, e) => ({
 		id: 'pase-filtrado',
+		juego: 'ruleta',
 		titulo: 'La pelota que parte el partido',
 		contexto: `Te la dieron de espaldas contra ${club(e.rival).nombre}. Tenés un segundo para levantar la cabeza.`,
 		opciones: [
@@ -248,6 +272,7 @@ const PARA_MEDIO: Plantilla[] = [
 	}),
 	(a, e) => ({
 		id: 'tiro-libre',
+		juego: 'arco',
 		titulo: 'Tiro libre al borde del área',
 		contexto: `Falta al borde del área, con ${arqueroDelRival(e)} armando la barrera.`,
 		opciones: [
@@ -278,6 +303,7 @@ const PARA_MEDIO: Plantilla[] = [
 const PARA_DEFENSOR: Plantilla[] = [
 	(a, e) => ({
 		id: 'el-cruce',
+		juego: 'ruleta',
 		titulo: 'El cruce',
 		contexto: `${e.figuraRival ?? 'El nueve del rival'} te ganó la espalda y va solo al arco.`,
 		opciones: [
@@ -305,6 +331,7 @@ const PARA_DEFENSOR: Plantilla[] = [
 	}),
 	(a, e) => ({
 		id: 'salida',
+		juego: 'ruleta',
 		titulo: 'Salir jugando',
 		contexto: `${club(e.rival).nombre} te vino a presionar arriba y el arquero te la dio a vos.`,
 		opciones: [
@@ -335,6 +362,7 @@ const PARA_DEFENSOR: Plantilla[] = [
 const PARA_ARQUERO: Plantilla[] = [
 	(a, e) => ({
 		id: 'penal-atajado',
+		juego: 'arco',
 		titulo: 'El penal en contra',
 		contexto: `Penal para ${club(e.rival).nombre} en el minuto 90. ${e.figuraRival ?? 'El nueve'} agarra la pelota.`,
 		opciones: [
@@ -363,6 +391,7 @@ const PARA_ARQUERO: Plantilla[] = [
 	}),
 	(a, e) => ({
 		id: 'salida-arquero',
+		juego: 'ruleta',
 		titulo: 'El centro que hay que sacar',
 		contexto: `Córner para ${club(e.rival).nombre} en el descuento, con todos adentro del área.`,
 		opciones: [
@@ -394,6 +423,7 @@ const PARA_ARQUERO: Plantilla[] = [
 const PARA_CUALQUIERA: Plantilla[] = [
 	(a, e) => ({
 		id: 'la-camara',
+		juego: 'dado',
 		titulo: 'El micrófono',
 		contexto: e.tecnico
 			? `Salís del vestuario y te frenan con un micrófono. ${e.tecnico} te está mirando desde el pasillo.`
@@ -423,6 +453,7 @@ const PARA_CUALQUIERA: Plantilla[] = [
 	}),
 	(a, e) => ({
 		id: 'el-pedido',
+		juego: 'dado',
 		titulo: e.tecnico ? `El pedido de ${e.tecnico}` : 'El pedido del técnico',
 		contexto: e.tecnico
 			? `${e.tecnico} te pide que juegues en un puesto que no es el tuyo para el partido con ${club(e.rival).nombre}.`

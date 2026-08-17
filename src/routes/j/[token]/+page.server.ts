@@ -106,7 +106,15 @@ export const actions: Actions = {
 		// Cada uno gasta lo suyo, y el servidor solo acepta lo que ese rol puede
 		// comprar: el catálogo está partido por rol y `comprar` lo verifica.
 		if (vista.opciones.inversiones) {
-			decision.inversion = campo(datos, 'inversion');
+			// Varias en el mismo año: el límite es la plata, no el calendario. El
+			// motor cobra una por una y para cuando no alcanza.
+			const marcadas = datos
+				.getAll('inversiones')
+				.filter((v): v is string => typeof v === 'string')
+				.map((v) => v.trim().slice(0, 60))
+				.filter((v) => v.length > 0)
+				.slice(0, 12);
+			if (marcadas.length > 0) decision.inversiones = marcadas;
 		}
 		// Para qué juega cada uno: lo eligen los dos, cada uno el suyo, y solo la
 		// primera pretemporada. El motor verifica que ese id sea uno de los que le

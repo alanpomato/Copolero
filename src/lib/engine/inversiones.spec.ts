@@ -267,3 +267,59 @@ describe('en una partida de verdad', () => {
 		expect(e.carreraTerminada).toBe(true);
 	});
 });
+
+describe('comprar varias en el mismo año', () => {
+	/**
+	 * Antes era una sola por temporada, así que armar el equipo propio llevaba
+	 * una carrera entera. Hernán lo dijo jugando: "solo puedo comprar un
+	 * consumible por temporada". La plata sigue siendo el límite; el almanaque
+	 * no tiene por qué serlo.
+	 */
+	function conPlata(cuanta: number): Estado {
+		const e = unaPartida();
+		e.futbolista.dineroUsd = cuanta;
+		e.futbolista.contrato.salarioMensual = 5_000;
+		return e;
+	}
+
+	it('entran las dos si alcanza para las dos', () => {
+		const e = conPlata(500_000);
+		const a = loQuePuedeComprar(e, 'futbolista')[0];
+		const b = loQuePuedeComprar(e, 'futbolista')[1];
+
+		expect(comprar(e, 'futbolista', a.id)).not.toBeNull();
+		expect(comprar(e, 'futbolista', b.id)).not.toBeNull();
+
+		const tiene = loQueTiene(e, 'futbolista').map((i) => i.id);
+		expect(tiene).toContain(a.id);
+		expect(tiene).toContain(b.id);
+	});
+
+	it('y si alcanza para una sola, entra la primera y la segunda no', () => {
+		const e = conPlata(500_000);
+		const lista = loQuePuedeComprar(e, 'futbolista');
+		const cara = [...lista].sort((x, y) => y.precioUsd - x.precioUsd)[0];
+		const otra = [...lista].sort((x, y) => y.precioUsd - x.precioUsd)[1];
+
+		e.futbolista.dineroUsd = cara.precioUsd;
+
+		expect(comprar(e, 'futbolista', cara.id)).not.toBeNull();
+		expect(comprar(e, 'futbolista', otra.id)).toBeNull();
+		expect(e.futbolista.dineroUsd).toBe(0);
+	});
+
+	it('sostener todo cuesta caro pero no imposible', () => {
+		// El problema real que reportó Hernán: tener todo se llevaba el 88% de lo
+		// que ganaba en el año.
+		const e = conPlata(50_000_000);
+		e.futbolista.contrato.salarioMensual = 190_000;
+
+		for (const i of loQuePuedeComprar(e, 'futbolista')) comprar(e, 'futbolista', i.id);
+
+		const porAnio = gastoAnual(e, 'futbolista');
+		const gana = e.futbolista.contrato.salarioMensual * 12;
+		expect(porAnio / gana).toBeLessThan(0.4);
+		// Y que siga siendo una decisión: gratis tampoco.
+		expect(porAnio / gana).toBeGreaterThan(0.15);
+	});
+});

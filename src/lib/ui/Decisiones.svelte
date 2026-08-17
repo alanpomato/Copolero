@@ -2,7 +2,6 @@
 	import { contexto } from '../../../content/mundo';
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
-	import { NADA } from '$lib/engine/inversiones';
 	import { NOMBRE_ATRIBUTO as ATRIBUTO } from '$lib/engine/puestos';
 	import { OBJETIVO_POR_DEFECTO } from '$lib/engine/objetivos';
 	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
@@ -17,7 +16,7 @@
 	import Escudo from './Escudo.svelte';
 	import Opcion from './Opcion.svelte';
 	import Paso from './Paso.svelte';
-	import Ruleta from './Ruleta.svelte';
+	import Minijuego from './Minijuego.svelte';
 
 	/**
 	 * El cuerpo del formulario de la fase: cambia según la fase y el rol.
@@ -41,7 +40,7 @@
 	let acuerdo = $state('estandar');
 	let renovacion = $state(FIRMAR);
 	let objetivo = $state(OBJETIVO_POR_DEFECTO);
-	let compra = $state(NADA);
+	let compras = $state<string[]>([]);
 	let rasgo = $state('');
 	let sueno = $state('');
 	let salida = $state('');
@@ -100,8 +99,22 @@
 	let contado = $state(-1);
 	let problema = $state('');
 
-	/** Lo que tarda la rueda en frenar. Tiene que ser lo mismo que la animación. */
-	const LO_QUE_TARDA_EN_FRENAR = 2700;
+	/**
+	 * Lo que tarda cada minijuego en terminar de contar el final.
+	 *
+	 * Tiene que ser lo que tarda la animación de cada uno, ni más ni menos. De
+	 * menos, la crónica aparece con la pelota todavía en el aire; de más, queda
+	 * un silencio raro después de que ya se vio todo.
+	 */
+	const LO_QUE_TARDA: Record<string, number> = { ruleta: 2700, arco: 1300, dado: 1600 };
+
+	/** Cómo se llama jugársela en cada uno. */
+	const VERBO: Record<string, string> = { ruleta: 'Jugártela', arco: 'Patear', dado: 'Tirar' };
+	const MIENTRAS: Record<string, string> = {
+		ruleta: 'Girando…',
+		arco: 'Va la pelota…',
+		dado: 'Tirando…'
+	};
 
 	/**
 	 * Todo lo tirado: lo que vino con la página más lo que se tiró sin recargarla.
@@ -153,7 +166,7 @@
 		abierta = Math.max(0, destapadas - 1);
 	});
 
-	async function tirar(i: number) {
+	async function tirar(i: number, juego: string) {
 		if (tirando >= 0 || hechas[i]) return;
 		tirando = i;
 		problema = '';
@@ -178,7 +191,7 @@
 				ocasiones[i] = tirada.opcionId;
 				// La crónica se escribe cuando la rueda frena. Contarla antes es
 				// contar el final con la pelota todavía en el aire.
-				setTimeout(() => (contado = i), LO_QUE_TARDA_EN_FRENAR);
+				setTimeout(() => (contado = i), LO_QUE_TARDA[juego] ?? 2700);
 			} else if (resultado.type === 'failure') {
 				problema = String(resultado.data?.problema ?? 'No se pudo tirar.');
 			} else {
@@ -223,10 +236,27 @@
 	const comoEntrena = $derived(
 		nombreDelPlan ? `${nombreDelPlan} · ${nombreDeLaIntensidad.toLowerCase()}` : ''
 	);
+	/** Lo que se lleva del bolsillo lo que está marcado, y lo que suma por año. */
+	const loQueGasta = $derived(
+		compras.reduce(
+			(suma, id) =>
+				suma + (opciones.inversiones?.puedeComprar.find((i) => i.id === id)?.precioUsd ?? 0),
+			0
+		)
+	);
+	const loQueSumaPorAnio = $derived(
+		compras.reduce(
+			(suma, id) =>
+				suma + (opciones.inversiones?.puedeComprar.find((i) => i.id === id)?.porTemporadaUsd ?? 0),
+			0
+		)
+	);
 	const queCompra = $derived(
-		compra === NADA
-			? 'No gastar nada'
-			: (opciones.inversiones?.puedeComprar.find((i) => i.id === compra)?.nombre ?? '')
+		compras.length === 0
+			? ''
+			: compras.length === 1
+				? (opciones.inversiones?.puedeComprar.find((i) => i.id === compras[0])?.nombre ?? '')
+				: `${compras.length} cosas · ${plata(loQueGasta)}`
 	);
 	const queGestiona = $derived(opciones.gestiones?.find((g) => g.id === gestion)?.nombre ?? '');
 	const queObjetivo = $derived(opciones.objetivos?.find((o) => o.id === objetivo)?.nombre ?? '');
@@ -330,18 +360,20 @@
 	<Paso
 		titulo="Comprar para la temporada"
 		elegido={queCompra}
-		dato={queCompra === 'No gastar nada' ? `Tenés ${plata(inv.plataUsd)}` : ''}
+		dato={compras.length === 0 ? `Tenés ${plata(inv.plataUsd)}` : ''}
 		tema="plata"
-		nota="Preparador, fisio, botines, la casa de la familia. Lo que comprás se paga una vez y después cuesta todos los años; si un año no te alcanza, lo perdés."
+		nota="Preparador, fisio, botines, la casa de la familia. Podés comprar más de una cosa el mismo año: el límite es la plata. Lo que es para siempre se paga todos los años, y si un año no te alcanza, lo perdés."
 	>
 		<div class="cifras" style="margin-bottom:.9rem">
 			<div class="cifra">
-				<span class="valor" style="font-size:1.1rem">{plata(inv.plataUsd)}</span>
-				<span class="etiqueta">Tenés</span>
+				<span class="valor" style="font-size:1.1rem">{plata(inv.plataUsd - loQueGasta)}</span>
+				<span class="etiqueta">{compras.length > 0 ? 'Te queda' : 'Tenés'}</span>
 			</div>
-			{#if inv.gastoAnualUsd > 0}
+			{#if inv.gastoAnualUsd > 0 || loQueSumaPorAnio > 0}
 				<div class="cifra">
-					<span class="valor" style="font-size:1.1rem">{plata(inv.gastoAnualUsd)}</span>
+					<span class="valor" style="font-size:1.1rem"
+						>{plata(inv.gastoAnualUsd + loQueSumaPorAnio)}</span
+					>
 					<span class="etiqueta">Se te va por año</span>
 				</div>
 			{/if}
@@ -358,30 +390,31 @@
 		{/if}
 
 		{#if inv.puedeComprar.length > 0}
-			<Opcion
-				grupo="inversion"
-				valor={NADA}
-				titulo="No gastar nada este año"
-				detalle="Guardarla. Nunca está mal."
-				bind:elegido={compra}
-			/>
+			<!--
+				Sin "no gastar nada": con casilleros, no marcar ninguno ya es eso. La
+				opción existía porque antes eran radios y hacía falta una para poder
+				no elegir.
+			-->
 			{#each [{ titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => !i.dura) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.dura) }] as grupo (grupo.titulo)}
 				{#if grupo.cuales.length > 0}
 					<p class="subtitulo">{grupo.titulo}</p>
 					{#each grupo.cuales as i (i.id)}
+						{@const marcada = compras.includes(i.id)}
+						{@const alcanza = marcada || inv.plataUsd - loQueGasta >= i.precioUsd}
 						<Opcion
-							grupo="inversion"
+							multiple
+							grupo="inversiones"
 							valor={i.id}
 							titulo={i.nombre}
 							detalle={i.detalle}
-							bind:elegido={compra}
-							deshabilitada={inv.plataUsd < i.precioUsd}
+							bind:elegidas={compras}
+							deshabilitada={!alcanza}
 						>
 							{#snippet extra()}
 								<span class="sube">
 									<span class="chip-sube gana">{i.efecto}</span>
-									<span class="chip-sube {inv.plataUsd < i.precioUsd ? 'pierde' : ''}">
-										{plata(i.precioUsd)}{inv.plataUsd < i.precioUsd ? ' · no te alcanza' : ''}
+									<span class="chip-sube {alcanza ? '' : 'pierde'}">
+										{plata(i.precioUsd)}{alcanza ? '' : ' · no te alcanza'}
 									</span>
 									{#if i.porTemporadaUsd > 0}
 										<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
@@ -708,10 +741,11 @@
 					-->
 					<div class="apuesta">
 						<div class="rueda">
-							<Ruleta
+							<Minijuego
+								juego={ocasion.juego}
 								probabilidad={elegida.probabilidad}
 								etiqueta={elegida.etiqueta}
-								resultado={tirada ? { salio: tirada.salio } : null}
+								salio={tirada ? tirada.salio : null}
 								tirando={tirando === i}
 								yaEstaba={!!tirada && recienTirada !== i}
 							/>
@@ -751,8 +785,15 @@
 					{:else if tirada}
 						<p class="loQuePaso esperando">…</p>
 					{:else}
-						<button type="button" class="tirarla" disabled={tirando === i} onclick={() => tirar(i)}>
-							{tirando === i ? 'Girando…' : `Jugártela · ${elegida.probabilidad}%`}
+						<button
+							type="button"
+							class="tirarla"
+							disabled={tirando === i}
+							onclick={() => tirar(i, ocasion.juego)}
+						>
+							{tirando === i
+								? (MIENTRAS[ocasion.juego] ?? 'Girando…')
+								: `${VERBO[ocasion.juego] ?? 'Jugártela'} · ${elegida.probabilidad}%`}
 						</button>
 						<p class="aviso">Una sola vez. Lo que salga, salió.</p>
 					{/if}
