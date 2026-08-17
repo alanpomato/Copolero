@@ -1,4 +1,4 @@
-import type { Estado, Rol } from './tipos';
+import type { Estado, InversionComprada, Rol } from './tipos';
 
 /**
  * En qué se gasta la plata.
@@ -47,6 +47,16 @@ export type Inversion = {
 	dura?: number;
 	/** Si ya no tiene sentido comprarla. */
 	sirveAun?: (estado: Estado) => boolean;
+	/**
+	 * Cómo se llama cuando se ata para siempre, si es un consumible.
+	 *
+	 * Un consumible se puede dejar de comprar todos los años y pasar a tenerlo
+	 * fijo: en vez de un par de botines por temporada, un contrato con la marca.
+	 * Cuesta más de entrada y se paga todos los años, pero no se termina nunca y
+	 * no hay que acordarse. Es la misma decisión que existe en la vida: alquilar
+	 * o atarse.
+	 */
+	fijo?: { nombre: string; detalle: string; efecto: string };
 };
 
 export const INVERSIONES: Inversion[] = [
@@ -100,7 +110,12 @@ export const INVERSIONES: Inversion[] = [
 		detalle: 'Un par hecho a tu pie para el año que viene. Se gastan y listo.',
 		efecto: 'Una temporada: goles y asistencias +12%',
 		peso: 2,
-		dura: 1
+		dura: 1,
+		fijo: {
+			nombre: 'Contrato con la marca',
+			detalle: 'Que te manden los botines hechos a tu pie todos los años, sin acordarte.',
+			efecto: 'Todas las temporadas: goles y asistencias +12%'
+		}
 	},
 	{
 		id: 'fisio',
@@ -109,7 +124,12 @@ export const INVERSIONES: Inversion[] = [
 		detalle: 'Uno solo para vos durante el año. Después vuelve al plantel.',
 		efecto: 'Dos temporadas: mitad de riesgo de lesión',
 		peso: 3,
-		dura: 2
+		dura: 2,
+		fijo: {
+			nombre: 'Tu fisio, para siempre',
+			detalle: 'Contratarlo vos. Deja el plantel y trabaja solo con tu cuerpo, todos los años.',
+			efecto: 'Siempre: mitad de riesgo de lesión'
+		}
 	},
 	{
 		id: 'concentracion',
@@ -118,7 +138,12 @@ export const INVERSIONES: Inversion[] = [
 		detalle: 'Un verano entero en un centro de alto rendimiento, lejos de todo.',
 		efecto: 'Una temporada: crecés un 30% más rápido',
 		peso: 4,
-		dura: 1
+		dura: 1,
+		fijo: {
+			nombre: 'Tu propio centro de entrenamiento',
+			detalle: 'Un lugar tuyo donde entrenar cada verano. Se sostiene todos los años.',
+			efecto: 'Todas las temporadas: crecés un 30% más rápido'
+		}
 	},
 
 	// --- Del representante ---------------------------------------------------
@@ -183,11 +208,18 @@ export function ingresoAnual(estado: Estado, rol: Rol): number {
  */
 const LO_QUE_SALE_POR_PUNTO = 0.18;
 
-export function precioDe(estado: Estado, item: Inversion): number {
-	return Math.max(
-		2_000,
-		Math.round((ingresoAnual(estado, item.de) * item.peso * LO_QUE_SALE_POR_PUNTO) / 500) * 500
-	);
+/**
+ * Y lo que sale atarse.
+ *
+ * Un consumible fijo cuesta más de entrada que el consumible suelto: hay que
+ * poder pagar el año de golpe y encima quedar enganchado al gasto. Si costara
+ * lo mismo, atarse sería gratis y nadie compraría nunca la versión suelta.
+ */
+const LO_QUE_SALE_ATARSE = 1.7;
+
+export function precioDe(estado: Estado, item: Inversion, fijo = false): number {
+	const cuanto = item.peso * LO_QUE_SALE_POR_PUNTO * (fijo ? LO_QUE_SALE_ATARSE : 1);
+	return Math.max(2_000, Math.round((ingresoAnual(estado, item.de) * cuanto) / 500) * 500);
 }
 
 /**
@@ -211,9 +243,10 @@ export function precioDe(estado: Estado, item: Inversion): number {
  */
 const LO_QUE_CUESTA_SOSTENERLA = 0.018;
 
-export function mantenimientoDe(estado: Estado, item: Inversion): number {
-	// Un consumible no se mantiene: se compra, se usa y se termina.
-	if (item.dura) return 0;
+export function mantenimientoDe(estado: Estado, item: Inversion, fijo = false): number {
+	// Un consumible suelto no se mantiene: se compra, se usa y se termina. Uno
+	// atado sí, y por eso es lo que lo hace una decisión y no un regalo.
+	if (item.dura && !fijo) return 0;
 	return Math.max(
 		500,
 		Math.round((ingresoAnual(estado, item.de) * item.peso * LO_QUE_CUESTA_SOSTENERLA) / 500) * 500
@@ -225,36 +258,137 @@ export function mantenimientoDe(estado: Estado, item: Inversion): number {
  *
  * `quedan` solo existe en los consumibles: es cuántas temporadas les faltan.
  */
-export type Comprada = { id: string; porTemporadaUsd: number; quedan?: number };
+/**
+ * Una inversión ya comprada, con el gasto que quedó fijado ese día.
+ *
+ * `fijo` marca el consumible que se ató para siempre: no se gasta y se paga
+ * todos los años, igual que el staff. Lo que cambia no es el efecto sino la
+ * forma de pagarlo, así que es una bandera y no otro artículo del catálogo —el
+ * efecto ya está escrito una sola vez—.
+ */
+export type Comprada = InversionComprada;
 
 export function inversion(id: string | undefined): Inversion | null {
 	return INVERSIONES.find((i) => i.id === id) ?? null;
 }
 
 /** Lo mismo que `Inversion` pero con los números de hoy puestos. */
-export type EnLaVidriera = Inversion & { precioUsd: number; porTemporadaUsd: number };
+/**
+ * Un renglón de la vidriera, con lo que sale hoy y qué se hace con él.
+ *
+ * `modo` es la novedad. Antes la vidriera solo sabía ofrecer lo que todavía no
+ * se tenía: un consumible comprado desaparecía de la lista y volvía recién
+ * cuando se gastaba, así que no había forma de estirarlo antes de quedarse sin
+ * ni de dejar de comprarlo todos los años. Bebo lo pidió con esas palabras:
+ * "faltan consumibles renovables".
+ *
+ *  - `comprar`: no lo tiene.
+ *  - `renovar`: lo tiene y le suma temporadas, al mismo precio.
+ *  - `fijar`:   lo tiene suelto y lo ata para siempre, con gasto anual.
+ */
+export type ModoDeCompra = 'comprar' | 'renovar' | 'fijar';
 
-/** Las que este rol todavía no tiene, con lo que le saldrían hoy. */
+export type EnLaVidriera = Inversion & {
+	precioUsd: number;
+	porTemporadaUsd: number;
+	modo: ModoDeCompra;
+	/** Cuántas temporadas le quedan, si ya lo tiene y es un consumible. */
+	quedan?: number;
+	/** Qué id hay que mandar para esta acción. */
+	pedido: string;
+};
+
+/** El id que viaja en el formulario para cada acción. */
+export function pedidoDe(id: string, modo: ModoDeCompra): string {
+	return modo === 'comprar' ? id : `${id}:${modo}`;
+}
+
+function partirPedido(pedido: string): { id: string; modo: ModoDeCompra } {
+	const [id, cual] = pedido.split(':');
+	const modo: ModoDeCompra = cual === 'renovar' || cual === 'fijar' ? cual : 'comprar';
+	return { id, modo };
+}
+
+/** Lo que este rol puede comprar, renovar o atar hoy. */
 export function loQuePuedeComprar(estado: Estado, rol: Rol): EnLaVidriera[] {
-	const tiene = new Set(idsDe(estado, rol));
-	return INVERSIONES.filter((i) => i.de === rol && !tiene.has(i.id))
-		.filter((i) => i.sirveAun?.(estado) ?? true)
-		.map((i) => ({
-			...i,
-			precioUsd: precioDe(estado, i),
-			porTemporadaUsd: mantenimientoDe(estado, i)
-		}));
+	const compradas = new Map((estado.inversiones?.[rol] ?? []).map((c) => [c.id, c]));
+	const vidriera: EnLaVidriera[] = [];
+
+	for (const item of INVERSIONES) {
+		if (item.de !== rol) continue;
+		if (!(item.sirveAun?.(estado) ?? true)) continue;
+
+		const ya = compradas.get(item.id);
+
+		if (!ya) {
+			vidriera.push({
+				...item,
+				precioUsd: precioDe(estado, item),
+				porTemporadaUsd: mantenimientoDe(estado, item),
+				modo: 'comprar',
+				pedido: pedidoDe(item.id, 'comprar')
+			});
+			// Y si es un consumible, también se puede atar de una: el que ya sabe
+			// que lo va a querer todos los años no tiene por qué empezar suelto.
+			if (item.dura && item.fijo) {
+				vidriera.push({
+					...item,
+					precioUsd: precioDe(estado, item, true),
+					porTemporadaUsd: mantenimientoDe(estado, item, true),
+					modo: 'fijar',
+					pedido: pedidoDe(item.id, 'fijar')
+				});
+			}
+			continue;
+		}
+
+		// Ya lo tiene. Un consumible suelto se puede estirar o atar; lo fijo y el
+		// staff no se compran dos veces.
+		if (item.dura && !ya.fijo) {
+			vidriera.push({
+				...item,
+				precioUsd: precioDe(estado, item),
+				porTemporadaUsd: 0,
+				modo: 'renovar',
+				quedan: ya.quedan,
+				pedido: pedidoDe(item.id, 'renovar')
+			});
+			if (item.fijo) {
+				vidriera.push({
+					...item,
+					precioUsd: precioDe(estado, item, true),
+					porTemporadaUsd: mantenimientoDe(estado, item, true),
+					modo: 'fijar',
+					quedan: ya.quedan,
+					pedido: pedidoDe(item.id, 'fijar')
+				});
+			}
+		}
+	}
+
+	return vidriera;
 }
 
 /** Las que ya compró, con el gasto que le quedó fijado. */
 export function loQueTiene(estado: Estado, rol: Rol): EnLaVidriera[] {
 	const compradas = estado.inversiones?.[rol] ?? [];
 	return compradas
-		.map((c) => {
+		.map((c): EnLaVidriera | null => {
 			const item = inversion(c.id);
-			return item
-				? { ...item, precioUsd: precioDe(estado, item), porTemporadaUsd: c.porTemporadaUsd }
-				: null;
+			if (!item) return null;
+			return {
+				...item,
+				// Lo atado se muestra con su otro nombre: es lo que lo hace distinto.
+				nombre: c.fijo && item.fijo ? item.fijo.nombre : item.nombre,
+				efecto: c.fijo && item.fijo ? item.fijo.efecto : item.efecto,
+				precioUsd: precioDe(estado, item, c.fijo),
+				porTemporadaUsd: c.porTemporadaUsd,
+				modo: 'comprar' as const,
+				quedan: c.quedan,
+				// Lo atado ya no se gasta: se muestra sin cuenta regresiva.
+				dura: c.fijo ? undefined : item.dura,
+				pedido: item.id
+			};
 		})
 		.filter((i): i is EnLaVidriera => i !== null);
 }
@@ -283,40 +417,88 @@ export function gastoAnual(estado: Estado, rol: Rol): number {
  * No avisa cuando no le alcanza: la pantalla ya muestra el precio y lo que
  * tiene. Devuelve la línea para el diario, o `null` si no compró nada.
  */
-export function comprar(estado: Estado, rol: Rol, id: string | undefined): string | null {
-	if (!id || id === NADA) return null;
+export function comprar(estado: Estado, rol: Rol, pedido: string | undefined): string | null {
+	if (!pedido || pedido === NADA) return null;
 
+	const { id, modo } = partirPedido(pedido);
 	const item = inversion(id);
 	if (!item || item.de !== rol) return null;
 
 	const yaTiene = estado.inversiones?.[rol] ?? [];
-	if (yaTiene.some((c) => c.id === item.id)) return null;
+	const ya = yaTiene.find((c) => c.id === item.id);
 
-	const precio = precioDe(estado, item);
+	/*
+	 * Qué se puede hacer con cada cosa.
+	 *
+	 * Renovar necesita tenerlo suelto: no se estira lo que no existe ni lo que
+	 * ya no se gasta. Atar no lo necesita —se puede empezar atado, el que ya
+	 * sabe que lo va a querer todos los años no tiene por qué empezar suelto—,
+	 * pero sí que sea un consumible con versión fija y que no esté ya atado.
+	 * Y comprar suelto es solo para lo que no se tiene.
+	 */
+	if (modo === 'renovar' && (!ya || !item.dura || ya.fijo)) return null;
+	if (modo === 'fijar' && (!item.dura || !item.fijo || ya?.fijo)) return null;
+	if (modo === 'comprar' && ya) return null;
+
+	const fijo = modo === 'fijar';
+	const precio = precioDe(estado, item, fijo);
 	if (plataDe(estado, rol) < precio) return null;
 
 	cobrarle(estado, rol, precio);
-	const porTemporadaUsd = mantenimientoDe(estado, item);
+	const porTemporadaUsd = mantenimientoDe(estado, item, fijo);
+
 	estado.inversiones = {
 		futbolista: [...(estado.inversiones?.futbolista ?? [])],
 		representante: [...(estado.inversiones?.representante ?? [])]
 	};
-	estado.inversiones[rol] = [
-		...yaTiene,
-		{ id: item.id, porTemporadaUsd, ...(item.dura ? { quedan: item.dura } : {}) }
-	];
 
-	aplicarDeUnaVez(estado, item);
+	if (!ya) {
+		// No lo tenía: entra nuevo, suelto o atado según lo que haya pedido.
+		estado.inversiones[rol] = [
+			...yaTiene,
+			{
+				id: item.id,
+				porTemporadaUsd,
+				...(item.dura && !fijo ? { quedan: item.dura } : {}),
+				...(fijo ? { fijo: true } : {})
+			}
+		];
+		// El empujón único es de comprarlo, no de renovarlo: se siente una vez.
+		aplicarDeUnaVez(estado, item);
+	} else if (modo === 'renovar') {
+		// Le suma temporadas a lo que le quedaba: renovar antes de que se termine
+		// no desperdicia lo que sobraba, que sería castigar al que se adelanta.
+		estado.inversiones[rol] = yaTiene.map((c) =>
+			c.id === item.id ? { ...c, quedan: (c.quedan ?? 0) + (item.dura ?? 1) } : c
+		);
+	} else {
+		// Atarlo: deja de gastarse y pasa a pagarse todos los años.
+		estado.inversiones[rol] = yaTiene.map((c) =>
+			c.id === item.id ? { id: c.id, porTemporadaUsd, fijo: true } : c
+		);
+	}
+
+	const cuanto = `USD ${precio.toLocaleString('es-AR')}`;
+	const porAnio = `USD ${porTemporadaUsd.toLocaleString('es-AR')} por año`;
+
+	if (modo === 'renovar') {
+		const restan = (ya?.quedan ?? 0) + (item.dura ?? 1);
+		return (
+			`${item.nombre}, renovado por ${cuanto}. Te ${restan === 1 ? 'queda' : 'quedan'} ` +
+			`${restan} ${restan === 1 ? 'temporada' : 'temporadas'}.`
+		);
+	}
+	if (fijo) {
+		const nombre = item.fijo?.nombre ?? item.nombre;
+		return `${nombre}: ${cuanto}, y ${porAnio} de acá en adelante. Ya no se te termina nunca.`;
+	}
 	if (item.dura) {
 		return (
-			`${item.nombre}: USD ${precio.toLocaleString('es-AR')} por ${item.dura} ` +
+			`${item.nombre}: ${cuanto} por ${item.dura} ` +
 			`${item.dura === 1 ? 'temporada' : 'temporadas'}. ${item.efecto}.`
 		);
 	}
-	return (
-		`${item.nombre}: USD ${precio.toLocaleString('es-AR')}, y USD ` +
-		`${porTemporadaUsd.toLocaleString('es-AR')} por año de acá en adelante. ${item.efecto}.`
-	);
+	return `${item.nombre}: ${cuanto}, y ${porAnio} de acá en adelante. ${item.efecto}.`;
 }
 
 /** El empujón único del momento de comprarla. */
@@ -353,8 +535,10 @@ export function cobrarMantenimiento(estado: Estado): Mantenimiento {
 			const item = inversion(comprada.id);
 			if (!item) continue;
 
-			// Los consumibles no se pagan otra vez: se gastan.
-			if (item.dura) {
+			// Los consumibles sueltos no se pagan otra vez: se gastan. Los atados sí,
+			// y por eso caen abajo, con el staff: se cobran todos los años y se
+			// pierden el año que no se puedan pagar.
+			if (item.dura && !comprada.fijo) {
 				const restan = (comprada.quedan ?? 1) - 1;
 				if (restan > 0) {
 					quedan.push({ ...comprada, quedan: restan });
@@ -372,9 +556,11 @@ export function cobrarMantenimiento(estado: Estado): Mantenimiento {
 				quedan.push(comprada);
 				aplicarPorTemporada(estado, item);
 			} else {
+				const comoSeLlama =
+					comprada.fijo && item.fijo ? item.fijo.nombre.toLowerCase() : item.nombre.toLowerCase();
 				lineas.push({
 					visiblePara: rol,
-					texto: `No pudiste sostener ${item.nombre.toLowerCase()} y lo perdiste. La plata se termina.`
+					texto: `No pudiste sostener ${comoSeLlama} y lo perdiste. La plata se termina.`
 				});
 			}
 		}

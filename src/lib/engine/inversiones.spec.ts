@@ -231,8 +231,9 @@ describe('en una partida de verdad', () => {
 		expect(suyas.plataUsd).toBe(e.futbolista.dineroUsd);
 		for (const i of suyas.puedeComprar) {
 			expect(i.precioUsd).toBeGreaterThan(0);
-			// Los consumibles se pagan una vez y se gastan; el staff se mantiene.
-			if (i.dura) expect(i.porTemporadaUsd).toBe(0);
+			// Un consumible suelto se paga una vez y se gasta; el staff y el
+			// consumible atado se mantienen todos los años.
+			if (i.dura && i.modo !== 'fijar') expect(i.porTemporadaUsd).toBe(0);
 			else expect(i.porTemporadaUsd).toBeGreaterThan(0);
 		}
 
@@ -284,11 +285,15 @@ describe('comprar varias en el mismo año', () => {
 
 	it('entran las dos si alcanza para las dos', () => {
 		const e = conPlata(500_000);
-		const a = loQuePuedeComprar(e, 'futbolista')[0];
-		const b = loQuePuedeComprar(e, 'futbolista')[1];
+		// Dos artículos distintos: la vidriera trae varios renglones del mismo —
+		// comprarlo suelto y atarlo para siempre— y comprar el segundo del mismo
+		// no es comprar dos cosas.
+		const nuevas = loQuePuedeComprar(e, 'futbolista').filter((i) => i.modo === 'comprar');
+		const a = nuevas[0];
+		const b = nuevas.find((i) => i.id !== a.id)!;
 
-		expect(comprar(e, 'futbolista', a.id)).not.toBeNull();
-		expect(comprar(e, 'futbolista', b.id)).not.toBeNull();
+		expect(comprar(e, 'futbolista', a.pedido)).not.toBeNull();
+		expect(comprar(e, 'futbolista', b.pedido)).not.toBeNull();
 
 		const tiene = loQueTiene(e, 'futbolista').map((i) => i.id);
 		expect(tiene).toContain(a.id);
@@ -297,14 +302,14 @@ describe('comprar varias en el mismo año', () => {
 
 	it('y si alcanza para una sola, entra la primera y la segunda no', () => {
 		const e = conPlata(500_000);
-		const lista = loQuePuedeComprar(e, 'futbolista');
-		const cara = [...lista].sort((x, y) => y.precioUsd - x.precioUsd)[0];
-		const otra = [...lista].sort((x, y) => y.precioUsd - x.precioUsd)[1];
+		const nuevas = loQuePuedeComprar(e, 'futbolista').filter((i) => i.modo === 'comprar');
+		const cara = [...nuevas].sort((x, y) => y.precioUsd - x.precioUsd)[0];
+		const otra = [...nuevas].sort((x, y) => y.precioUsd - x.precioUsd).find((i) => i.id !== cara.id)!;
 
 		e.futbolista.dineroUsd = cara.precioUsd;
 
-		expect(comprar(e, 'futbolista', cara.id)).not.toBeNull();
-		expect(comprar(e, 'futbolista', otra.id)).toBeNull();
+		expect(comprar(e, 'futbolista', cara.pedido)).not.toBeNull();
+		expect(comprar(e, 'futbolista', otra.pedido)).toBeNull();
 		expect(e.futbolista.dineroUsd).toBe(0);
 	});
 
@@ -314,12 +319,138 @@ describe('comprar varias en el mismo año', () => {
 		const e = conPlata(50_000_000);
 		e.futbolista.contrato.salarioMensual = 190_000;
 
-		for (const i of loQuePuedeComprar(e, 'futbolista')) comprar(e, 'futbolista', i.id);
+		for (const i of loQuePuedeComprar(e, 'futbolista').filter((x) => x.modo === 'comprar')) {
+			comprar(e, 'futbolista', i.pedido);
+		}
 
 		const porAnio = gastoAnual(e, 'futbolista');
 		const gana = e.futbolista.contrato.salarioMensual * 12;
 		expect(porAnio / gana).toBeLessThan(0.4);
 		// Y que siga siendo una decisión: gratis tampoco.
 		expect(porAnio / gana).toBeGreaterThan(0.15);
+	});
+});
+
+describe('renovar y atar los consumibles', () => {
+	/**
+	 * "Faltan consumibles renovables", dijo Bebo. Tenía razón: un consumible
+	 * comprado desaparecía de la vidriera y volvía recién cuando se gastaba, así
+	 * que no había forma de estirarlo antes de quedarse sin, ni de dejar de
+	 * comprarlo todos los años.
+	 */
+	function conPlata(cuanta = 5_000_000): Estado {
+		const e = unaPartida();
+		e.futbolista.dineroUsd = cuanta;
+		e.futbolista.contrato.salarioMensual = 20_000;
+		return e;
+	}
+
+	const unConsumible = (e: Estado) =>
+		loQuePuedeComprar(e, 'futbolista').find((i) => i.modo === 'comprar' && i.dura)!;
+
+	it('el que ya tenés se puede renovar, y suma a lo que quedaba', () => {
+		const e = conPlata();
+		const cual = unConsumible(e);
+		comprar(e, 'futbolista', cual.pedido);
+
+		const paraRenovar = loQuePuedeComprar(e, 'futbolista').find(
+			(i) => i.id === cual.id && i.modo === 'renovar'
+		);
+		expect(paraRenovar, 'tiene que aparecer para renovar').toBeDefined();
+
+		const linea = comprar(e, 'futbolista', paraRenovar!.pedido);
+		expect(linea).toContain('renovado');
+
+		// Renovar antes de que se termine no desperdicia lo que sobraba.
+		const tiene = (e.inversiones?.futbolista ?? []).find((c) => c.id === cual.id)!;
+		expect(tiene.quedan).toBe((cual.dura ?? 1) * 2);
+	});
+
+	it('y se puede atar para siempre: deja de gastarse y se paga por año', () => {
+		const e = conPlata();
+		const cual = unConsumible(e);
+		comprar(e, 'futbolista', cual.pedido);
+
+		const paraFijar = loQuePuedeComprar(e, 'futbolista').find(
+			(i) => i.id === cual.id && i.modo === 'fijar'
+		)!;
+		expect(paraFijar).toBeDefined();
+		// Atarse cuesta más que la temporada suelta: si costara lo mismo, nadie
+		// compraría nunca la versión suelta.
+		expect(paraFijar.precioUsd).toBeGreaterThan(cual.precioUsd);
+		expect(paraFijar.porTemporadaUsd).toBeGreaterThan(0);
+
+		comprar(e, 'futbolista', paraFijar.pedido);
+
+		const tiene = (e.inversiones?.futbolista ?? []).find((c) => c.id === cual.id)!;
+		expect(tiene.fijo).toBe(true);
+		expect(tiene.quedan).toBeUndefined();
+		expect(tiene.porTemporadaUsd).toBeGreaterThan(0);
+	});
+
+	it('lo atado no se gasta nunca, aunque pasen los años', () => {
+		const e = conPlata();
+		const cual = unConsumible(e);
+		const fijar = loQuePuedeComprar(e, 'futbolista').find(
+			(i) => i.id === cual.id && i.modo === 'fijar'
+		)!;
+		comprar(e, 'futbolista', fijar.pedido);
+
+		for (let t = 0; t < 10; t++) cobrarMantenimiento(e);
+
+		const sigue = (e.inversiones?.futbolista ?? []).find((c) => c.id === cual.id);
+		expect(sigue, 'diez temporadas después tiene que seguir ahí').toBeDefined();
+		expect(sigue!.fijo).toBe(true);
+	});
+
+	it('el suelto sí se gasta, y después se puede volver a comprar', () => {
+		const e = conPlata();
+		const cual = unConsumible(e);
+		comprar(e, 'futbolista', cual.pedido);
+
+		for (let t = 0; t < (cual.dura ?? 1); t++) cobrarMantenimiento(e);
+
+		expect((e.inversiones?.futbolista ?? []).some((c) => c.id === cual.id)).toBe(false);
+		expect(
+			loQuePuedeComprar(e, 'futbolista').some((i) => i.id === cual.id && i.modo === 'comprar')
+		).toBe(true);
+	});
+
+	it('lo atado se pierde el año que no se puede pagar, como el staff', () => {
+		const e = conPlata();
+		const cual = unConsumible(e);
+		const fijar = loQuePuedeComprar(e, 'futbolista').find(
+			(i) => i.id === cual.id && i.modo === 'fijar'
+		)!;
+		comprar(e, 'futbolista', fijar.pedido);
+
+		e.futbolista.dineroUsd = 0;
+		const lineas = cobrarMantenimiento(e);
+
+		expect((e.inversiones?.futbolista ?? []).some((c) => c.id === cual.id)).toBe(false);
+		expect(lineas.some((l) => l.texto.includes('No pudiste sostener'))).toBe(true);
+	});
+
+	it('no se puede renovar lo que no tenés, ni atar lo que ya está atado', () => {
+		const e = conPlata();
+		const cual = unConsumible(e);
+
+		// Sin tenerlo: renovar no hace nada.
+		expect(comprar(e, 'futbolista', `${cual.id}:renovar`)).toBeNull();
+
+		comprar(e, 'futbolista', `${cual.id}:fijar`);
+		const plataAntes = e.futbolista.dineroUsd;
+		expect(comprar(e, 'futbolista', `${cual.id}:fijar`)).toBeNull();
+		expect(comprar(e, 'futbolista', `${cual.id}:renovar`)).toBeNull();
+		expect(e.futbolista.dineroUsd, 'no le puede cobrar de nuevo').toBe(plataAntes);
+	});
+
+	it('el staff no se renueva ni se ata: ya es para siempre', () => {
+		const e = conPlata();
+		const staff = loQuePuedeComprar(e, 'futbolista').find((i) => !i.dura)!;
+		comprar(e, 'futbolista', staff.pedido);
+
+		const otraVez = loQuePuedeComprar(e, 'futbolista').filter((i) => i.id === staff.id);
+		expect(otraVez).toEqual([]);
 	});
 });

@@ -104,6 +104,21 @@ export type Futbolista = {
 	valorMercadoUsd: number;
 };
 
+/**
+ * Una inversión ya comprada. Ver `inversiones.ts`.
+ *
+ * `quedan` solo existe en los consumibles sueltos: es cuántas temporadas les
+ * faltan. `fijo` marca los que se ataron para siempre —no se gastan y se pagan
+ * todos los años—, y es opcional porque las partidas que empezaron antes de que
+ * existiera no lo tienen guardado.
+ */
+export type InversionComprada = {
+	id: string;
+	porTemporadaUsd: number;
+	quedan?: number;
+	fijo?: boolean;
+};
+
 export type Representante = {
 	nombre: string;
 	edad: number;
@@ -358,8 +373,8 @@ export type Estado = {
 	 * así que cambiar un precio o un efecto no obliga a migrar las partidas.
 	 */
 	inversiones: {
-		futbolista: { id: string; porTemporadaUsd: number; quedan?: number }[];
-		representante: { id: string; porTemporadaUsd: number; quedan?: number }[];
+		futbolista: InversionComprada[];
+		representante: InversionComprada[];
 	};
 
 	/**

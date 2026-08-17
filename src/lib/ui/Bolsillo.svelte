@@ -40,26 +40,28 @@
 		return `USD ${usd.toLocaleString('es-AR')}`;
 	}
 
-	/** Lo que se lleva del bolsillo lo que está marcado, y lo que suma por año. */
+	/**
+	 * Lo marcado, buscado por su pedido y no por su id.
+	 *
+	 * Un mismo artículo puede tener hasta tres renglones en la vidriera —
+	 * comprarlo suelto, renovarlo, atarlo para siempre— y cada uno cuesta
+	 * distinto, así que buscar por id sumaría el precio equivocado.
+	 */
+	function loMarcado(pedido: string) {
+		return opciones.inversiones?.puedeComprar.find((i) => i.pedido === pedido);
+	}
+
 	const loQueGasta = $derived(
-		compras.reduce(
-			(suma, id) =>
-				suma + (opciones.inversiones?.puedeComprar.find((i) => i.id === id)?.precioUsd ?? 0),
-			0
-		)
+		compras.reduce((suma, pedido) => suma + (loMarcado(pedido)?.precioUsd ?? 0), 0)
 	);
 	const loQueSumaPorAnio = $derived(
-		compras.reduce(
-			(suma, id) =>
-				suma + (opciones.inversiones?.puedeComprar.find((i) => i.id === id)?.porTemporadaUsd ?? 0),
-			0
-		)
+		compras.reduce((suma, pedido) => suma + (loMarcado(pedido)?.porTemporadaUsd ?? 0), 0)
 	);
 	const queCompra = $derived(
 		compras.length === 0
 			? ''
 			: compras.length === 1
-				? (opciones.inversiones?.puedeComprar.find((i) => i.id === compras[0])?.nombre ?? '')
+				? (loMarcado(compras[0])?.nombre ?? '')
 				: `${compras.length} cosas · ${plata(loQueGasta)}`
 	);
 </script>
@@ -116,7 +118,12 @@
 					{#each inv.tiene as i (i.id)}
 						<li>
 							<b>{i.nombre}</b> — {i.efecto}
-							{#if i.dura}<span class="restan">queda{i.dura > 1 ? 'n' : ''} poco</span>{/if}
+							{#if i.quedan}
+								<span class="restan">
+									{i.quedan}
+									{i.quedan === 1 ? 'temporada' : 'temporadas'}
+								</span>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -128,26 +135,41 @@
 				opción existía porque antes eran radios y hacía falta una para poder
 				no elegir.
 			-->
-				{#each [{ titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => !i.dura) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.dura) }] as grupo (grupo.titulo)}
+				<!--
+					Tres grupos y no dos: renovar lo que ya tenés es una decisión
+					distinta de comprar algo nuevo, y atarlo para siempre es una tercera.
+					El staff y los consumibles atados van juntos porque se pagan igual.
+				-->
+				{#each [{ titulo: 'Renovar lo que ya tenés', cuales: inv.puedeComprar.filter((i) => i.modo === 'renovar') }, { titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => i.modo !== 'renovar' && i.porTemporadaUsd > 0) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.modo === 'comprar' && i.dura && i.porTemporadaUsd === 0) }] as grupo (grupo.titulo)}
 					{#if grupo.cuales.length > 0}
 						<p class="subtitulo">{grupo.titulo}</p>
 						<div class="listaDeCompras">
-							{#each grupo.cuales as i (i.id)}
-								{@const marcada = compras.includes(i.id)}
+							{#each grupo.cuales as i (i.pedido)}
+								{@const marcada = compras.includes(i.pedido)}
 								{@const alcanza = marcada || inv.plataUsd - loQueGasta >= i.precioUsd}
+								{@const quedan = i.quedan ?? 0}
 								<Opcion
 									multiple
 									grupo="inversiones"
 									form="fase"
-									valor={i.id}
-									titulo={i.nombre}
-									detalle={i.detalle}
+									valor={i.pedido}
+									titulo={i.modo === 'fijar' ? (i.fijo?.nombre ?? i.nombre) : i.nombre}
+									detalle={i.modo === 'renovar'
+										? `Te ${quedan === 1 ? 'queda' : 'quedan'} ${quedan} ${quedan === 1 ? 'temporada' : 'temporadas'}. Renovar le suma ${i.dura} más.`
+										: i.modo === 'fijar'
+											? (i.fijo?.detalle ?? i.detalle)
+											: i.detalle}
 									bind:elegidas={compras}
 									deshabilitada={!alcanza}
 								>
 									{#snippet extra()}
 										<span class="sube">
-											<span class="chip-sube gana">{i.efecto}</span>
+											<span class="chip-sube gana">
+												{i.modo === 'fijar' ? (i.fijo?.efecto ?? i.efecto) : i.efecto}
+											</span>
+											{#if i.modo === 'fijar'}
+												<span class="chip-sube">No se termina nunca</span>
+											{/if}
 											<span class="chip-sube {alcanza ? '' : 'pierde'}">
 												{plata(i.precioUsd)}{alcanza ? '' : ' · no te alcanza'}
 											</span>
