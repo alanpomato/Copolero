@@ -328,53 +328,82 @@
 
 <!-- ---------- Qué clase de jugador sos ---------- -->
 {#if opciones.rasgos && opciones.rasgos.length > 0}
-	<div class="tarjeta" data-tema="cancha">
-		<h3>¿Qué clase de jugador sos?</h3>
-		<p style="margin:0 0 .5rem">
-			El azar te trajo tres. Elegí uno: <strong>te define para toda la carrera</strong> y no se cambia
-			nunca más.
-		</p>
-		<p class="sutil" style="margin:0">
-			Ninguno es mejor que otro. El olfato de gol hace goleadores y el pulmón hace jugadores que
-			llegan a los 36.
-		</p>
-	</div>
+	<!--
+		La pregunta y sus respuestas, en un solo bloque.
 
-	{#each opciones.rasgos as r (r.id)}
-		<Opcion grupo="rasgo" valor={r.id} titulo={r.nombre} detalle={r.detalle} bind:elegido={rasgo}>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube gana">+{r.cuanto} {ATRIBUTO[r.atributo]}</span>
-					<span class="chip-sube">{r.siempre}</span>
-				</span>
-			{/snippet}
-		</Opcion>
-	{/each}
+		Estaban sueltas: el encabezado era una tarjeta y cada opción era otra
+		tarjeta igual, así que la primera pantalla del juego era una fila de ocho
+		cajas del mismo color y no se veía dónde terminaba una decisión y empezaba
+		la otra. Adentro de un bloque con el título arriba, se lee que las tres de
+		abajo son las respuestas a esta pregunta y no otra cosa más.
+	-->
+	<div class="decision" data-tema="cancha">
+		<div class="pregunta">
+			<h3>¿Qué clase de jugador sos?</h3>
+			<p style="margin:0 0 .4rem">
+				El azar te trajo tres. Elegí uno: <strong>te define para toda la carrera</strong> y no se cambia
+				nunca más.
+			</p>
+			<p class="sutil" style="margin:0">
+				Ninguno es mejor que otro. El olfato de gol hace goleadores y el pulmón hace jugadores que
+				llegan a los 36.
+			</p>
+		</div>
+
+		<div class="respuestas">
+			{#each opciones.rasgos as r (r.id)}
+				<Opcion
+					grupo="rasgo"
+					valor={r.id}
+					titulo={r.nombre}
+					detalle={r.detalle}
+					bind:elegido={rasgo}
+				>
+					{#snippet extra()}
+						<span class="sube">
+							<span class="chip-sube gana">+{r.cuanto} {ATRIBUTO[r.atributo]}</span>
+							<span class="chip-sube">{r.siempre}</span>
+						</span>
+					{/snippet}
+				</Opcion>
+			{/each}
+		</div>
+	</div>
 {/if}
 
 <!-- ---------- Para qué vas a jugar ---------- -->
 {#if opciones.suenos && opciones.suenos.length > 0}
-	<div class="tarjeta" data-tema="oro">
-		<h3>¿Para qué vas a jugar?</h3>
-		<p style="margin:0 0 .5rem">
-			Elegí una sola cosa. No se cambia, no se puede apurar y no se cumple en una temporada:
-			<strong>es adónde va a haber llegado esta carrera cuando termine</strong>.
-		</p>
-		<p class="sutil" style="margin:0">
-			{estado.futbolista.nombre} tiene {estado.futbolista.edad} años. Lo que elijas acá se va a ver en
-			todas las pantallas hasta el último día.
-		</p>
-	</div>
+	<div class="decision" data-tema="oro">
+		<div class="pregunta">
+			<h3>¿Para qué vas a jugar?</h3>
+			<p style="margin:0 0 .4rem">
+				Elegí una sola cosa. No se cambia, no se puede apurar y no se cumple en una temporada:
+				<strong>es adónde va a haber llegado esta carrera cuando termine</strong>.
+			</p>
+			<p class="sutil" style="margin:0">
+				{estado.futbolista.nombre} tiene {estado.futbolista.edad} años. Lo que elijas acá se va a ver
+				en todas las pantallas hasta el último día.
+			</p>
+		</div>
 
-	{#each opciones.suenos as s (s.id)}
-		<Opcion grupo="sueno" valor={s.id} titulo={s.nombre} detalle={s.detalle} bind:elegido={sueno}>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube gana">{s.meta}</span>
-				</span>
-			{/snippet}
-		</Opcion>
-	{/each}
+		<div class="respuestas">
+			{#each opciones.suenos as s (s.id)}
+				<Opcion
+					grupo="sueno"
+					valor={s.id}
+					titulo={s.nombre}
+					detalle={s.detalle}
+					bind:elegido={sueno}
+				>
+					{#snippet extra()}
+						<span class="sube">
+							<span class="chip-sube gana">{s.meta}</span>
+						</span>
+					{/snippet}
+				</Opcion>
+			{/each}
+		</div>
+	</div>
 {/if}
 
 <!-- ---------- En qué gastar la plata ---------- -->
@@ -863,6 +892,60 @@
 {/if}
 
 <style>
+	/*
+	 * Una pregunta con sus respuestas adentro.
+	 *
+	 * La primera pantalla del juego eran ocho tarjetas iguales en fila: el
+	 * encabezado de una decisión tenía exactamente el mismo peso visual que las
+	 * opciones de la decisión anterior, así que no se veía dónde terminaba una y
+	 * empezaba la otra. Alan lo dijo mirándola: "las opciones tienen casi el
+	 * mismo formato que el título, no sabés qué estás eligiendo".
+	 *
+	 * El bloque hace lo mínimo que hace falta: una caja, el enunciado arriba con
+	 * su color, y las respuestas hundidas adentro. Es el mismo patrón que ya
+	 * usaba "cómo vas a jugar el año", que era el único que se leía bien.
+	 */
+	.decision {
+		margin: 0 0 1.1rem;
+		background: var(--tarjeta);
+		border: 1px solid var(--borde);
+		border-left: 3px solid var(--tema, var(--acento));
+		border-radius: var(--radio);
+		overflow: hidden;
+	}
+	.decision[data-tema='cancha'] {
+		--tema: var(--acento);
+	}
+	.decision[data-tema='oro'] {
+		--tema: var(--espera);
+	}
+	.pregunta {
+		padding: 1rem 1.1rem 0.9rem;
+		border-bottom: 1px solid var(--borde);
+		background: var(--tarjeta-alta);
+	}
+	.pregunta h3 {
+		margin: 0 0 0.45rem;
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--tema, var(--acento));
+	}
+	/* Las respuestas, hundidas: se ve que están adentro de la pregunta. */
+	.respuestas {
+		padding: 0.9rem 1.1rem 0.4rem;
+	}
+	.respuestas :global(.opcion:last-child) {
+		margin-bottom: 0.5rem;
+	}
+	@container (min-width: 34rem) {
+		.respuestas {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0 0.8rem;
+		}
+	}
 	/* La ocasión se mide a sí misma: en la columna del medio hay lugar para poner
 	   la rueda al costado, en el celular no. */
 	.ocasion {
@@ -1066,31 +1149,6 @@
 	}
 	.numeros b {
 		color: var(--texto);
-	}
-	.sube {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.3rem 0.4rem;
-		margin-top: 0.55rem;
-	}
-	.chip-sube {
-		font-size: 0.74rem;
-		background: rgba(255, 255, 255, 0.06);
-		border-radius: 999px;
-		padding: 0.12rem 0.5rem;
-		color: var(--tenue);
-	}
-	.chip-sube b {
-		color: var(--texto);
-		font-variant-numeric: tabular-nums;
-	}
-	.chip-sube.gana {
-		background: rgba(74, 222, 128, 0.14);
-		color: var(--acento);
-	}
-	.chip-sube.pierde {
-		background: rgba(248, 113, 113, 0.14);
-		color: var(--malo);
 	}
 	.subtitulo {
 		margin: 1rem 0 0.5rem;

@@ -378,3 +378,37 @@ a {
 	color: var(--tenue);
 	font-size: 0.88rem;
 }
+
+/*
+ * Los chips que dicen qué sube y qué baja.
+ *
+ * Viven acá y no en un componente porque los usan tres: las decisiones de la
+ * fase, la vidriera del costado y la ficha. Estaban dentro de `Decisiones` y
+ * al mudar la vidriera a su propia ventana quedaron sin estilo del otro lado
+ * —el texto entero, del tamaño del cuerpo, tapando la mitad de la tarjeta—.
+ */
+.sube {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem 0.4rem;
+	margin-top: 0.55rem;
+}
+.chip-sube {
+	font-size: 0.74rem;
+	background: rgba(255, 255, 255, 0.06);
+	border-radius: 999px;
+	padding: 0.12rem 0.5rem;
+	color: var(--tenue);
+}
+.chip-sube b {
+	color: var(--texto);
+	font-variant-numeric: tabular-nums;
+}
+.chip-sube.gana {
+	background: rgba(74, 222, 128, 0.14);
+	color: var(--acento);
+}
+.chip-sube.pierde {
+	background: rgba(248, 113, 113, 0.14);
+	color: var(--malo);
+}
