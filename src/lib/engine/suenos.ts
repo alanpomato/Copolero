@@ -99,13 +99,13 @@ export const SUENOS: Sueno[] = [
 		id: 'el-que-la-daba',
 		rol: 'futbolista',
 		nombre: 'El que la daba',
-		detalle: 'Doscientas cincuenta asistencias. Que los goles de los otros también sean tuyos.',
+		detalle: 'Doscientas veinte asistencias. Que los goles de los otros también sean tuyos.',
 		posiciones: ['mediocampista'],
-		meta: 250,
+		meta: 220,
 		unidad: 'asistencias',
 		cuanto: (e) => e.futbolista.asistencias,
 		alCumplirlo:
-			'Doscientas cincuenta asistencias. La mitad de los goles del equipo empezaron en su pie.',
+			'Doscientas veinte asistencias. La mitad de los goles del equipo empezaron en su pie.',
 		puntos: PUNTOS_FUTBOLISTA
 	},
 	{

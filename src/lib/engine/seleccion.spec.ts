@@ -6,6 +6,7 @@ import {
 	chanceDeConvocatoria,
 	esAnioDeMundial,
 	fuerzaDeLaSeleccion,
+	loQueHayQueSerPara,
 	jugarConLaSeleccion,
 	loQueFalta,
 	proximoMundial,
@@ -69,12 +70,45 @@ describe('que te llamen', () => {
 	});
 
 	it('en una selección chica es más fácil entrar que en una grande', () => {
+		// Con un crack en el Real Madrid los dos se van al tope de 96 y no se
+		// distingue nada. Hace falta un jugador del montón, que es donde la
+		// diferencia entre nacer en Chile y nacer en Argentina se nota de verdad.
 		const base = unCrack('Argentina', 'es-realmadrid');
+		for (const k of Object.keys(base.futbolista.atributos)) {
+			base.futbolista.atributos[k as keyof typeof base.futbolista.atributos] = 72;
+		}
+		base.futbolista.fama = 45;
 		const chico = structuredClone(base);
 		chico.futbolista.nacionalidad = 'Chile';
 
 		expect(fuerzaDeLaSeleccion('Chile')).toBeLessThan(fuerzaDeLaSeleccion('Argentina'));
+		expect(loQueHayQueSerPara('Chile')).toBeLessThan(loQueHayQueSerPara('Argentina'));
 		expect(chanceDeConvocatoria(chico)).toBeGreaterThan(chanceDeConvocatoria(base));
+	});
+
+	it('las selecciones grandes son difíciles, no imposibles', () => {
+		// La vara para entrar se medía con la misma escala que la fuerza del
+		// equipo —Argentina 92— y ningún jugador del juego pasa de media 78. Un
+		// argentino restaba cuarenta y cinco puntos de chance por existir, así que
+		// la selección andaba para México y Chile y no existía para las ocho
+		// grandes, que son las que uno elige. Este test es el que lo sostiene.
+		for (const nacionalidad of ['Argentina', 'Brasil', 'Francia', 'España', 'Inglaterra']) {
+			// Una carrera muy buena pero posible: media 78 en una liga grande.
+			const bueno = unCrack(nacionalidad, 'es-realmadrid');
+			for (const k of Object.keys(bueno.futbolista.atributos)) {
+				bueno.futbolista.atributos[k as keyof typeof bueno.futbolista.atributos] = 78;
+			}
+			bueno.futbolista.fama = 80;
+			expect(chanceDeConvocatoria(bueno), nacionalidad).toBeGreaterThan(55);
+
+			// Y una del montón no entra igual, que es la otra mitad de la regla.
+			const delMonton = structuredClone(bueno);
+			for (const k of Object.keys(delMonton.futbolista.atributos)) {
+				delMonton.futbolista.atributos[k as keyof typeof delMonton.futbolista.atributos] = 62;
+			}
+			delMonton.futbolista.fama = 35;
+			expect(chanceDeConvocatoria(delMonton), nacionalidad).toBeLessThan(25);
+		}
 	});
 
 	it('el mismo jugador en una liga floja tiene menos chance que en una fuerte', () => {
@@ -161,8 +195,16 @@ describe('en una partida de verdad', () => {
 		const enEuropa = structuredClone(enElAscenso);
 		enEuropa.futbolista.contrato.clubId = 'es-realmadrid';
 
-		expect(chanceDeConvocatoria(enElAscenso)).toBeLessThan(chanceDeConvocatoria(enEuropa));
-		expect(chanceDeConvocatoria(enElAscenso)).toBe(0);
+		// Y el `toBe(0)` que había acá se cayó, con razón: contradecía el párrafo
+		// de arriba. Un 74 de media es un buen jugador y que alguna vez lo miren
+		// no rompe nada; lo que no puede pasar es que desde el Ascenso valga
+		// parecido que desde Europa. Eso es lo que se prueba ahora, y es más
+		// fuerte que el cero, porque el cero se cumplía sin que la liga hiciera
+		// nada: bastaba con que la media fuera baja.
+		const desdeElAscenso = chanceDeConvocatoria(enElAscenso);
+		const desdeEuropa = chanceDeConvocatoria(enEuropa);
+		expect(desdeElAscenso).toBeLessThan(desdeEuropa / 3);
+		expect(desdeElAscenso).toBeLessThan(20);
 	});
 
 	it('y al del montón no lo llaman de ningún lado', () => {

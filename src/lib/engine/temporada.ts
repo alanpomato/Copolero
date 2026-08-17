@@ -376,12 +376,47 @@ export function jugarTemporada(
  * donde no entrás te cuesta las dos cosas a la vez. Ese castigo es lo que le da
  * peso a la decisión del mercado.
  *
- * Tres cosas lo limitan, y las tres son decisiones de alguien:
+ * Cuatro cosas lo limitan, y casi todas son decisiones de alguien:
  *  - los minutos, que dependen de dónde eligió jugar,
+ *  - contra quiénes, que es la liga donde eligió jugarlos,
  *  - la nota, que depende de cómo le fue,
  *  - y la edad, con la misma curva que la pretemporada.
  * El techo sigue siendo el potencial, que nadie ve.
+ *
+ * El segundo llegó tarde y arreglando algo grave. Medí treinta carreras de dos
+ * formas: el que nunca se mueve del Ascenso y el que agarra siempre la mejor
+ * liga que le ofrecen. Con el mismo potencial —77,8— el que se quedaba terminaba
+ * en media 73 y el que subía en 60,8. Subir de liga te hacía peor jugador.
+ *
+ * Se entiende por qué: arriba jugaba el 47% de los minutos contra el 117% de
+ * abajo, y encima con peor nota. Dos castigos, ninguna compensación. Pero
+ * entrenar todos los días contra los mejores del mundo forma, aunque se entre
+ * desde el banco, y sin ese término el juego decía que la Premier era una mala
+ * idea. Ahora media temporada en una liga grande rinde parecido a una entera en
+ * el Ascenso, y una entera en una liga grande rinde más que las dos, que es lo
+ * que uno quiere que sea la carrera.
  */
+/**
+ * Cuánto forma estar ahí, sin contar los minutos.
+ *
+ * Es el piso: lo que se aprende entrenando con el plantel aunque no se entre.
+ * Sin esto, el pibe que se va a un club grande y espera su lugar dos años sale
+ * peor que si nunca se hubiera movido, y eso no es lo que pasa.
+ */
+const PISO_POR_ESTAR = 0.35;
+
+/**
+ * Contra quiénes juega y entrena.
+ *
+ * De la Primera Nacional (fuerza 45) a la Premier (95). Una liga grande forma
+ * casi el doble que el Ascenso, y ésa es la única razón por la que vale la pena
+ * irse a un lugar donde al principio se juega menos.
+ */
+function contraQuienes(clubId: string): number {
+	const fuerza = contexto(clubId).liga.fuerza;
+	return Math.max(0.8, Math.min(1.45, 0.8 + (fuerza - 45) * 0.013));
+}
+
 export function crecerPorJugar(
 	estado: Estado,
 	anio: { minutos: number; nota: number },
@@ -391,14 +426,23 @@ export function crecerPorJugar(
 	const margen = f.potencial - media(f.atributos, f.posicion);
 	if (margen <= 0) return [];
 
-	// Una temporada completa son unos 2.400 minutos de titular. Media temporada
-	// rinde la mitad, y el que no entró nunca no aprende nada.
+	// Una temporada completa son unos 2.400 minutos de titular. El que no entró
+	// nunca no aprende nada: sin un minuto, no hay año.
+	if (anio.minutos <= 0) return [];
 	const cuantoJugo = Math.min(1, anio.minutos / 2400);
-	if (cuantoJugo <= 0) return [];
+
+	// Y lo que se aprende sin jugar, que también es algo. El que está en el
+	// plantel entrena todos los días con los titulares, y eso forma: por eso la
+	// parte que dan los minutos arranca de un piso en vez de ir de cero a uno.
+	const competir = PISO_POR_ESTAR + (1 - PISO_POR_ESTAR) * cuantoJugo;
 
 	// La nota modula, no habilita: un año malo jugando todos los domingos
 	// también forma. Lo que no forma es no jugar.
-	const comoLeFue = Math.max(0.15, Math.min(1.4, (anio.nota - 3) / 3.5));
+	//
+	// El rango es angosto a propósito. Antes iba de 0,15 a 1,4 y terminaba
+	// decidiendo la carrera sola: un 7,4 goleando en el Ascenso formaba un 30%
+	// más que un 6,4 peleándola en Europa, que es al revés de como pasa.
+	const comoLeFue = Math.max(0.5, Math.min(1.15, 0.5 + (anio.nota - 3) / 10));
 
 	// La velocidad con la que se acorta la distancia al techo. El crecimiento se
 	// mide contra el potencial y no en puntos fijos: así un pibe con futuro
@@ -407,7 +451,8 @@ export function crecerPorJugar(
 	const acercarse =
 		Math.min(TOPE_DE_CRECIMIENTO_POR_TEMPORADA, margen * VELOCIDAD_DE_CRECIMIENTO) *
 		(rindeDeLaEdad(f.edad) / 1.6) *
-		cuantoJugo *
+		competir *
+		contraQuienes(f.contrato.clubId) *
 		comoLeFue *
 		// Lo que se hizo en el verano decide cuánto se aprovecha el año. Es lo que
 		// hace que entrenar a matar valga la pena a pesar del desgaste.

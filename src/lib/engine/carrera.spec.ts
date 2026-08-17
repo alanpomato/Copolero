@@ -279,6 +279,60 @@ describe('una carrera entera', () => {
 		expect(crecio(0)).toBe(0);
 	});
 
+	it('irse a una liga grande no te hace peor jugador', () => {
+		// El test que más falta hacía. Medí treinta carreras del que nunca se mueve
+		// del Ascenso y treinta del que agarra siempre la liga más fuerte: con el
+		// mismo potencial —77,8— el que se quedaba terminaba en media 73 y el que
+		// subía en 60,8. Doce puntos de castigo por hacer justo lo que el juego
+		// entero te invita a hacer.
+		//
+		// Se medía acá y no en una carrera entera porque en una carrera se mezclan
+		// la edad, el techo que queda y la suerte del mercado. Acá es el mismo
+		// jugador, el mismo año y el mismo azar; lo único que cambia es dónde juega
+		// y cuánto.
+		function crecio(clubId: string, minutos: number, nota: number): number {
+			const e = estadoInicial(
+				{
+					futbolista: {
+						nombre: 'Damián Correa',
+						nacionalidad: 'Argentina',
+						puesto: 'centrodelantero',
+						numero: 9,
+						pie: 'derecho',
+						edadInicial: 20,
+						clubId
+					},
+					representante: { nombre: 'Alan' }
+				},
+				rngPara('liga', { temporada: 0, fase: 1, clave: 'inicio' }),
+				2026
+			);
+			e.futbolista.potencial = 92;
+			const antes = media(e.futbolista.atributos, e.futbolista.posicion);
+			crecerPorJugar(
+				e,
+				{ minutos, nota },
+				rngPara('liga', { temporada: 1, fase: 2, clave: 'crecer' })
+			);
+			return media(e.futbolista.atributos, e.futbolista.posicion) - antes;
+		}
+
+		// El Ascenso (fuerza 45) contra una liga grande (fuerza 92). Las notas son
+		// las medidas de verdad en cada camino: arriba se juega peor.
+		const figuraDelAscenso = crecio('ar2-moron', 2400, 7.4);
+		const suplenteEnEuropa = crecio('es-realmadrid', 1100, 6.5);
+		const titularEnEuropa = crecio('es-realmadrid', 2400, 6.5);
+
+		// Media temporada arriba tiene que rendir parecido a una entera abajo: son
+		// dos caminos válidos y ninguno puede ser una trampa.
+		expect(suplenteEnEuropa).toBeGreaterThan(figuraDelAscenso * 0.7);
+
+		// Y jugarlo todo arriba tiene que ser lo mejor que le puede pasar a una
+		// carrera. Si esto se rompe, el mercado deja de tener sentido.
+		expect(titularEnEuropa).toBeGreaterThan(figuraDelAscenso);
+		expect(titularEnEuropa).toBeGreaterThan(suplenteEnEuropa);
+	});
+
 	it('el representante termina con plata y con prestigio', () => {
 		const { estado } = correrCarrera('c5', 'centrodelantero', 'ar2-moron', AMBICIOSO);
 		expect(estado.representante.dineroUsd).toBeGreaterThan(50_000);

@@ -70,6 +70,29 @@ export function fuerzaDeLaSeleccion(nacionalidad: string): number {
 	return FUERZA[nacionalidad] ?? FUERZA_POR_DEFECTO;
 }
 
+/**
+ * Cuánta media hay que tener para entrar en esa selección.
+ *
+ * Va aparte de `FUERZA` y no es un capricho. `FUERZA` está en la escala de los
+ * equipos —Argentina 92, Chile 68— y sirve para saber hasta dónde llega el
+ * seleccionado en el Mundial. Pero se estaba usando también como la vara para
+ * que te llamen, y las varas no son la misma cosa: medí treinta carreras de
+ * cada tipo y la media más alta que alcanza cualquiera es 78. Contra una vara
+ * de 92, un argentino restaba cuarenta y cinco puntos de chance por existir.
+ *
+ * El resultado era que la selección funcionaba perfecto para México y Chile
+ * —30 de 30 debutaban— y era imposible para las ocho grandes, que son
+ * justamente las que uno elige. El Mundial se anunciaba en todas las pantallas
+ * y llegaba al 3% de las partidas.
+ *
+ * Esta escala está en la de los jugadores: Argentina 80, Chile 71. Una buena
+ * carrera argentina queda en el filo y una muy buena entra, que es como tiene
+ * que ser.
+ */
+export function loQueHayQueSerPara(nacionalidad: string): number {
+	return 45 + fuerzaDeLaSeleccion(nacionalidad) * 0.38;
+}
+
 /** El próximo Mundial a partir de un año. */
 export function proximoMundial(anio: number): number {
 	const desde = anio - ANIO_DEL_PRIMER_MUNDIAL;
@@ -92,13 +115,19 @@ export function chanceDeConvocatoria(estado: Estado): number {
 	const f = estado.futbolista;
 	if (f.edad < 17 || f.edad > 36) return 0;
 
-	const exigencia = fuerzaDeLaSeleccion(f.nacionalidad);
+	const exigencia = loQueHayQueSerPara(f.nacionalidad);
 	const suNivel = media(f.atributos, f.posicion);
 
-	// Jugar en una liga fuerte es la mitad del asunto: al que rinde en Europa lo
-	// ven, al que rinde en el Ascenso no lo mira nadie.
+	// Dónde juega no suma: multiplica.
+	//
+	// Cuando sumaba, un goleador de Primera Nacional juntaba fama a fuerza de
+	// goles, la fama lo metía en la selección, la selección le daba más fama y
+	// terminaba yendo al Mundial desde el Ascenso. El bucle existe de verdad
+	// —jugar en la selección te hace conocido— pero no se puede entrar en él sin
+	// que alguien te vea primero, y a la Primera Nacional no va nadie a mirar.
 	const dondeJuega = contexto(f.contrato.clubId).liga.fuerza;
-	const visibilidad = (dondeJuega - 45) * 0.45 + f.fama * 0.35;
+	const loVen = Math.max(0.35, Math.min(1.2, (dondeJuega - 30) / 50));
+	const visibilidad = ((dondeJuega - 45) * 0.45 + f.fama * 0.35) * loVen;
 
 	const bruto = 50 + (suNivel - exigencia) * 3.2 + visibilidad - 22;
 	return Math.max(0, Math.min(96, Math.round(bruto)));
@@ -108,13 +137,13 @@ export function chanceDeConvocatoria(estado: Estado): number {
 export function loQueFalta(estado: Estado): string {
 	const f = estado.futbolista;
 	const chance = chanceDeConvocatoria(estado);
-	const exigencia = fuerzaDeLaSeleccion(f.nacionalidad);
+	const exigencia = loQueHayQueSerPara(f.nacionalidad);
 	const suNivel = media(f.atributos, f.posicion);
 	const liga = contexto(f.contrato.clubId).liga;
 
 	if (chance >= 70) return 'Está en la lista corta. Si sigue así, lo llaman.';
-	if (suNivel < exigencia - 18) {
-		return `Le faltan ${Math.round(exigencia - 18 - suNivel)} puntos de media para siquiera aparecer en el radar de ${f.nacionalidad}.`;
+	if (suNivel < exigencia - 10) {
+		return `Le faltan ${Math.round(exigencia - 10 - suNivel)} puntos de media para siquiera aparecer en el radar de ${f.nacionalidad}.`;
 	}
 	if (liga.fuerza < 65) {
 		return `Juega bien, pero en ${liga.nombre} no lo ve nadie. Al que quiere la selección lo tienen que ver.`;
