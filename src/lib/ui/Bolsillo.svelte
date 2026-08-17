@@ -2,6 +2,7 @@
 	import { contexto } from '../../../content/mundo';
 	import { LO_QUE_CUESTA_CON_EL_DT, LO_QUE_CUESTA_CON_LA_HINCHADA, PIDE } from '$lib/engine/salida';
 	import type { OpcionesDeFase } from '$lib/engine/pantalla';
+	import type { EnLaVidriera } from '$lib/engine/inversiones';
 	import type { Estado } from '$lib/engine/tipos';
 	import Opcion from './Opcion.svelte';
 
@@ -38,6 +39,18 @@
 
 	function plata(usd: number): string {
 		return `USD ${usd.toLocaleString('es-AR')}`;
+	}
+
+	/**
+	 * De lo más barato a lo más caro.
+	 *
+	 * Por precio y no por si alcanza: lo segundo cambiaría el orden cada vez que
+	 * se marca un casillero, y una lista que se reacomoda sola mientras la estás
+	 * mirando es peor que una mal ordenada. Por precio, lo que se puede pagar
+	 * queda arriba igual, y se queda quieto.
+	 */
+	function porPrecio(cuales: EnLaVidriera[]): EnLaVidriera[] {
+		return [...cuales].sort((a, b) => a.precioUsd - b.precioUsd);
 	}
 
 	/**
@@ -139,8 +152,15 @@
 					Tres grupos y no dos: renovar lo que ya tenés es una decisión
 					distinta de comprar algo nuevo, y atarlo para siempre es una tercera.
 					El staff y los consumibles atados van juntos porque se pagan igual.
+
+					Y en este orden, que no es el que tenían. "Para siempre" iba primero
+					y son diez tarjetas caras: en la primera pretemporada, con la plata
+					en cero, se abría la vidriera y había que pasar diez veces "no te
+					alcanza" antes de llegar a algo comprable. Alan lo reportó como que
+					los consumibles habían desaparecido, y desde donde él miraba eso era
+					exactamente lo que pasaba. Primero lo que se puede pagar hoy.
 				-->
-				{#each [{ titulo: 'Renovar lo que ya tenés', cuales: inv.puedeComprar.filter((i) => i.modo === 'renovar') }, { titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => i.modo !== 'renovar' && i.porTemporadaUsd > 0) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.modo === 'comprar' && i.dura && i.porTemporadaUsd === 0) }] as grupo (grupo.titulo)}
+				{#each [{ titulo: 'Renovar lo que ya tenés', cuales: inv.puedeComprar.filter((i) => i.modo === 'renovar') }, { titulo: 'Por unas temporadas · se paga una vez', cuales: porPrecio(inv.puedeComprar.filter((i) => i.modo === 'comprar' && i.dura && i.porTemporadaUsd === 0)) }, { titulo: 'Para siempre · se paga todos los años', cuales: porPrecio(inv.puedeComprar.filter((i) => i.modo !== 'renovar' && i.porTemporadaUsd > 0)) }] as grupo (grupo.titulo)}
 					{#if grupo.cuales.length > 0}
 						<p class="subtitulo">{grupo.titulo}</p>
 						<div class="listaDeCompras">
