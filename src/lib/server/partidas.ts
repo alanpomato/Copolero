@@ -256,11 +256,7 @@ function tiradasDe(db: Db, partidaId: string, temporada: number, rol: Rol): Tira
 		.select()
 		.from(tiradas)
 		.where(
-			and(
-				eq(tiradas.partidaId, partidaId),
-				eq(tiradas.temporada, temporada),
-				eq(tiradas.rol, rol)
-			)
+			and(eq(tiradas.partidaId, partidaId), eq(tiradas.temporada, temporada), eq(tiradas.rol, rol))
 		)
 		.orderBy(asc(tiradas.indice))
 		.all()
@@ -306,7 +302,11 @@ export function tirarOcasion(db: Db, token: string, indice: number, opcionId: st
 
 			const partida = tx.select().from(partidas).where(eq(partidas.id, jugador.partidaId)).get();
 			if (!partida) throw new ErrorDePartida('La partida ya no existe.');
-			if (partida.fase !== 2) throw new ErrorDePartida('Todavía no empezó el campeonato.');
+			// Se tira en la temporada y en el mercado: son las dos fases donde a cada
+			// rol le pasan cosas propias. En la pretemporada no hay nada que tirar.
+			if (partida.fase !== 2 && partida.fase !== 3) {
+				throw new ErrorDePartida('Todavía no empezó el campeonato.');
+			}
 
 			const estado = JSON.parse(partida.estadoJson) as Estado;
 			if (estado.carreraTerminada) throw new ErrorDePartida('La carrera ya terminó.');
@@ -320,7 +320,7 @@ export function tirarOcasion(db: Db, token: string, indice: number, opcionId: st
 					and(
 						eq(decisiones.partidaId, partida.id),
 						eq(decisiones.temporada, partida.temporada),
-						eq(decisiones.fase, 2),
+						eq(decisiones.fase, partida.fase),
 						eq(decisiones.rol, jugador.rol)
 					)
 				)
@@ -457,7 +457,7 @@ export function enviarDecision(
 			// Lo que ya se tiró, se tiró. El formulario manda las tres opciones
 			// juntas, así que sin esto alcanzaría con editar un radio para cambiar
 			// una elección de la que ya se vio el resultado. Lo escrito manda.
-			if (fase === 2) {
+			if (fase === 2 || fase === 3) {
 				const hechas = tiradasDe(tx as unknown as Db, partida.id, temporada, jugador.rol);
 				if (hechas.length > 0) {
 					const campo = jugador.rol === 'futbolista' ? 'ocasiones' : 'momentos';

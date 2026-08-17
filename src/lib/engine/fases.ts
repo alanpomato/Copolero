@@ -29,7 +29,12 @@ import {
 	tocaRenovar
 } from './renovacion';
 import { aplicarSeleccion, jugarConLaSeleccion, type Mundial } from './seleccion';
-import { PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO, brechaCon, jugarTemporada } from './temporada';
+import {
+	PARTIDOS_PARA_QUE_EL_TITULO_SEA_TUYO,
+	aplicarEfecto,
+	brechaCon,
+	jugarTemporada
+} from './temporada';
 import {
 	MUNDO_SIN_CAMBIOS,
 	NOMBRE_FASE,
@@ -267,6 +272,32 @@ export function resolverFase(
 			visiblePara: 'ambos',
 			texto: resumirTemporada(temporada.resumen, siguiente)
 		});
+	}
+
+	// --- El mercado: lo que le pasa a cada uno mientras se define el pase -----
+	// Va antes de que se resuelva el pase, a propósito: lo que se dice acá cae
+	// sobre la relación con el técnico, con la gente y con el otro, que es
+	// exactamente lo que después pesa en cómo se cierra el año.
+	if (estado.fase === 3) {
+		const suyas = ocasionesDe(siguiente, semilla);
+		const elegidas = delFutbolista.ocasiones ?? [];
+		for (const [i, ocasion] of suyas.entries()) {
+			const cual = resolverOcasion(ocasion, elegidas[i], siguiente, semilla, i);
+			aplicarEfecto(siguiente, cual.efecto);
+			if (cual.texto) {
+				log.push({ tipo: 'mercado_momento', visiblePara: 'futbolista', texto: cual.texto });
+			}
+		}
+
+		const delOtro = momentosDelRepresentante(siguiente, semilla);
+		const suyos = delRepresentante.momentos ?? [];
+		for (const [i, momento] of delOtro.entries()) {
+			const cual = resolverMomento(momento, suyos[i], siguiente, semilla, i);
+			aplicarMomento(siguiente, cual.efecto);
+			if (cual.texto) {
+				log.push({ tipo: 'mercado_momento', visiblePara: 'representante', texto: cual.texto });
+			}
+		}
 	}
 
 	// El representante trabaja en las dos primeras fases. En la tercera manda el

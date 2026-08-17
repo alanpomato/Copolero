@@ -69,6 +69,16 @@ export type ResultadoDelMomento = {
 export const MOMENTOS_POR_TEMPORADA = 2;
 
 /**
+ * Y uno en el mercado.
+ *
+ * Uno solo, no dos: el mercado ya tiene la decisión más pesada del juego —a
+ * qué club se va— y meterle dos momentos más antes de esa charla la tapa. Lo
+ * que hace falta ahí no es más para hacer, es que el año no termine siempre
+ * con la misma pantalla.
+ */
+export const MOMENTOS_EN_EL_MERCADO = 1;
+
+/**
  * El carisma.
  *
  * Es el cuarto atributo del representante y lo pidió Hernán con una idea
@@ -131,7 +141,7 @@ const NOMBRES = [
 function escenario(estado: Estado, indice: number, semilla: string): Escenario {
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
-		fase: 2,
+		fase: estado.fase,
 		clave: 'escenario-representante',
 		indice
 	});
@@ -154,7 +164,7 @@ function escenario(estado: Estado, indice: number, semilla: string): Escenario {
 
 type Plantilla = (estado: Estado, e: Escenario) => MomentoDelRepresentante;
 
-const LOS_MOMENTOS: Plantilla[] = [
+const EN_LA_TEMPORADA: Plantilla[] = [
 	// --- El pibe. La idea es de Hernán, tal cual la escribió. ----------------
 	(estado, e) => {
 		const a = estado.representante.atributos;
@@ -392,6 +402,155 @@ const LOS_MOMENTOS: Plantilla[] = [
 ];
 
 /**
+ * Y los del mercado.
+ *
+ * El mercado era la única fase donde no pasaba nada más que elegir club: la
+ * misma pantalla con tres ofertas, quince años seguidos. Estos momentos van
+ * antes de esa charla y la condicionan, que es lo que los hace valer —no son
+ * un adorno previo, son lo que después se negocia—.
+ */
+const EN_EL_MERCADO: Plantilla[] = [
+	// --- La plata por abajo de la mesa --------------------------------------
+	(estado, e) => {
+		const a = estado.representante.atributos;
+		return {
+			id: 'por-abajo',
+			titulo: 'Por abajo de la mesa',
+			contexto:
+				`Un intermediario de ${club(e.otroClub).nombre} te ofrece una parte para vos, aparte de ` +
+				`tu comisión, si empujás a ${estado.futbolista.nombre} para ese lado. No lo dice así, ` +
+				`pero lo dice.`,
+			juego: 'dado',
+			opciones: [
+				{
+					id: 'agarrar',
+					etiqueta: 'Agarrarla y no decir nada',
+					detalle: 'Plata que nadie va a poder rastrear. Salvo que alguien hable.',
+					probabilidad: chance(56, a.contactos, 0.5),
+					siSale: 'Cobraste y no se enteró nadie. Es plata que no existe en ningún papel.',
+					siFalla: 'Alguien habló. No salió en ningún lado, pero en el ambiente se sabe.',
+					premio: { dineroUsd: 60_000, confianza: -3 },
+					castigo: { dineroUsd: 60_000, prestigio: -8, confianza: -10 }
+				},
+				{
+					id: 'contarselo',
+					etiqueta: 'Contárselo a él',
+					detalle: 'Que sepa que te la ofrecieron y que la rechazaste. Es una carta fuerte.',
+					probabilidad: chance(70, a.negociacion, 0.35),
+					siSale: 'Se lo contaste. No lo dijo, pero desde ese día te mira distinto.',
+					siFalla: 'Se lo contaste y lo único que escuchó fue que hay clubes moviéndose sin él.',
+					premio: { confianza: 12, prestigio: 3, carisma: 2 },
+					castigo: { confianza: -4 }
+				},
+				{
+					id: 'nogracias',
+					etiqueta: 'Decir que no y olvidarlo',
+					detalle: 'Ni la plata ni el crédito. Solo dormir bien.',
+					probabilidad: 100,
+					siSale: 'Le dijiste que no y cortaste. No pasó nada, que es lo que querías.',
+					siFalla: '',
+					premio: { prestigio: 1 },
+					castigo: {}
+				}
+			]
+		};
+	},
+
+	// --- Apretar al club que vende ------------------------------------------
+	(estado) => {
+		const a = estado.representante.atributos;
+		const donde = club(estado.futbolista.contrato.clubId).nombre;
+		return {
+			id: 'apretar-al-club',
+			titulo: 'La reunión en el club',
+			contexto:
+				`Te sentás con los dirigentes de ${donde} antes de que se mueva nada. Si hay pase, ` +
+				`querés que tu parte esté escrita antes y no después, cuando ya no tenés con qué ` +
+				`discutir.`,
+			juego: 'ruleta',
+			opciones: [
+				{
+					id: 'pedir-todo',
+					etiqueta: 'Pedir un porcentaje del pase',
+					detalle: 'Lo que más plata deja. También lo que más los incomoda.',
+					probabilidad: chance(42, a.negociacion, 0.6),
+					siSale: 'Te lo firmaron. Si sale el pase, cobrás como cobran los grandes.',
+					siFalla: 'Se rieron y te dijeron que el jugador es del club. Quedó frío el ambiente.',
+					premio: { dineroUsd: 40_000, prestigio: 5, contactos: 2 },
+					castigo: { prestigio: -3, contactos: -2 }
+				},
+				{
+					id: 'pedir-poco',
+					etiqueta: 'Pedir poco y quedar bien',
+					detalle: 'Menos plata, pero la puerta queda abierta para el próximo.',
+					probabilidad: chance(74, a.contactos, 0.3),
+					siSale: 'Cerraron rápido y te dijeron que vuelvas cuando tengas otro.',
+					siFalla: 'Ni eso te dieron. Al menos no te cerraron la puerta.',
+					premio: { dineroUsd: 12_000, contactos: 4 },
+					castigo: { contactos: 1 }
+				},
+				{
+					id: 'no-ir',
+					etiqueta: 'No ir a la reunión',
+					detalle: 'Que hablen con vos cuando haya algo concreto.',
+					probabilidad: 100,
+					siSale: 'No fuiste. El club siguió con lo suyo y vos con lo tuyo.',
+					siFalla: '',
+					premio: {},
+					castigo: {}
+				}
+			]
+		};
+	},
+
+	// --- El periodista -------------------------------------------------------
+	(estado) => {
+		const a = estado.representante.atributos;
+		const f = estado.futbolista;
+		return {
+			id: 'el-periodista',
+			titulo: 'La llamada del periodista',
+			contexto:
+				`Te llama un periodista: quiere saber si es verdad que ${f.nombre} se va. Todavía no ` +
+				`hay nada firmado y lo que digas hoy va a estar mañana en todos lados.`,
+			juego: 'quiz',
+			opciones: [
+				{
+					id: 'confirmar',
+					etiqueta: 'Decirle que hay ofertas',
+					detalle: 'Que se sepa. Los clubes leen el diario igual que vos.',
+					probabilidad: chance(50, a.contactos, 0.55),
+					siSale: 'Salió que hay clubes interesados y aparecieron dos más que no estaban.',
+					siFalla: 'Salió como que lo estabas ofreciendo. En el club no les gustó nada.',
+					premio: { prestigio: 4, prensa: 5, contactos: 3 },
+					castigo: { prensa: -6, confianza: -4 }
+				},
+				{
+					id: 'negar',
+					etiqueta: 'Negar todo',
+					detalle: 'Está feliz donde está. Aunque los dos sepan que no.',
+					probabilidad: chance(62, a.negociacion, 0.4),
+					siSale: 'Quedó como que no pasaba nada. El mercado siguió por debajo, tranquilo.',
+					siFalla: 'A los dos días salió lo contrario y quedaste como el que miente.',
+					premio: { prensa: 3, confianza: 2 },
+					castigo: { prestigio: -4, prensa: -5 }
+				},
+				{
+					id: 'no-atender',
+					etiqueta: 'No atenderle',
+					detalle: 'No decir nada nunca fue noticia.',
+					probabilidad: 100,
+					siSale: 'No atendiste. Publicaron lo que ya sabían, que era nada.',
+					siFalla: '',
+					premio: {},
+					castigo: {}
+				}
+			]
+		};
+	}
+];
+
+/**
  * Los momentos de esta temporada. Determinista, como todo lo demás.
  *
  * "El pibe" no aparece siempre: fichar a alguien nuevo cada año convertiría la
@@ -405,11 +564,14 @@ export function momentosDelRepresentante(
 ): MomentoDelRepresentante[] {
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
-		fase: 2,
+		fase: estado.fase,
 		clave: 'momentos-representante'
 	});
 
-	const posibles = LOS_MOMENTOS.filter((plantilla) => {
+	const deEstaFase = estado.fase === 3 ? EN_EL_MERCADO : EN_LA_TEMPORADA;
+	const cuantos = estado.fase === 3 ? MOMENTOS_EN_EL_MERCADO : MOMENTOS_POR_TEMPORADA;
+
+	const posibles = deEstaFase.filter((plantilla) => {
 		const id = plantilla(estado, escenario(estado, 0, semilla)).id;
 		if (id !== 'el-pibe') return true;
 		return estado.representante.atributos.scouting >= 35 && rng.ocurre(0.45);
@@ -417,7 +579,7 @@ export function momentosDelRepresentante(
 
 	const elegidas: Plantilla[] = [];
 	const restantes = [...posibles];
-	while (elegidas.length < Math.min(MOMENTOS_POR_TEMPORADA, restantes.length)) {
+	while (elegidas.length < Math.min(cuantos, restantes.length)) {
 		const cual = rng.elegir(restantes);
 		elegidas.push(cual);
 		restantes.splice(restantes.indexOf(cual), 1);
@@ -447,7 +609,7 @@ export function resolverMomento(
 
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
-		fase: 2,
+		fase: estado.fase,
 		clave: `momento-${momento.id}`,
 		indice
 	});

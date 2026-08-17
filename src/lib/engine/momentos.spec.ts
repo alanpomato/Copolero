@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
+import { OCASIONES_EN_EL_MERCADO, ocasionesDe } from './ocasiones';
 import {
 	CARISMA_POR_DEFECTO,
+	MOMENTOS_EN_EL_MERCADO,
 	MOMENTOS_POR_TEMPORADA,
 	aplicarMomento,
 	carismaDe,
@@ -84,9 +86,7 @@ describe('los momentos del representante', () => {
 		const e = unaPartida();
 		e.fase = 2;
 
-		expect(opcionesDeFase(e, 'representante', 'mom').momentos?.length).toBe(
-			MOMENTOS_POR_TEMPORADA
-		);
+		expect(opcionesDeFase(e, 'representante', 'mom').momentos?.length).toBe(MOMENTOS_POR_TEMPORADA);
 		expect(opcionesDeFase(e, 'futbolista', 'mom').momentos).toBeUndefined();
 	});
 
@@ -204,5 +204,70 @@ describe('lo que dejan', () => {
 		e.representante.dineroUsd = 1_000;
 		aplicarMomento(e, { dineroUsd: -50_000 });
 		expect(e.representante.dineroUsd).toBe(0);
+	});
+});
+
+describe('el mercado', () => {
+	/**
+	 * La fase 3 era la única donde no pasaba nada más que elegir club: la misma
+	 * pantalla con tres ofertas, quince años seguidos.
+	 */
+	it('a los dos les pasa algo mientras se define el pase', () => {
+		const e = unaPartida();
+		e.fase = 3;
+
+		const suyos = opcionesDeFase(e, 'representante', 'merc');
+		const delOtro = opcionesDeFase(e, 'futbolista', 'merc');
+
+		expect(suyos.momentos?.length).toBe(MOMENTOS_EN_EL_MERCADO);
+		expect(delOtro.ocasiones?.length).toBe(OCASIONES_EN_EL_MERCADO);
+		// Y las ofertas siguen estando: el momento no reemplaza al mercado.
+		expect(suyos.ofertas).toBeDefined();
+		expect(delOtro.ofertas).toBeDefined();
+	});
+
+	it('los del mercado no son los de la temporada', () => {
+		const e = unaPartida();
+
+		e.fase = 2;
+		const enLaTemporada = momentosDelRepresentante(e, 'merc').map((m) => m.id);
+		e.fase = 3;
+		const enElMercado = momentosDelRepresentante(e, 'merc').map((m) => m.id);
+
+		for (const id of enElMercado) expect(enLaTemporada).not.toContain(id);
+	});
+
+	it('y lo que dicen ahí cae sobre lo que después pesa en el pase', () => {
+		const e = unaPartida();
+		e.fase = 3;
+		e.futbolista.hinchada = 50;
+		e.futbolista.dt = 50;
+
+		const suya = ocasionesDe(e, 'merc')[0];
+		// La primera opción de cualquiera de los momentos del mercado mueve algo
+		// de lo que el club mira: la gente, el técnico, la prensa o la moral.
+		const premio = suya.opciones[0].premio;
+		const mueve =
+			premio.hinchada ?? premio.dt ?? premio.prensa ?? premio.moral ?? premio.fama ?? 0;
+		expect(Math.abs(mueve)).toBeGreaterThan(0);
+	});
+
+	it('cada uno ve el suyo y el diario los separa', () => {
+		const e = unaPartida();
+		e.fase = 3;
+
+		const { log } = resolverFase(
+			e,
+			[
+				{ rol: 'futbolista', nota: '' },
+				{ rol: 'representante', nota: '' }
+			],
+			'merc'
+		);
+
+		const delMercado = log.filter((l) => l.tipo === 'mercado_momento');
+		expect(delMercado.length).toBeGreaterThan(0);
+		// Ninguno es 'ambos': lo que le pasa a cada uno en el mercado es suyo.
+		for (const l of delMercado) expect(l.visiblePara).not.toBe('ambos');
 	});
 });

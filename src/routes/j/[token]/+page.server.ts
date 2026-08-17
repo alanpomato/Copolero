@@ -97,6 +97,7 @@ export const actions: Actions = {
 			decision.gestion = campo(datos, 'gestion');
 			// Los momentos del representante, en el mismo orden en que los vio. Igual
 			// que del otro lado, lo que manda de verdad es lo que ya está tirado.
+			// Los hay en la temporada y en el mercado.
 			const suyos = vista.opciones.momentos?.length ?? 0;
 			if (suyos > 0) {
 				decision.momentos = Array.from(

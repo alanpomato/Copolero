@@ -85,6 +85,15 @@ export type ResultadoDeOcasion = {
 
 export const OCASIONES_POR_TEMPORADA = 3;
 
+/**
+ * Y una en el mercado.
+ *
+ * Una sola: la fase 3 ya tiene la decisión más pesada del juego —a qué club se
+ * va— y meterle tres momentos antes la tapa. Lo que hace falta ahí no es más
+ * para hacer, es que el año no termine siempre con la misma pantalla.
+ */
+export const OCASIONES_EN_EL_MERCADO = 1;
+
 // ---------------------------------------------------------------------------
 // El escenario: contra quién y con quién
 // ---------------------------------------------------------------------------
@@ -103,7 +112,7 @@ type Escenario = {
 function escenario(estado: Estado, indice: number, semilla: string): Escenario {
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
-		fase: 2,
+		fase: estado.fase,
 		clave: 'escenario',
 		indice
 	});
@@ -493,6 +502,169 @@ const POR_POSICION: Record<Posicion, Plantilla[]> = {
 };
 
 // ---------------------------------------------------------------------------
+// El mercado
+// ---------------------------------------------------------------------------
+
+/**
+ * Lo que le pasa al futbolista mientras se define su pase.
+ *
+ * Acá no hay pelota: la fase 3 pasa entre el vestuario, la calle y el teléfono.
+ * Lo que se juega es lo que dice y a quién se lo dice, y todo cae sobre las
+ * mismas variables que después deciden si el pase sale —la relación con el
+ * técnico, con la gente, con la prensa, con su representante—.
+ *
+ * Va antes de elegir club, a propósito: no es un adorno previo a la decisión,
+ * es parte de con qué se llega a ella.
+ */
+const EN_EL_MERCADO: Plantilla[] = [
+	(a, e) => ({
+		id: 'el-hincha',
+		titulo: 'El hincha',
+		contexto:
+			`Salís a comprar algo a la vuelta de tu casa y te para un hincha. Sabe que hay clubes ` +
+			`preguntando por vos y te lo pregunta de frente, sin agresión: quiere saber si te vas.`,
+		juego: 'quiz',
+		opciones: [
+			{
+				id: 'la-verdad',
+				etiqueta: 'Decirle la verdad',
+				detalle: 'Que todavía no sabés. Es lo que pasa, aunque no sea lo que quiere escuchar.',
+				probabilidad: chance(56, a.liderazgo, 0.5),
+				siSale:
+					'Te agradeció que no le mintieras. Lo contó en todos lados y la gente lo tomó bien.',
+				siFalla:
+					'Se fue diciendo que ya tenías un pie afuera. Para la tarde lo sabía media ciudad.',
+				premio: { hinchada: 6, prensa: 3, moral: 2 },
+				castigo: { hinchada: -7, prensa: -3 }
+			},
+			{
+				id: 'me-quedo',
+				etiqueta: '«Yo me quedo acá»',
+				detalle: 'Lo que quiere escuchar. Si después te vas, se acuerdan.',
+				probabilidad: chance(72, a.liderazgo, 0.3),
+				siSale: 'Le hiciste el día. Esa frase dio la vuelta y la cancha te la cantó el domingo.',
+				siFalla: 'Lo dijiste sin ganas y se le notó. Quedó peor que si no hubieras dicho nada.',
+				premio: { hinchada: 10, moral: 3 },
+				castigo: { hinchada: -4, moral: -2 }
+			},
+			{
+				id: 'esquivar',
+				etiqueta: 'Sonreír y seguir de largo',
+				detalle: 'No decir nada nunca fue noticia.',
+				probabilidad: 100,
+				siSale: 'Le sonreíste, le firmaste la remera y seguiste. No pasó nada.',
+				siFalla: '',
+				premio: { hinchada: 1 },
+				castigo: {}
+			}
+		]
+	}),
+
+	(a, e) => ({
+		id: 'el-dt-aparte',
+		titulo: e.tecnico ? `${e.tecnico} te lleva aparte` : 'El técnico te lleva aparte',
+		contexto: e.tecnico
+			? `Terminó el entrenamiento y ${e.tecnico} te hace señas de que te quedes. Sabe que hay ` +
+				`ofertas y te quiere decir algo antes de que decidas.`
+			: `Terminó el entrenamiento y el técnico te hace señas de que te quedes. Sabe que hay ` +
+				`ofertas y te quiere decir algo antes de que decidas.`,
+		juego: 'quiz',
+		opciones: [
+			{
+				id: 'escucharlo',
+				etiqueta: 'Escucharlo hasta el final',
+				detalle: 'Sin prometer nada. A veces lo único que quieren es que los escuches.',
+				probabilidad: chance(66, a.liderazgo, 0.35),
+				siSale: 'Te dijo que sos parte de lo que está armando. Salieron los dos mejor de ahí.',
+				siFalla: 'Habló diez minutos de él y ni te miró. Salió peor de lo que entró.',
+				premio: { dt: 10, moral: 3 },
+				castigo: { dt: -3, moral: -3 }
+			},
+			{
+				id: 'pedirle',
+				etiqueta: 'Pedirle que te banque si te vas',
+				detalle: 'Jugado. Si te entiende, es un aliado; si no, te lo cobra en la cancha.',
+				probabilidad: chance(44, a.liderazgo, 0.55),
+				siSale: 'Te dijo que él también fue jugador y que va a decir lo que hay que decir.',
+				siFalla: 'Le cayó como una traición. Desde ese día te habla lo justo.',
+				premio: { dt: 6, prensa: 4, moral: 4 },
+				castigo: { dt: -14, moral: -4 }
+			},
+			{
+				id: 'cortar',
+				etiqueta: 'Decirle que lo hablás con tu representante',
+				detalle: 'Lo correcto y lo frío. No suma ni resta casi nada.',
+				probabilidad: 100,
+				siSale: 'Le dijiste que lo maneja tu representante. Asintió y te dejó ir.',
+				siFalla: '',
+				premio: {},
+				castigo: { dt: -1 }
+			}
+		]
+	}),
+
+	(a, e) => ({
+		id: 'la-revision',
+		titulo: 'La revisión',
+		contexto:
+			`Un club te quiere y quiere revisarte antes. Te subís a una camilla a que te miren la ` +
+			`rodilla, el tobillo y todo lo que arrastrás de estos años.`,
+		juego: 'dado',
+		opciones: [
+			{
+				id: 'ir-entero',
+				etiqueta: 'Ir y que miren todo',
+				detalle: 'Sin esconder nada. Si algo aparece, aparece.',
+				probabilidad: chance(60, a.resistencia, 0.5),
+				siSale: 'Pasaste la revisión sin una observación. El club se quedó tranquilo.',
+				siFalla: 'Encontraron algo viejo. No es grave, pero quedó escrito en un informe.',
+				premio: { fama: 3, moral: 3 },
+				castigo: { moral: -5, prensa: -3 }
+			},
+			{
+				id: 'infiltrarse',
+				etiqueta: 'Taparlo con lo que haga falta',
+				detalle: 'Que ese día no te duela nada. Después se verá.',
+				probabilidad: chance(68, a.potencia, 0.35),
+				siSale: 'Pasaste sin que se note. Nadie preguntó nada.',
+				siFalla: 'Se dieron cuenta y quedó peor que si no hubieras hecho nada.',
+				premio: { fama: 4, desgaste: 2 },
+				castigo: { moral: -6, prensa: -5, desgaste: 3 }
+			},
+			{
+				id: 'postergar',
+				etiqueta: 'Pedir que sea la semana que viene',
+				detalle: 'Ganar unos días para llegar mejor. El club se impacienta.',
+				probabilidad: chance(52, a.liderazgo, 0.4),
+				siSale: 'Aceptaron esperar y llegaste entero. Salió limpia.',
+				siFalla: 'Se leyó como que escondés algo y bajaron el interés.',
+				premio: { moral: 2 },
+				castigo: { fama: -2, moral: -3 }
+			}
+		]
+	})
+];
+
+/** La del mercado: una sola, y de las que pasan fuera de la cancha. */
+function delMercado(estado: Estado, semilla: string): Ocasion[] {
+	const rng = rngPara(semilla, {
+		temporada: estado.temporada,
+		fase: 3,
+		clave: 'ocasiones-mercado'
+	});
+	const elegidas: Plantilla[] = [];
+	const restantes = [...EN_EL_MERCADO];
+	while (elegidas.length < Math.min(OCASIONES_EN_EL_MERCADO, restantes.length)) {
+		const cual = rng.elegir(restantes);
+		elegidas.push(cual);
+		restantes.splice(restantes.indexOf(cual), 1);
+	}
+	return elegidas.map((plantilla, i) =>
+		plantilla(estado.futbolista.atributos, escenario(estado, i, semilla))
+	);
+}
+
+// ---------------------------------------------------------------------------
 // Armar y resolver
 // ---------------------------------------------------------------------------
 
@@ -505,10 +677,15 @@ const POR_POSICION: Record<Posicion, Plantilla[]> = {
  */
 export function ocasionesDe(estado: Estado, semilla: string): Ocasion[] {
 	const { futbolista } = estado;
+
+	// En el mercado no hay pelota: lo que pasa es lo que se dice y con quién se
+	// habla mientras se define adónde va. Ver `EN_EL_MERCADO`.
+	if (estado.fase === 3) return delMercado(estado, semilla);
+
 	const propias = POR_POSICION[futbolista.posicion];
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
-		fase: 2,
+		fase: estado.fase,
 		clave: 'ocasiones'
 	});
 
@@ -542,7 +719,7 @@ export function resolverOcasion(
 
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
-		fase: 2,
+		fase: estado.fase,
 		clave: `ocasion-${ocasion.id}`,
 		indice
 	});

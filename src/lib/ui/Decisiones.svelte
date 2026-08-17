@@ -643,9 +643,13 @@
 	{@const cuantas = losMomentos.length}
 	<div class="momentos">
 		<p class="sutil" style="margin:0 0 1rem">
-			{cuantas} momentos de la temporada, uno por vez. Elegís, tirás, y ahí mismo sabés qué pasó. Las
-			probabilidades salen de tus atributos y son las de verdad: lo que dice el número es lo que se tira,
-			y se tira una sola vez.
+			{#if cuantas === 1}
+				Un momento {estado.fase === 3 ? 'del mercado' : 'de la temporada'}.
+			{:else}
+				{cuantas} momentos {estado.fase === 3 ? 'del mercado' : 'de la temporada'}, uno por vez.
+			{/if}
+			Elegís, tirás, y ahí mismo sabés qué pasó. Las probabilidades salen de tus atributos y son las de
+			verdad: lo que dice el número es lo que se tira, y se tira una sola vez.
 			{#if rol === 'representante' && opciones.carisma}
 				Y tenés <b>{opciones.carisma.cuanto} de carisma</b>: cuando algo sale mal, {opciones.carisma
 					.salva}% de las veces caés bien igual y se arregla solo.

@@ -195,7 +195,9 @@ export const tiradas = sqliteTable(
 		 * momentos de cancha y el representante dos que pasan fuera de ella. Cada
 		 * uno tira los propios y no ve los del otro.
 		 */
-		rol: text('rol', { enum: ['futbolista', 'representante'] }).notNull().default('futbolista'),
+		rol: text('rol', { enum: ['futbolista', 'representante'] })
+			.notNull()
+			.default('futbolista'),
 
 		/** Cuál de los momentos del año: 0, 1, 2. */
 		indice: integer('indice').notNull(),

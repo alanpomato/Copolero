@@ -349,6 +349,17 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 		opciones.brechaActual = Math.round(
 			brechaCon(estado.futbolista, estado.futbolista.contrato.clubId)
 		);
+
+		// Y lo que le pasa a cada uno mientras se define el pase. Uno solo, y
+		// distinto para cada rol: al futbolista lo para un hincha en la calle, al
+		// representante lo llaman por abajo de la mesa. Va antes de elegir club
+		// porque es parte de con qué se llega a esa charla.
+		if (rol === 'futbolista') {
+			opciones.ocasiones = ocasionesDe(estado, semilla);
+		} else {
+			opciones.momentos = momentosDelRepresentante(estado, semilla);
+			opciones.carisma = { cuanto: carismaDe(estado), salva: cuantoSalvaElCarisma(estado) };
+		}
 	}
 
 	return opciones;
