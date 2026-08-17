@@ -242,6 +242,34 @@
 					{#if tirada.texto}
 						<p class="loQuePaso" class:mal={!tirada.salio}>{tirada.texto}</p>
 					{/if}
+
+					<!--
+						Y qué quedó de eso, en números.
+
+						Alan lo marcó mirando "el pibe de inferiores": "está bueno el
+						resultado, pero no se entiende cómo sigue. ¿Cómo afecta esto al
+						jugador y sus stats que haya salido mal? ¿La moral?". Tenía razón:
+						la crónica contaba que el pibe se fue llorando al vestuario y ahí
+						terminaba. Lo que el motor aplicaba —cuánto se cayó el técnico,
+						cuánta moral— pasaba en silencio, y una consecuencia que no se ve
+						no es una consecuencia: es una frase.
+
+						Estos son los mismos chips que se vieron antes de elegir, y esa
+						simetría es la mitad del punto: lo que decía la apuesta es
+						exactamente lo que se cobró.
+					-->
+					{@const quedo = chipsDe(tirada.salio ? opcion.premio : opcion.castigo)}
+					{#if quedo.length > 0}
+						<span class="quedo">
+							<i>Y esto quedó</i>
+							<span class="chips">
+								{#each quedo as chip (chip.texto)}
+									<span class="chip {chip.tono}">{chip.texto}</span>
+								{/each}
+							</span>
+						</span>
+					{/if}
+
 					{#if indice < total - 1}
 						<button type="button" class="seguir" onclick={onSeguir}>¿Y qué pasó después?</button>
 					{:else}
@@ -596,6 +624,22 @@
 	.loQuePaso.esperando {
 		color: var(--tenue);
 		letter-spacing: 0.3em;
+	}
+
+	/* Lo que quedó, en números: los mismos chips que se vieron al elegir. */
+	.quedo {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.3rem 0.5rem;
+	}
+	.quedo i {
+		font-style: normal;
+		font-size: 0.66rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--tenue);
 	}
 	.problema {
 		margin: 0;
