@@ -12,7 +12,12 @@ import { resolverGestion } from './gestion';
 import { cobrarMantenimiento, comprar } from './inversiones';
 import { simularMercado, titulares } from './mercado';
 import { ocasionesDe, resolverOcasion } from './ocasiones';
-import { aplicarMomento, momentosDelRepresentante, resolverMomento } from './momentos';
+import {
+	RENOVACION,
+	aplicarMomento,
+	momentosDelRepresentante,
+	resolverMomento
+} from './momentos';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
@@ -26,7 +31,8 @@ import {
 	contratoDeUltimoRecurso,
 	ofertaDeRenovacion,
 	resolverRenovacion,
-	tocaRenovar
+	tocaRenovar,
+	type OfertaDeRenovacion
 } from './renovacion';
 import { aplicarSeleccion, jugarConLaSeleccion, type Mundial } from './seleccion';
 import {
@@ -112,6 +118,19 @@ export function resolverFase(
 
 	const log: EntradaLog[] = [];
 	let siguiente: Estado = estructurar(estado);
+
+	/*
+	 * Lo que salió de la mesa de renovación, si la hubo.
+	 *
+	 * `null` significa que no se sentaron —no vencía el contrato— y que el cierre
+	 * decide como decidía siempre. Con un valor, el cierre respeta lo que pasó en
+	 * la mesa en vez de resolverlo solo: eso es lo que hacía que elegir quedarse
+	 * no significara nada. Ver `momentos.ts`.
+	 */
+	let renovacionConseguida: boolean | null = null;
+	let quisieronRenovar = true;
+	/** Con qué la consiguió: pedir una mejora no es lo mismo que aceptar lo que haya. */
+	let comoRenovo = '';
 
 	const delFutbolista = decisiones.find((d) => d.rol === 'futbolista')!;
 	const delRepresentante = decisiones.find((d) => d.rol === 'representante')!;
@@ -297,6 +316,13 @@ export function resolverFase(
 			if (cual.texto) {
 				log.push({ tipo: 'mercado_momento', visiblePara: 'representante', texto: cual.texto });
 			}
+			// La mesa de renovación no es un momento más: define si hay contrato.
+			// Se guarda para que el cierre no vuelva a decidirlo por su cuenta.
+			if (momento.id === RENOVACION) {
+				renovacionConseguida = cual.salio && cual.opcionId !== 'no-renovar';
+				quisieronRenovar = cual.opcionId !== 'no-renovar';
+				comoRenovo = cual.opcionId;
+			}
 		}
 	}
 
@@ -317,13 +343,38 @@ export function resolverFase(
 	if (estado.fase === 3) {
 		siguiente = cerrarTemporada(siguiente, semilla, log, {
 			futbolista: delFutbolista.destino,
-			representante: delRepresentante.destino
+			representante: delRepresentante.destino,
+			renovacionConseguida,
+			quisieronRenovar,
+			comoRenovo
 		});
 	} else {
 		siguiente.fase = faseSiguiente(estado.fase);
 	}
 
 	return { estado: siguiente, log };
+}
+
+/**
+ * La renovación mínima que el club acepta cuando el representante la consiguió.
+ *
+ * Un año y el sueldo que ya tenía, o algo más si la mesa se ganó pidiendo una
+ * mejora. No es un premio: es el piso de que la negociación haya servido de
+ * algo. Al que el club no quería por su cuenta, el representante le consiguió
+ * seguir, y eso es exactamente lo que su trabajo debería poder hacer.
+ */
+function loJusto(estado: Estado, comoRenovo: string): OfertaDeRenovacion {
+	const f = estado.futbolista;
+	const cuanto = comoRenovo === 'pedir-mas' ? 1.12 : 1;
+	const salarioMensual = Math.round((f.contrato.salarioMensual * cuanto) / 100) * 100;
+	return {
+		salarioMensual,
+		temporadas: f.edad >= 33 ? 1 : 2,
+		comisionUsd: Math.round(
+			(salarioMensual * 12 * estado.contratoRepresentacion.pctSalario) / 100 / 4
+		),
+		mejora: Math.round((cuanto - 1) * 100)
+	};
 }
 
 /** La línea que resume el año en el diario. */
@@ -351,7 +402,16 @@ function cerrarTemporada(
 	estado: Estado,
 	semilla: string,
 	log: EntradaLog[],
-	destinos: { futbolista?: string; representante?: string } = {}
+	destinos: {
+		futbolista?: string;
+		representante?: string;
+		/** Qué salió de la mesa de renovación. `null` si no la hubo. */
+		renovacionConseguida?: boolean | null;
+		/** Si en la mesa eligieron intentar renovar o salir al mercado. */
+		quisieronRenovar?: boolean;
+		/** Con qué opción la consiguió: pedir mejora o aceptar lo que haya. */
+		comoRenovo?: string;
+	} = {}
 ): Estado {
 	const rng = rngPara(semilla, {
 		temporada: estado.temporada,
@@ -425,7 +485,11 @@ function cerrarTemporada(
 		futbolista.contrato.clubId === clubDondeJugo &&
 		futbolista.contrato.temporadasRestantes === 0
 	) {
-		buscarEquipo(estado, semilla, ofertas, log);
+		buscarEquipo(estado, semilla, ofertas, log, {
+			renovacionConseguida: destinos.renovacionConseguida ?? null,
+			quisieronRenovar: destinos.quisieronRenovar ?? true,
+			comoRenovo: destinos.comoRenovo ?? ''
+		});
 	}
 
 	// --- Lo que cuesta mantener lo que tienen --------------------------------
@@ -574,7 +638,12 @@ function buscarEquipo(
 	estado: Estado,
 	semilla: string,
 	ofertas: readonly Oferta[],
-	log: EntradaLog[]
+	log: EntradaLog[],
+	mesa: {
+		renovacionConseguida: boolean | null;
+		quisieronRenovar: boolean;
+		comoRenovo: string;
+	} = { renovacionConseguida: null, quisieronRenovar: true, comoRenovo: '' }
 ): void {
 	const f = estado.futbolista;
 	const desde = club(f.contrato.clubId).nombre;
@@ -586,8 +655,52 @@ function buscarEquipo(
 	 * lo quiere siempre que juegue— le renueva y no pasa nada. Sin esto, el que
 	 * firmaba un año quedaba expulsado al terminarlo aunque las dos partes
 	 * estuvieran contentas, y una carrera entera en un mismo club era imposible.
+	 *
+	 * Pero quién decide eso es la mesa, no esta función. Antes lo resolvía acá
+	 * sola —`ofertaDeRenovacion` y listo— y esa era la raíz del bug que encontró
+	 * Bebo: el jugador elegía quedarse, el diario le contestaba "se quedó, los
+	 * dos estuvieron de acuerdo", y en la línea siguiente lo mandaba a otro club
+	 * por no haber arreglado nada. Nadie había negociado nada porque no había
+	 * dónde hacerlo.
+	 *
+	 * Con la mesa jugada, acá solo se ejecuta lo que salió de ahí:
+	 *  - `false`  → la negociación se cayó, o eligieron no renovar. Al mercado.
+	 *  - `true`   → hay acuerdo: se firma.
+	 *  - `null`   → no hubo mesa. Se decide como antes.
 	 */
-	const sigue = ofertaDeRenovacion(estado, semilla);
+	if (mesa.renovacionConseguida === false) {
+		if (!mesa.quisieronRenovar) {
+			log.push({
+				tipo: 'contrato',
+				visiblePara: 'ambos',
+				texto:
+					`Decidieron no renovar con ${desde} y salir al mercado sin contrato. Ahora hay que ` +
+					`conseguir club.`
+			});
+		} else {
+			log.push({
+				tipo: 'contrato',
+				visiblePara: 'ambos',
+				texto: `En ${desde} no hubo acuerdo por la renovación. Hay que buscar club.`
+			});
+		}
+	}
+
+	/*
+	 * Si la mesa salió bien, hay contrato. Sí o sí.
+	 *
+	 * `ofertaDeRenovacion` mira si el club lo quiere por su cuenta, y a alguien
+	 * que no juega le dice que no. Pero si el representante ya consiguió la
+	 * firma, decirle que no acá deja al diario contándose en contra otra vez:
+	 * "firmaron la continuidad" y enseguida "hubo que firmar a las apuradas" en
+	 * otro club. Cuando la mesa la ganó él, el club acepta —para eso se jugó—,
+	 * aunque sea por poco y por un año.
+	 */
+	const sigue =
+		mesa.renovacionConseguida === false
+			? null
+			: (ofertaDeRenovacion(estado, semilla) ??
+				(mesa.renovacionConseguida === true ? loJusto(estado, mesa.comoRenovo) : null));
 	if (sigue) {
 		f.contrato.salarioMensual = sigue.salarioMensual;
 		f.contrato.temporadasRestantes = sigue.temporadas;
@@ -596,8 +709,12 @@ function buscarEquipo(
 			tipo: 'contrato',
 			visiblePara: 'ambos',
 			texto:
-				`Se le terminaba el contrato con ${desde} y lo renovaron sobre la hora por ` +
-				`${sigue.temporadas} ${sigue.temporadas === 1 ? 'temporada' : 'temporadas'}.`
+				mesa.renovacionConseguida === true
+					? `${estado.representante.nombre} cerró la renovación con ${desde}: ` +
+						`${sigue.temporadas} ${sigue.temporadas === 1 ? 'temporada' : 'temporadas'} más, ` +
+						`USD ${sigue.salarioMensual.toLocaleString('es-AR')} por mes.`
+					: `Se le terminaba el contrato con ${desde} y lo renovaron sobre la hora por ` +
+						`${sigue.temporadas} ${sigue.temporadas === 1 ? 'temporada' : 'temporadas'}.`
 		});
 		return;
 	}
@@ -631,9 +748,14 @@ function buscarEquipo(
 		log.push({
 			tipo: 'contrato',
 			visiblePara: 'ambos',
+			// Si la mesa ya se jugó, ya se contó por qué no hay contrato: repetir
+			// "sin que arreglaran nada" contradice la charla que acaba de pasar.
 			texto:
-				`Se le terminó el contrato con ${desde} sin que arreglaran nada, y hubo que firmar a las ` +
-				`apuradas. Firmar apurado siempre sale más barato para el que firma del otro lado.`
+				mesa.renovacionConseguida === null
+					? `Se le terminó el contrato con ${desde} sin que arreglaran nada, y hubo que firmar a ` +
+						`las apuradas. Firmar apurado siempre sale más barato para el que firma del otro lado.`
+					: `Sin contrato y con el mercado abierto, hubo que firmar a las apuradas. Firmar ` +
+						`apurado siempre sale más barato para el que firma del otro lado.`
 		});
 		aplicarPase(
 			estado,

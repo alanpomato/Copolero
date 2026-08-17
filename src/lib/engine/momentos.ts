@@ -1,6 +1,8 @@
 import { club, contexto, clubesDe } from '../../../content/mundo';
 import { jugadoresActualesDe } from './mercado';
 import { rngPara } from './rng';
+import { tocaRenovar } from './renovacion';
+import { brechaCon } from './temporada';
 import type { Minijuego } from './ocasiones';
 import type { Estado } from './tipos';
 
@@ -551,6 +553,85 @@ const EN_EL_MERCADO: Plantilla[] = [
 ];
 
 /**
+ * La mesa que decide si se queda.
+ *
+ * Cuando el contrato se termina, el mercado deja de ser "a qué club te vas" y
+ * pasa a ser "conseguí que te quieran en alguno". Bebo lo encontró jugando y
+ * era peor de lo que parecía: elegía quedarse, el juego le contestaba "se quedó
+ * en el club, los dos estuvieron de acuerdo", y dos líneas más abajo, en la
+ * misma temporada, lo mandaba a otro club "por no haber arreglado nada".
+ * Quedarse no significaba nada porque nadie estaba negociando la renovación:
+ * el motor la resolvía solo, a espaldas de los dos.
+ *
+ * Acá la negocia el representante, que es de quien es el trabajo. Es el único
+ * momento que no se sortea: cuando el contrato vence, es este y ningún otro.
+ * "Y ahí el representante no tiene ningún rol de negociación, que sería genial
+ * que haya un minijuego, y que las stats jueguen a favor" —eso, tal cual.
+ */
+export const RENOVACION = 'la-renovacion';
+
+function laMesaFinal(estado: Estado): MomentoDelRepresentante {
+	const a = estado.representante.atributos;
+	const donde = club(estado.futbolista.contrato.clubId).nombre;
+	const f = estado.futbolista;
+
+	// Cómo lo ve el club es la mitad de la mesa: al que es figura lo renuevan
+	// casi con lo que pida, y al que no juega hay que convencerlo de que lo
+	// tengan. La otra mitad es cómo negocia el representante.
+	const comoLoVen = Math.max(-14, Math.min(14, brechaCon(f, f.contrato.clubId)));
+
+	return {
+		id: RENOVACION,
+		titulo: `La renovación con ${donde}`,
+		contexto:
+			`Se le termina el contrato a ${f.nombre} y en ${donde} todavía no dijeron nada. Si de acá ` +
+			`no sale una firma, en junio hay que salir a buscar club, y el que sale a buscar en junio ` +
+			`firma lo que le ofrezcan.`,
+		juego: 'quiz',
+		/*
+		 * El orden importa acá más que en ningún otro momento.
+		 *
+		 * La última es la que se manda si nadie toca nada, y en esta mesa lo
+		 * prudente es firmar, no quedarse sin club. En la rueda del futbolista la
+		 * más conservadora también va última; la diferencia es que allá lo
+		 * conservador es no arriesgar una jugada y acá es no arriesgar la carrera.
+		 */
+		opciones: [
+			{
+				id: 'no-renovar',
+				etiqueta: 'No renovar y salir al mercado',
+				detalle: 'Apostar a que afuera hay algo mejor. Sin contrato no hay red.',
+				probabilidad: 100,
+				siSale: `Decidieron no renovar. En junio ${f.nombre} sale al mercado sin contrato.`,
+				siFalla: '',
+				premio: { prestigio: 1 },
+				castigo: {}
+			},
+			{
+				id: 'pedir-mas',
+				etiqueta: 'Sentarte a pedir una mejora',
+				detalle: 'Renovar hacia arriba. Si el club te dice que no, quedan menos puentes.',
+				probabilidad: chance(38 + comoLoVen * 1.4, a.negociacion, 0.55),
+				siSale: `Firmaron renovación con mejora. ${f.nombre} sigue en ${donde} y cobrando más.`,
+				siFalla: `Les pareció demasiado y cortaron la charla. No hay renovación.`,
+				premio: { prestigio: 5, contactos: 2, confianza: 8, negociacion: 2 },
+				castigo: { prestigio: -2, confianza: -5 }
+			},
+			{
+				id: 'renovar-igual',
+				etiqueta: 'Aceptar lo que haya',
+				detalle: 'Un año más en las mismas condiciones. Nadie se hace rico, nadie se queda sin club.',
+				probabilidad: chance(62 + comoLoVen * 1.2, a.contactos, 0.35),
+				siSale: `Firmaron la continuidad sin discutir números. Sigue en ${donde}.`,
+				siFalla: `Ni así: en el club ya habían decidido no seguir.`,
+				premio: { confianza: 5, prestigio: 1 },
+				castigo: { confianza: -4 }
+			}
+		]
+	};
+}
+
+/**
  * Los momentos de esta temporada. Determinista, como todo lo demás.
  *
  * "El pibe" no aparece siempre: fichar a alguien nuevo cada año convertiría la
@@ -567,6 +648,9 @@ export function momentosDelRepresentante(
 		fase: estado.fase,
 		clave: 'momentos-representante'
 	});
+
+	// Con el contrato terminándose, el mercado tiene un solo tema y es ése.
+	if (estado.fase === 3 && tocaRenovar(estado)) return [laMesaFinal(estado)];
 
 	const deEstaFase = estado.fase === 3 ? EN_EL_MERCADO : EN_LA_TEMPORADA;
 	const cuantos = estado.fase === 3 ? MOMENTOS_EN_EL_MERCADO : MOMENTOS_POR_TEMPORADA;

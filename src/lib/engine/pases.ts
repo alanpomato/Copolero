@@ -263,12 +263,29 @@ export function resolverPase(
 	const delRepresentante = eligeRepresentante ?? QUEDARSE;
 
 	// Los dos quieren quedarse: no pasa nada, y está bien que no pase nada.
+	//
+	// Salvo que no haya con qué quedarse. Con el contrato terminado, "quedarse"
+	// es un deseo y no un hecho: lo decide la mesa de renovación, y contarlo acá
+	// como cerrado era una mentira que el propio diario desmentía tres líneas
+	// más abajo —"se quedó, los dos estuvieron de acuerdo" y enseguida "hubo que
+	// firmar a las apuradas", en la misma temporada y para otro club—. Es el bug
+	// que encontró Bebo. Ver `buscarEquipo` en `fases.ts`.
 	if (delFutbolista === QUEDARSE && delRepresentante === QUEDARSE) {
-		log.push({
-			tipo: 'mercado',
-			visiblePara: 'ambos',
-			texto: `Hubo ${ofertas.length} ${ofertas.length === 1 ? 'oferta' : 'ofertas'} y se quedó en ${club(estado.futbolista.contrato.clubId).nombre}. Los dos estuvieron de acuerdo.`
-		});
+		if (estado.futbolista.contrato.temporadasRestantes > 0) {
+			log.push({
+				tipo: 'mercado',
+				visiblePara: 'ambos',
+				texto: `Hubo ${ofertas.length} ${ofertas.length === 1 ? 'oferta' : 'ofertas'} y se quedó en ${club(estado.futbolista.contrato.clubId).nombre}. Los dos estuvieron de acuerdo.`
+			});
+		} else {
+			log.push({
+				tipo: 'mercado',
+				visiblePara: 'ambos',
+				texto:
+					`Hubo ${ofertas.length} ${ofertas.length === 1 ? 'oferta' : 'ofertas'} y las dejaron pasar: ` +
+					`querían seguir en ${club(estado.futbolista.contrato.clubId).nombre}. Falta que el club diga que sí.`
+			});
+		}
 		return;
 	}
 

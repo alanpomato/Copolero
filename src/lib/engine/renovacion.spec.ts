@@ -227,11 +227,17 @@ describe('lo que se ve es lo que se firma', () => {
 });
 
 describe('en una partida de verdad', () => {
-	it('el club puede renovarlo sobre la hora en vez de dejarlo ir', () => {
+	it('nunca se queda sin club por dejar vencer un contrato', () => {
 		// Que se le termine el contrato no es que lo echen. Sin esta regla, el que
 		// firmaba un año quedaba expulsado al terminarlo aunque las dos partes
 		// estuvieran contentas, y una carrera entera en un mismo club era
 		// imposible.
+		//
+		// Lo que este test comprobaba antes era más fuerte: que se quedara en el
+		// mismo club las ocho temporadas. Eso era cierto porque el motor renovaba
+		// solo, sin que nadie negociara nada, y ésa era exactamente la raíz del
+		// bug que encontró Bebo. Ahora la renovación se juega en una mesa y puede
+		// salir mal; lo que no puede pasar nunca es quedarse sin equipo.
 		let e = unJugador('ar2-moron');
 		e.futbolista.contrato.temporadasRestantes = 1;
 
@@ -239,9 +245,10 @@ describe('en una partida de verdad', () => {
 		while (!e.carreraTerminada && vueltas < 8) {
 			for (let f = 0; f < 3; f++) e = resolverFase(e, NADA, 'quedarse').estado;
 			vueltas++;
+			expect(e.futbolista.contrato.clubId.length).toBeGreaterThan(0);
+			expect(e.futbolista.contrato.temporadasRestantes).toBeGreaterThanOrEqual(0);
 		}
-		// Nunca se quedó sin club: en un club donde juega, siempre hay renovación.
-		expect(e.futbolista.contrato.clubId).toBe('ar2-moron');
+		expect(e.carreraTerminada).toBe(false);
 	});
 
 	it('la mesa con el club llega a los dos roles con los mismos números', () => {
