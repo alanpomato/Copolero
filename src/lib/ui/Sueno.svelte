@@ -136,7 +136,8 @@
 	.otro {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		flex-wrap: wrap;
+		gap: 0.35rem 0.5rem;
 		margin-top: 0.9rem;
 		padding-top: 0.75rem;
 		border-top: 1px solid var(--borde);
@@ -146,12 +147,11 @@
 	.quien {
 		flex: none;
 	}
+	/* Sin recortar. "El goleador ..." no dice nada; el punto de mostrar el sueño
+	   del otro es saber para dónde tira, y para eso hay que poder leerlo. */
 	.suNombre {
 		font-weight: 700;
 		color: var(--texto);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 	.suBarra {
 		flex: 1;

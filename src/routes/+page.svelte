@@ -121,220 +121,222 @@
 	<title>Copolero</title>
 </svelte:head>
 
-<h1>Copolero</h1>
-<p class="bajada">
-	Una carrera de futbolista para dos. Uno juega al futbolista, el otro a su representante. Por
-	turnos: cada uno entra cuando puede.
-</p>
+<div class="angosta">
+	<h1>Copolero</h1>
+	<p class="bajada">
+		Una carrera de futbolista para dos. Uno juega al futbolista, el otro a su representante. Por
+		turnos: cada uno entra cuando puede.
+	</p>
 
-{#if form?.problemas}
-	<div class="error">
-		{#each form.problemas as problema (problema)}
-			<div>{problema}</div>
-		{/each}
-	</div>
-{/if}
-
-<form method="POST" action="?/crear" use:enhance>
-	<div class="tarjeta">
-		<h3>Vos</h3>
-		<label>
-			<span class="titulo">Tu nombre</span>
-			<input name="tuNombre" maxlength="60" required placeholder="Alan" />
-		</label>
-		<label>
-			<span class="titulo">¿Qué rol querés jugar?</span>
-			<select name="rol" required>
-				<option value="futbolista">Futbolista</option>
-				<option value="representante">Representante</option>
-			</select>
-		</label>
-		<p class="sutil">El otro rol le queda a quien entre con el código.</p>
-	</div>
-
-	<div class="tarjeta">
-		<div class="cabezaConBoton">
-			<h3 style="margin:0; border:none; padding:0">El futbolista</h3>
-			<button type="button" class="azar" onclick={alAzar}>🎲 Al azar</button>
+	{#if form?.problemas}
+		<div class="error">
+			{#each form.problemas as problema (problema)}
+				<div>{problema}</div>
+			{/each}
 		</div>
-		<label>
-			<span class="titulo">Nombre</span>
-			<input name="nombreFutbolista" maxlength="60" required placeholder="Damián Correa" />
-		</label>
-		<label>
-			<span class="titulo">Nacionalidad</span>
-			<select name="nacionalidad" bind:value={nacionalidad}>
-				{#each paises as pais (pais)}
-					<option value={pais}>{pais}</option>
-				{/each}
-			</select>
-		</label>
-		<span class="titulo" style="display:block; margin-bottom:.5rem">Puesto</span>
-		{#each LINEAS as linea (linea.posicion)}
-			<p class="linea">{linea.etiqueta}</p>
-			<div class="puestos">
-				{#each PUESTOS.filter((p) => p.posicion === linea.posicion) as p (p.id)}
-					<label class="puesto" class:elegido={puestoElegido === p.id}>
-						<input type="radio" name="puesto" value={p.id} bind:group={puestoElegido} required />
-						<span class="dorsal">{p.numero}</span>
-						<span class="comoSeLlama">{p.nombre}</span>
-						<span class="quees">{p.detalle}</span>
-					</label>
+	{/if}
+
+	<form method="POST" action="?/crear" use:enhance>
+		<div class="tarjeta">
+			<h3>Vos</h3>
+			<label>
+				<span class="titulo">Tu nombre</span>
+				<input name="tuNombre" maxlength="60" required placeholder="Alan" />
+			</label>
+			<label>
+				<span class="titulo">¿Qué rol querés jugar?</span>
+				<select name="rol" required>
+					<option value="futbolista">Futbolista</option>
+					<option value="representante">Representante</option>
+				</select>
+			</label>
+			<p class="sutil">El otro rol le queda a quien entre con el código.</p>
+		</div>
+
+		<div class="tarjeta">
+			<div class="cabezaConBoton">
+				<h3 style="margin:0; border:none; padding:0">El futbolista</h3>
+				<button type="button" class="azar" onclick={alAzar}>🎲 Al azar</button>
+			</div>
+			<label>
+				<span class="titulo">Nombre</span>
+				<input name="nombreFutbolista" maxlength="60" required placeholder="Damián Correa" />
+			</label>
+			<label>
+				<span class="titulo">Nacionalidad</span>
+				<select name="nacionalidad" bind:value={nacionalidad}>
+					{#each paises as pais (pais)}
+						<option value={pais}>{pais}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="titulo" style="display:block; margin-bottom:.5rem">Puesto</span>
+			{#each LINEAS as linea (linea.posicion)}
+				<p class="linea">{linea.etiqueta}</p>
+				<div class="puestos">
+					{#each PUESTOS.filter((p) => p.posicion === linea.posicion) as p (p.id)}
+						<label class="puesto" class:elegido={puestoElegido === p.id}>
+							<input type="radio" name="puesto" value={p.id} bind:group={puestoElegido} required />
+							<span class="dorsal">{p.numero}</span>
+							<span class="comoSeLlama">{p.nombre}</span>
+							<span class="quees">{p.detalle}</span>
+						</label>
+					{/each}
+				</div>
+			{/each}
+
+			<div class="fila">
+				<label>
+					<span class="titulo">Número</span>
+					<input
+						name="numero"
+						type="number"
+						min="1"
+						max="99"
+						bind:value={numero}
+						oninput={() => (numeroTocado = true)}
+						required
+					/>
+				</label>
+				<label>
+					<span class="titulo">Pie</span>
+					<select name="pie" bind:value={pie} required>
+						{#each PIES as p (p.id)}
+							<option value={p.id}>{p.nombre}</option>
+						{/each}
+					</select>
+				</label>
+			</div>
+			<p class="sutil" style="margin:-.7rem 0 1rem">
+				{PIES.find((p) => p.id === pie)?.detalle}
+				{#if elPuesto.lado}
+					Este puesto es por la {elPuesto.lado === 'izquierdo' ? 'izquierda' : 'derecha'}.
+				{/if}
+			</p>
+			<div class="fila">
+				<label>
+					<span class="titulo">País</span>
+					<select name="paisDelClub" bind:value={paisElegido}>
+						{#each mundo as p (p.id)}
+							<option value={p.id}>{p.nombre}</option>
+						{/each}
+					</select>
+				</label>
+				<label>
+					<span class="titulo">División</span>
+					<select name="divisionDelClub" bind:value={ligaElegida}>
+						{#each ligasDelPais as l (l.id)}
+							<option value={l.id}>{l.nombre}</option>
+						{/each}
+					</select>
+				</label>
+			</div>
+
+			<label>
+				<span class="titulo">Club donde arranca</span>
+				<select name="clubId" bind:value={clubElegido} required>
+					{#each laLiga?.clubes ?? [] as club (club.id)}
+						<option value={club.id}>{club.nombre}</option>
+					{/each}
+				</select>
+			</label>
+
+			<div class="vistazo">
+				<ClubLinea clubId={clubElegido} tamano={40} />
+			</div>
+			<p class="sutil" style="margin:-.4rem 0 1rem">
+				Cuanto más abajo arranques, más carrera hay para hacer. El Ascenso argentino es el escalón
+				más bajo del mundo.
+			</p>
+			<div class="reparto">
+				<div class="reparto-cabecera">
+					<span class="titulo" style="margin:0">Cómo es el pibe</span>
+					<span class="quedan" class:vacio={quedan === 0}>
+						{quedan === 0 ? 'Todo repartido' : `Quedan ${quedan}`}
+					</span>
+				</div>
+				<p class="sutil" style="margin:.15rem 0 .9rem">
+					Repartí los puntos en lo que quieras que sepa hacer. Es poco a propósito: inclina al pibe,
+					no lo fabrica. Lo que define la carrera es el potencial, que nadie ve.
+				</p>
+
+				{#each ATRIBUTOS as atributo (atributo)}
+					<div class="rasgo">
+						<span class="rasgo-nombre">
+							{NOMBRE_ATRIBUTO[atributo]}
+							{#if propiosDelPuesto.includes(atributo)}
+								<span class="propio" title="El puesto ya te da esto">del puesto</span>
+							{/if}
+						</span>
+						<span class="mando">
+							<button
+								type="button"
+								class="paso"
+								onclick={() => mover(atributo, -1)}
+								disabled={reparto[atributo] === 0}
+								aria-label={`Sacar un punto de ${NOMBRE_ATRIBUTO[atributo]}`}>−</button
+							>
+							<span class="puntos" class:puestos={reparto[atributo] > 0}>+{reparto[atributo]}</span>
+							<button
+								type="button"
+								class="paso"
+								onclick={() => mover(atributo, 1)}
+								disabled={quedan === 0 || reparto[atributo] === TOPE_POR_ATRIBUTO}
+								aria-label={`Sumar un punto a ${NOMBRE_ATRIBUTO[atributo]}`}>+</button
+							>
+						</span>
+						<input type="hidden" name={`reparto-${atributo}`} value={reparto[atributo]} />
+					</div>
 				{/each}
 			</div>
-		{/each}
 
-		<div class="fila">
 			<label>
-				<span class="titulo">Número</span>
+				<span class="titulo">Edad inicial</span>
 				<input
-					name="numero"
+					name="edadInicial"
 					type="number"
-					min="1"
-					max="99"
-					bind:value={numero}
-					oninput={() => (numeroTocado = true)}
+					min="15"
+					max="22"
+					value={EDAD_INICIAL_POR_DEFECTO}
 					required
 				/>
 			</label>
-			<label>
-				<span class="titulo">Pie</span>
-				<select name="pie" bind:value={pie} required>
-					{#each PIES as p (p.id)}
-						<option value={p.id}>{p.nombre}</option>
-					{/each}
-				</select>
-			</label>
-		</div>
-		<p class="sutil" style="margin:-.7rem 0 1rem">
-			{PIES.find((p) => p.id === pie)?.detalle}
-			{#if elPuesto.lado}
-				Este puesto es por la {elPuesto.lado === 'izquierdo' ? 'izquierda' : 'derecha'}.
-			{/if}
-		</p>
-		<div class="fila">
-			<label>
-				<span class="titulo">País</span>
-				<select name="paisDelClub" bind:value={paisElegido}>
-					{#each mundo as p (p.id)}
-						<option value={p.id}>{p.nombre}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				<span class="titulo">División</span>
-				<select name="divisionDelClub" bind:value={ligaElegida}>
-					{#each ligasDelPais as l (l.id)}
-						<option value={l.id}>{l.nombre}</option>
-					{/each}
-				</select>
-			</label>
 		</div>
 
+		<button type="submit">Crear la partida</button>
+	</form>
+
+	<h2>¿Te pasaron un código?</h2>
+	{#if form?.problemaCodigo}
+		<div class="error">{form.problemaCodigo}</div>
+	{/if}
+	<form method="POST" action="?/entrar" use:enhance>
 		<label>
-			<span class="titulo">Club donde arranca</span>
-			<select name="clubId" bind:value={clubElegido} required>
-				{#each laLiga?.clubes ?? [] as club (club.id)}
-					<option value={club.id}>{club.nombre}</option>
-				{/each}
-			</select>
-		</label>
-
-		<div class="vistazo">
-			<ClubLinea clubId={clubElegido} tamano={40} />
-		</div>
-		<p class="sutil" style="margin:-.4rem 0 1rem">
-			Cuanto más abajo arranques, más carrera hay para hacer. El Ascenso argentino es el escalón más
-			bajo del mundo.
-		</p>
-		<div class="reparto">
-			<div class="reparto-cabecera">
-				<span class="titulo" style="margin:0">Cómo es el pibe</span>
-				<span class="quedan" class:vacio={quedan === 0}>
-					{quedan === 0 ? 'Todo repartido' : `Quedan ${quedan}`}
-				</span>
-			</div>
-			<p class="sutil" style="margin:.15rem 0 .9rem">
-				Repartí los puntos en lo que quieras que sepa hacer. Es poco a propósito: inclina al pibe,
-				no lo fabrica. Lo que define la carrera es el potencial, que nadie ve.
-			</p>
-
-			{#each ATRIBUTOS as atributo (atributo)}
-				<div class="rasgo">
-					<span class="rasgo-nombre">
-						{NOMBRE_ATRIBUTO[atributo]}
-						{#if propiosDelPuesto.includes(atributo)}
-							<span class="propio" title="El puesto ya te da esto">del puesto</span>
-						{/if}
-					</span>
-					<span class="mando">
-						<button
-							type="button"
-							class="paso"
-							onclick={() => mover(atributo, -1)}
-							disabled={reparto[atributo] === 0}
-							aria-label={`Sacar un punto de ${NOMBRE_ATRIBUTO[atributo]}`}>−</button
-						>
-						<span class="puntos" class:puestos={reparto[atributo] > 0}>+{reparto[atributo]}</span>
-						<button
-							type="button"
-							class="paso"
-							onclick={() => mover(atributo, 1)}
-							disabled={quedan === 0 || reparto[atributo] === TOPE_POR_ATRIBUTO}
-							aria-label={`Sumar un punto a ${NOMBRE_ATRIBUTO[atributo]}`}>+</button
-						>
-					</span>
-					<input type="hidden" name={`reparto-${atributo}`} value={reparto[atributo]} />
-				</div>
-			{/each}
-		</div>
-
-		<label>
-			<span class="titulo">Edad inicial</span>
+			<span class="titulo">Código de la partida</span>
 			<input
-				name="edadInicial"
-				type="number"
-				min="15"
-				max="22"
-				value={EDAD_INICIAL_POR_DEFECTO}
+				name="codigo"
+				maxlength="12"
 				required
+				placeholder="ABC234"
+				autocapitalize="characters"
+				style="text-transform: uppercase; letter-spacing: .2em;"
 			/>
 		</label>
-	</div>
+		<button type="submit" class="secundario">Entrar</button>
+	</form>
 
-	<button type="submit">Crear la partida</button>
-</form>
-
-<h2>¿Te pasaron un código?</h2>
-{#if form?.problemaCodigo}
-	<div class="error">{form.problemaCodigo}</div>
-{/if}
-<form method="POST" action="?/entrar" use:enhance>
-	<label>
-		<span class="titulo">Código de la partida</span>
-		<input
-			name="codigo"
-			maxlength="12"
-			required
-			placeholder="ABC234"
-			autocapitalize="characters"
-			style="text-transform: uppercase; letter-spacing: .2em;"
-		/>
-	</label>
-	<button type="submit" class="secundario">Entrar</button>
-</form>
-
-<h2>El mundo</h2>
-<div class="tarjeta">
-	<p class="sutil" style="margin:0 0 .85rem">
-		{mundo.reduce((n, p) => n + p.ligas.reduce((m, l) => m + l.clubes.length, 0), 0)} clubes en
-		{mundo.reduce((n, p) => n + p.ligas.length, 0)} ligas de {mundo.length} países, con los técnicos y
-		los jugadores de verdad. Se mueven solos: cada temporada hay mercado de pases y hay quien se retira.
-	</p>
-	<div class="banderas">
-		{#each mundo as p (p.id)}
-			<Bandera pais={p.id} alto={16} />
-		{/each}
+	<h2>El mundo</h2>
+	<div class="tarjeta">
+		<p class="sutil" style="margin:0 0 .85rem">
+			{mundo.reduce((n, p) => n + p.ligas.reduce((m, l) => m + l.clubes.length, 0), 0)} clubes en
+			{mundo.reduce((n, p) => n + p.ligas.length, 0)} ligas de {mundo.length} países, con los técnicos
+			y los jugadores de verdad. Se mueven solos: cada temporada hay mercado de pases y hay quien se retira.
+		</p>
+		<div class="banderas">
+			{#each mundo as p (p.id)}
+				<Bandera pais={p.id} alto={16} />
+			{/each}
+		</div>
 	</div>
 </div>
 

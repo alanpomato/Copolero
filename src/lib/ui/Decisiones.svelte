@@ -47,6 +47,42 @@
 	});
 	let ocasiones = $state<string[]>([]);
 
+	/*
+	 * Los momentos de la temporada, de a uno.
+	 *
+	 * Estaban los tres abiertos a la vez y eran tres pantallas de scroll, pero el
+	 * problema de fondo no era el largo: en un año no pasan tres cosas al mismo
+	 * tiempo. Pasa una, se decide, y meses después pasa la otra. Mostrarlas juntas
+	 * las convertía en un formulario de tres preguntas en vez de tres momentos.
+	 *
+	 * `destapadas` es cuántas ya ocurrieron y `abierta` cuál se está mirando. Se
+	 * puede volver a las anteriores —la fase no se cerró, nada se resolvió
+	 * todavía— pero no adelantarse a las que no pasaron.
+	 */
+	let destapadas = $state(1);
+	let abierta = $state(0);
+
+	$effect(() => {
+		// Fase nueva: se vuelve a empezar por la primera.
+		if ((opciones.ocasiones?.length ?? 0) === 0) return;
+		if (destapadas > (opciones.ocasiones?.length ?? 0)) {
+			destapadas = 1;
+			abierta = 0;
+		}
+	});
+
+	function seguir(i: number, cuantas: number) {
+		if (i !== destapadas - 1) {
+			// Volvió a mirar una vieja y cambió de idea: se queda donde estaba.
+			abierta = destapadas - 1;
+			return;
+		}
+		if (destapadas < cuantas) {
+			destapadas += 1;
+			abierta = destapadas - 1;
+		}
+	}
+
 	$effect(() => {
 		const cuantas = opciones.ocasiones?.length ?? 0;
 		if (ocasiones.length !== cuantas) {
@@ -500,34 +536,87 @@
 
 <!-- ---------- Fase 2: la rueda de ocasión ---------- -->
 {#if opciones.ocasiones}
-	<p class="sutil" style="margin:0 0 1rem">
-		Tres momentos de la temporada. Las probabilidades salen de tus atributos y son las de verdad: lo
-		que dice el número es lo que se tira.
-	</p>
+	{@const cuantas = opciones.ocasiones.length}
+	<div class="momentos">
+		<p class="sutil" style="margin:0 0 1rem">
+			{cuantas} momentos de la temporada, uno por vez. Las probabilidades salen de tus atributos y son
+			las de verdad: lo que dice el número es lo que se tira.
+		</p>
 
-	{#each opciones.ocasiones as ocasion, i (ocasion.id)}
-		{@const elegida = ocasion.opciones.find((o) => o.id === ocasiones[i]) ?? ocasion.opciones[0]}
-		<div class="tarjeta">
-			<h3>{i + 1} · {ocasion.titulo}</h3>
-			<p style="margin:0 0 .9rem">{ocasion.contexto}</p>
+		{#each opciones.ocasiones as ocasion, i (ocasion.id)}
+			{@const elegida = ocasion.opciones.find((o) => o.id === ocasiones[i]) ?? ocasion.opciones[0]}
+			{@const yaPaso = i < destapadas}
+			{@const esLaDeAhora = i === abierta && yaPaso}
 
-			<Ruleta probabilidad={elegida.probabilidad} etiqueta={elegida.etiqueta} />
-			<p class="sutil" style="margin:.6rem 0 1rem; text-align:center">
-				{elegida.siSale}
-			</p>
+			{#if !yaPaso}
+				<!-- Todavía no pasó. Se sabe que viene, y nada más. -->
+				<p class="porVenir">
+					{i + 1} · Todavía no pasó
+				</p>
+			{:else if !esLaDeAhora}
+				<!-- Ya la decidió: una línea con lo que eligió, y se puede volver. -->
+				<button type="button" class="resuelta" onclick={() => (abierta = i)}>
+					<span class="cual">{i + 1} · {ocasion.titulo}</span>
+					<span class="loQueElegi">{elegida.etiqueta}</span>
+					<span class="pct">{elegida.probabilidad}%</span>
+				</button>
+			{:else}
+				<div class="tarjeta ocasion">
+					<p class="numeroDeMomento">Momento {i + 1} de {cuantas}</p>
+					<h3>{ocasion.titulo}</h3>
+					<p style="margin:0 0 .9rem">{ocasion.contexto}</p>
 
-			{#each ocasion.opciones as opcion (opcion.id)}
-				<Opcion
-					grupo={`ocasion-${i}`}
-					valor={opcion.id}
-					titulo={opcion.etiqueta}
-					detalle={opcion.detalle}
-					probabilidad={opcion.probabilidad}
-					bind:elegido={ocasiones[i]}
-				/>
-			{/each}
-		</div>
-	{/each}
+					<!--
+						La rueda al costado de las opciones, no arriba.
+						Estaba arriba y era un problema de verdad: la rueda muestra la
+						probabilidad de la opción elegida, así que al bajar a leer la tercera
+						opción ya no se veía el número que esa opción produce. Al costado se
+						mira la rueda y la opción al mismo tiempo, que es de lo que se trata
+						elegir acá.
+					-->
+					<div class="apuesta">
+						<div class="rueda">
+							<Ruleta probabilidad={elegida.probabilidad} etiqueta={elegida.etiqueta} />
+							<p class="sutil siSale">{elegida.siSale}</p>
+						</div>
+
+						<div class="cuales" onchange={() => seguir(i, cuantas)}>
+							{#each ocasion.opciones as opcion (opcion.id)}
+								<Opcion
+									grupo={`ocasion-${i}`}
+									valor={opcion.id}
+									titulo={opcion.etiqueta}
+									detalle={opcion.detalle}
+									probabilidad={opcion.probabilidad}
+									bind:elegido={ocasiones[i]}
+								/>
+							{/each}
+						</div>
+					</div>
+
+					{#if i < cuantas - 1}
+						<button type="button" class="secundario siguiente" onclick={() => seguir(i, cuantas)}>
+							Listo, ¿qué pasó después?
+						</button>
+					{/if}
+				</div>
+			{/if}
+
+			<!--
+				Las que no están abiertas igual mandan su elección.
+				Un input escondido con `display:none` se envía igual que uno visible
+				—lo que no se envía es uno deshabilitado—, así que la fase se resuelve
+				completa aunque el jugador no haya vuelto a mirar la primera. Y si el
+				navegador no tiene JavaScript, acá quedan las tres con su opción por
+				defecto, que es lo mismo que toma el motor cuando nadie elige.
+			-->
+			{#if !esLaDeAhora}
+				<div hidden>
+					<input type="radio" name={`ocasion-${i}`} value={ocasiones[i] ?? ''} checked />
+				</div>
+			{/if}
+		{/each}
+	</div>
 {/if}
 
 <!-- ---------- Fases 1 y 2: la gestión del representante ---------- -->
@@ -609,6 +698,100 @@
 {/if}
 
 <style>
+	/* La ocasión se mide a sí misma: en la columna del medio hay lugar para poner
+	   la rueda al costado, en el celular no. */
+	.ocasion {
+		container-type: inline-size;
+	}
+	.numeroDeMomento {
+		margin: 0 0 0.15rem;
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--acento);
+	}
+	.siguiente {
+		margin-top: 1rem;
+	}
+
+	/* La que todavía no pasó: se sabe que viene y nada más. */
+	.porVenir {
+		margin: 0 0 0.6rem;
+		padding: 0.7rem 1rem;
+		border: 1px dashed var(--borde);
+		border-radius: 12px;
+		font-size: 0.84rem;
+		color: var(--tenue);
+	}
+
+	/* La ya decidida: una línea con lo que eligió, y se puede volver a abrir. */
+	.resuelta {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		width: 100%;
+		margin: 0 0 0.6rem;
+		padding: 0.7rem 1rem;
+		background: var(--tarjeta);
+		border: 1px solid var(--borde);
+		border-radius: 12px;
+		color: var(--texto);
+		text-align: left;
+		font: inherit;
+		cursor: pointer;
+	}
+	.resuelta:hover {
+		background: var(--tarjeta-alta);
+	}
+	.resuelta .cual {
+		flex: none;
+		font-size: 0.8rem;
+		color: var(--tenue);
+	}
+	.resuelta .loQueElegi {
+		flex: 1;
+		min-width: 0;
+		font-weight: 700;
+		color: var(--acento);
+	}
+	.resuelta .pct {
+		flex: none;
+		font-variant-numeric: tabular-nums;
+		font-weight: 800;
+		color: var(--tenue);
+	}
+	.apuesta {
+		display: grid;
+		gap: 0.9rem;
+	}
+	.rueda {
+		min-width: 0;
+	}
+	.siSale {
+		margin: 0.6rem 0 0;
+		text-align: center;
+	}
+	.cuales {
+		min-width: 0;
+	}
+	@container (min-width: 30rem) {
+		.apuesta {
+			grid-template-columns: 10.5rem minmax(0, 1fr);
+			gap: 1.2rem;
+			align-items: center;
+		}
+		.siSale {
+			font-size: 0.78rem;
+			line-height: 1.35;
+		}
+		/* La última opción no arrastra el margen de abajo: deja un hueco raro
+		   cuando la columna de al lado ya terminó. */
+		.cuales :global(.opcion:last-child) {
+			margin-bottom: 0;
+		}
+	}
+
 	.oferta {
 		display: flex;
 		align-items: flex-start;

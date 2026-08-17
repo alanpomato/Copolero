@@ -230,6 +230,8 @@
 	.quien h3 {
 		display: flex;
 		align-items: center;
+		/* Que el dorsal se caiga a la línea de abajo antes que cortar el nombre. */
+		flex-wrap: wrap;
 		gap: 0.35rem;
 		margin: 0;
 		border: none;
@@ -241,10 +243,14 @@
 		color: var(--texto);
 		min-width: 0;
 	}
+	/*
+	 * El nombre y el club se cortaban con puntos suspensivos: "DAMIÁ…",
+	 * "Deportivo…". En una tarjeta que es la identidad del jugador, ver su nombre
+	 * a medias es lo peor que puede pasar. Ahora doblan de línea, que ocupa unos
+	 * píxeles más y se lee entero.
+	 */
 	.nombre {
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
+		overflow-wrap: anywhere;
 	}
 	.dorsal {
 		flex: none;
@@ -254,9 +260,6 @@
 		margin: 0.15rem 0 0;
 		font-size: 0.76rem;
 		color: var(--tenue);
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
 	}
 	.linea.liga {
 		color: var(--acento);

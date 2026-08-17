@@ -60,10 +60,29 @@ body {
 	line-height: 1.55;
 }
 
+/*
+ * El ancho de la página.
+ *
+ * Copolero se dibujó primero para el celular y quedó atado a 34rem, que en un
+ * monitor son 544 píxeles en el medio y mil de aire a los costados. Con eso, la
+ * pantalla de una fase medía seis pantallas de alto teniendo el ancho al lado
+ * sin usar.
+ *
+ * Ahora la caja crece con la ventana hasta 76rem, que es lo que necesitan las
+ * dos columnas de `/j/[token]`. Las pantallas de una sola columna —crear
+ * partida, unirse, esperar— se siguen limitando a 34rem con `.angosta`: un
+ * formulario de cuatro campos estirado a mil doscientos píxeles es peor que
+ * uno angosto.
+ */
 .pantalla {
-	max-width: var(--ancho);
+	max-width: 76rem;
 	margin: 0 auto;
 	padding: 1.5rem 1rem 4rem;
+}
+
+.angosta {
+	max-width: var(--ancho);
+	margin: 0 auto;
 }
 
 h1 {

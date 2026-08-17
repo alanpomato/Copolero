@@ -70,6 +70,16 @@
 		border-radius: 14px;
 		margin: 0 0 0.6rem;
 		overflow: hidden;
+		/*
+		 * El paso se mide a sí mismo, no a la ventana.
+		 *
+		 * Hace falta porque el mismo componente vive en dos anchos muy distintos:
+		 * en la columna del medio tiene cuarenta y pico de rem y en la del costado
+		 * veintiuno. Con una media query de ventana, "La ficha completa" del
+		 * costado se partiría en dos columnas de diez rem, que no es una columna,
+		 * es una tira.
+		 */
+		container-type: inline-size;
 	}
 
 	summary {
@@ -139,6 +149,30 @@
 
 	.cuerpo {
 		padding: 0 1rem 1rem;
+	}
+
+	/*
+	 * Cuando el paso es ancho, las opciones van de a dos.
+	 *
+	 * Diez inversiones o seis ofertas en una sola fila vertical no son una
+	 * elección: son una lista de compras que se scrollea hasta el final. De a dos
+	 * entran casi todas juntas y se pueden comparar de un vistazo, que es lo que
+	 * una decisión necesita.
+	 *
+	 * Todo lo que no es una opción —los párrafos, los subtítulos que agrupan, las
+	 * cifras, la ruleta— sigue ocupando el ancho completo. Con eso los grupos no
+	 * se mezclan: el subtítulo corta la fila y lo que sigue arranca abajo.
+	 */
+	@container (min-width: 32rem) {
+		.cuerpo {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			column-gap: 0.6rem;
+			align-items: start;
+		}
+		.cuerpo > :global(:not(.opcion)) {
+			grid-column: 1 / -1;
+		}
 	}
 	.nota {
 		margin: 0 0 0.85rem;

@@ -71,22 +71,33 @@
 	{#if abierta}
 		<h2 class="titular">{portada.titular}</h2>
 
-		<div class="foto">
-			<Ilustracion foto={portada.foto} clubId={portada.clubId} />
-			<span class="epigrafe">
-				<Escudo clubId={portada.clubId} tamano={18} />
-			</span>
-		</div>
+		<!--
+			En el celular esto es una columna: foto, bajada, notas. En pantalla ancha
+			la foto se corre al costado del texto, que es cómo se arma una tapa de
+			verdad y de paso arregla algo que estaba mal: la ilustración es un SVG al
+			100% del ancho, así que en una columna de 786 píxeles se volvía de 440 de
+			alto y se comía media pantalla ella sola.
+		-->
+		<div class="cuerpo">
+			<div class="foto">
+				<Ilustracion foto={portada.foto} clubId={portada.clubId} />
+				<span class="epigrafe">
+					<Escudo clubId={portada.clubId} tamano={18} />
+				</span>
+			</div>
 
-		<p class="bajada">{portada.bajada}</p>
+			<div class="texto">
+				<p class="bajada">{portada.bajada}</p>
 
-		<div class="notas">
-			{#each portada.notas as nota (nota.titulo)}
-				<section>
-					<h3>{nota.titulo}</h3>
-					<p>{nota.texto}</p>
-				</section>
-			{/each}
+				<div class="notas">
+					{#each portada.notas as nota (nota.titulo)}
+						<section>
+							<h3>{nota.titulo}</h3>
+							<p>{nota.texto}</p>
+						</section>
+					{/each}
+				</div>
+			</div>
 		</div>
 	{:else}
 		<p class="plegada">{portada.titular}</p>
@@ -100,6 +111,8 @@
 	 */
 	.diario {
 		position: relative;
+		/* La tapa se acomoda a su propio ancho, no al de la ventana. */
+		container-type: inline-size;
 		--tinta: #16181c;
 		--tinta-suave: #4a4f57;
 		background: #f4f1e8;
@@ -195,9 +208,29 @@
 		border: none;
 	}
 
+	.cuerpo {
+		display: grid;
+		gap: 0.7rem;
+	}
 	.foto {
 		position: relative;
-		margin: 0 0 0.7rem;
+	}
+	/* Cuando la tapa es ancha, la foto se va al costado del texto. */
+	@container (min-width: 33rem) {
+		.cuerpo {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			gap: 1.1rem;
+			align-items: start;
+		}
+		/* Y las notas del costado pasan a dos columnas dentro de su mitad cuando
+		   hay lugar: son cuatro párrafos cortos, no un texto corrido. */
+		.texto .notas {
+			gap: 0.55rem 1rem;
+		}
+	}
+	/* Y en una columna muy ancha, un tope para que no crezca sin fin. */
+	.foto :global(svg) {
+		max-height: 20rem;
 	}
 	.epigrafe {
 		position: absolute;
