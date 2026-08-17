@@ -4,6 +4,7 @@ import { primaDeFirmaLibre } from './renovacion';
 import { dtActualDe } from './mercado';
 import { rngPara } from './rng';
 import { brechaCon } from './temporada';
+import { DESCUENTO_EN_EL_PASE, OFERTAS_EXTRA } from './salida';
 import type { EntradaLog, Estado } from './tipos';
 
 /**
@@ -87,6 +88,16 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 	 */
 	const estaEnElBanco = brechaCon(f, f.contrato.clubId) < -6;
 
+	/*
+	 * Y si pidió salir, el mercado también cambia de forma. Ver `salida.ts`.
+	 *
+	 * Un jugador que dijo que se quiere ir es un jugador que se sabe que está en
+	 * venta: lo llaman clubes que no lo habrían llamado —incluso por menos plata
+	 * de la que gana hoy— y el suyo ya no está en condiciones de pedir lo que
+	 * pediría por alguien que se quiere quedar.
+	 */
+	const seQuiereIr = estado.pidioLaSalida === true;
+
 	const interesados = clubes.filter((c) => {
 		if (c.id === f.contrato.clubId) return false;
 		if (c.prestigio > f.fama + 20) return false;
@@ -98,12 +109,14 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 			return brechaAlla > 3;
 		}
 
+		// Al que pidió salir lo llaman igual aunque le paguen lo mismo: lo que
+		// busca no es plata, es irse.
 		const sueldo = salarioTipico(c.id, suMedia);
-		if (sueldo < f.contrato.salarioMensual * 1.1) return false;
+		if (!seQuiereIr && sueldo < f.contrato.salarioMensual * 1.1) return false;
 
 		// Y sobre todo: nadie compra a alguien que no puede jugar en su liga. Es
 		// lo que hace que el salto a Europa haya que ganárselo y no elegirlo.
-		return brechaAlla > -7;
+		return brechaAlla > (seQuiereIr ? -11 : -7);
 	});
 
 	if (interesados.length === 0) return [];
@@ -119,8 +132,9 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 	);
 	const candidatos = ordenados.slice(0, Math.min(28, ordenados.length));
 
+	const cuantas = OFERTAS_POR_MERCADO + (seQuiereIr ? OFERTAS_EXTRA : 0);
 	const elegidos: string[] = [];
-	while (elegidos.length < Math.min(OFERTAS_POR_MERCADO, candidatos.length)) {
+	while (elegidos.length < Math.min(cuantas, candidatos.length)) {
 		const c = rng.elegir(candidatos);
 		if (!elegidos.includes(c.id)) elegidos.push(c.id);
 	}
@@ -132,9 +146,15 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 			const libre = f.contrato.temporadasRestantes === 0;
 			const porContrato = libre ? 0 : 0.55 + f.contrato.temporadasRestantes * 0.28;
 			const ganas = 0.8 + rng.entero(0, 60) / 100;
+			// El que pidió salir vale menos para el que lo vende: el club ya perdió
+			// la parte de la negociación en la que podía decir que no.
+			const porElPedido = seQuiereIr ? DESCUENTO_EN_EL_PASE : 1;
 			const monto = libre
 				? 0
-				: Math.max(20_000, Math.round((valor * porContrato * ganas) / 10_000) * 10_000);
+				: Math.max(
+						20_000,
+						Math.round((valor * porContrato * ganas * porElPedido) / 10_000) * 10_000
+					);
 
 			// Lo que ofrecen depende de para qué lo compran: si viene a ser titular
 			// paga el precio del puesto, y si viene a competir por el puesto, menos.

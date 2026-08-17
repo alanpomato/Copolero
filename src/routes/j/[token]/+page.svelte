@@ -14,6 +14,7 @@
 	import Confianza from '$lib/ui/Confianza.svelte';
 	import Alerta from '$lib/ui/Alerta.svelte';
 	import Sueno from '$lib/ui/Sueno.svelte';
+	import Novedades from '$lib/ui/Novedades.svelte';
 	import Paso from '$lib/ui/Paso.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
 	import Portada from '$lib/ui/Portada.svelte';
@@ -249,6 +250,13 @@
 			</aside>
 
 			<main class="alCentro">
+				{#if vista.opciones.novedades && vista.opciones.novedades.length > 0}
+					<Novedades
+						novedades={vista.opciones.novedades}
+						clave="{vista.codigo}-{estado.temporada}"
+					/>
+				{/if}
+
 				{#if vista.opciones.alerta}
 					<Alerta alerta={vista.opciones.alerta} />
 				{/if}

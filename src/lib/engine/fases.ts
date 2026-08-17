@@ -15,6 +15,7 @@ import { ocasionesDe, resolverOcasion } from './ocasiones';
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
+import { pedirLaSalida } from './salida';
 import { elegirSueno, revisarSuenos } from './suenos';
 import { correrleElAnio } from './rival';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
@@ -206,6 +207,13 @@ export function resolverFase(
 		);
 		log.push({ tipo: 'entrenamiento', visiblePara: 'ambos', texto: resultado.texto });
 	} else if (estado.fase === 2) {
+		// --- ¿Se quiere ir? ----------------------------------------------------
+		// Va antes de jugar el año, a propósito: el golpe con el técnico se cobra
+		// en los minutos de esta misma temporada, no en la que viene. Pedir salir
+		// tiene que costar algo que se sienta ya.
+		const pidio = pedirLaSalida(siguiente, delFutbolista.pedirSalida);
+		if (pidio) log.push({ tipo: 'salida', visiblePara: 'ambos', texto: pidio });
+
 		// --- La temporada ------------------------------------------------------
 		// Primero se resuelve la rueda de ocasión, después se juega el año con lo
 		// que esa rueda dejó en la moral y en la relación con el técnico.
@@ -394,6 +402,10 @@ function cerrarTemporada(
 	for (const cumplido of revisarSuenos(estado)) {
 		log.push({ tipo: 'sueno_cumplido', visiblePara: 'ambos', texto: cumplido.texto });
 	}
+
+	// El pedido de salida valía para este mercado. Cerrado el año, se apaga: si
+	// se quedó y el año que viene se quiere ir igual, lo vuelve a pedir.
+	estado.pidioLaSalida = false;
 
 	// --- El cuerpo -----------------------------------------------------------
 	futbolista.edad += 1;

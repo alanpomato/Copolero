@@ -39,6 +39,7 @@ import {
 	type OfertaDeRenovacion
 } from './renovacion';
 import { resumirRetiro, type Retiro } from './retiro';
+import { loQuePasaSiLoPide, puedePedirLaSalida } from './salida';
 import { chanceDeConvocatoria, loQueFalta, proximoMundial } from './seleccion';
 import { brechaCon } from './temporada';
 import { elOtroRol } from './estado';
@@ -87,6 +88,8 @@ export type OpcionesDeFase = {
 	consejoDelObjetivo?: string;
 	/** Y en la fase 2, el que ya eligió: se ve, no se cambia. */
 	objetivoCerrado?: Objetivo;
+	/** Futbolista, fase 2: si puede pedir salir, y qué le va a costar. */
+	salida?: { seVa: boolean; aviso: string };
 	/** Futbolista, fase 2. */
 	ocasiones?: Ocasion[];
 	/** Representante, fases 1 y 2. */
@@ -130,6 +133,14 @@ export type OpcionesDeFase = {
 	alerta?: Alerta;
 	/** La tapa del diario del año que cerró. Solo en pretemporada. */
 	portada?: Portada;
+	/** Y lo que se movió en el mundo mientras tanto. Ver `Novedades.svelte`. */
+	novedades?: {
+		tipo: string;
+		nombre: string;
+		desde: string | null;
+		hacia: string | null;
+		texto: string;
+	}[];
 	/** La carrera entera, para dibujarla. */
 	historial?: HitoTemporada[];
 	/** El Mundial que viene y qué tan cerca está de jugarlo. */
@@ -217,6 +228,11 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			opciones.consejoDelObjetivo = loQueVaAPasar(estado, undefined);
 		} else if (estado.fase === 2) {
 			opciones.ocasiones = ocasionesDe(estado, semilla);
+			// Pedir salir del club: se pide durante la temporada y se cobra en el
+			// mercado que viene.
+			if (puedePedirLaSalida(estado)) {
+				opciones.salida = { seVa: estado.pidioLaSalida, aviso: loQuePasaSiLoPide(estado) };
+			}
 			// Ya está elegido y cerrado: se muestra para saber con qué se juega, pero
 			// no se toca.
 			opciones.objetivoCerrado = objetivoPorId(estado.objetivoDelAnio);
@@ -272,6 +288,9 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	if (estado.fase === 1) {
 		const portada = portadaDe(estado);
 		if (portada) opciones.portada = portada;
+		// Y lo que pasó en el mundo mientras tanto, que llega con la tapa: son las
+		// noticias del mismo día.
+		opciones.novedades = estado.novedades ?? [];
 	}
 
 	// Y el Mundial, siempre también. Es lo único que se espera, y ver cuánto

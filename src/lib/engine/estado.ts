@@ -214,6 +214,7 @@ export function estadoInicial(config: ConfigPartida, rng: Rng, anio: number): Es
 		temporadasPerdidas: 0,
 		intensidadDeLaPretemporada: 'firme',
 		objetivoDelAnio: OBJETIVO_POR_DEFECTO,
+		pidioLaSalida: false,
 		atributosQueSubieron: [],
 		rasgo: null,
 		novedades: [],

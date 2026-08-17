@@ -8,6 +8,7 @@
 	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
 	import { SIN_TRATO } from '$lib/engine/representacion';
+	import { LO_QUE_CUESTA_CON_EL_DT, LO_QUE_CUESTA_CON_LA_HINCHADA, PIDE } from '$lib/engine/salida';
 	import type { OpcionesDeFase } from '$lib/engine/pantalla';
 	import type { Atributos, Estado, Rol } from '$lib/engine/tipos';
 	import AtributosLista from './Atributos.svelte';
@@ -36,6 +37,7 @@
 	let compra = $state(NADA);
 	let rasgo = $state('');
 	let sueno = $state('');
+	let salida = $state('');
 
 	$effect(() => {
 		const tres = opciones.rasgos ?? [];
@@ -536,6 +538,41 @@
 				{/snippet}
 			</Opcion>
 		{/each}
+	</Paso>
+{/if}
+
+<!-- ---------- Fase 2: pedir salir del club ---------- -->
+{#if opciones.salida}
+	<Paso
+		titulo="Pedir salir del club"
+		elegido={salida === PIDE ? 'Sí, quiero irme' : ''}
+		dato={salida === PIDE ? '' : 'No lo pediste'}
+		tema="mercado"
+	>
+		<p style="margin:-.4rem 0 .6rem">{opciones.salida.aviso}</p>
+
+		<Opcion
+			grupo="pedirSalida"
+			valor=""
+			titulo="Seguir como si nada"
+			detalle="No decís nada. El club sigue contando con vos y el mercado, con lo que llegue solo."
+			bind:elegido={salida}
+		/>
+		<Opcion
+			grupo="pedirSalida"
+			valor={PIDE}
+			titulo="Decir que te querés ir"
+			detalle="Se lo decís a tu representante y al club. De ahí en adelante se sabe que estás en venta."
+			bind:elegido={salida}
+		>
+			{#snippet extra()}
+				<span class="sube">
+					<span class="chip-sube gana">Más ofertas en el mercado, y más baratas</span>
+					<span class="chip-sube pierde">El técnico: −{LO_QUE_CUESTA_CON_EL_DT}</span>
+					<span class="chip-sube pierde">La hinchada: −{LO_QUE_CUESTA_CON_LA_HINCHADA}</span>
+				</span>
+			{/snippet}
+		</Opcion>
 	</Paso>
 {/if}
 

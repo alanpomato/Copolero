@@ -51,6 +51,10 @@ export const actions: Actions = {
 			// Solo la primera pretemporada, y solo si el servidor lo ofreció.
 			if (vista.opciones.rasgos) decision.rasgo = campo(datos, 'rasgo');
 			// Una elección por ocasión, en el mismo orden en que se mostraron.
+			// Pedir salir del club. Solo si el servidor lo ofreció: no se puede
+			// pedir dos veces el mismo año ni con el contrato vencido.
+			if (vista.opciones.salida) decision.pedirSalida = campo(datos, 'pedirSalida');
+
 			const cuantas = vista.opciones.ocasiones?.length ?? 0;
 			if (cuantas > 0) {
 				decision.ocasiones = Array.from(

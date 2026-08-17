@@ -246,6 +246,16 @@ export type Estado = {
 	objetivoDelAnio: string;
 
 	/**
+	 * Si pidió que lo dejen ir. Ver `salida.ts`.
+	 *
+	 * Se pide durante la temporada y se cobra en el mercado que viene: los clubes
+	 * se enteran de que está en venta y aparecen más ofertas, y más baratas,
+	 * porque el suyo ya no lo retiene. Se apaga sola al cerrar el año: es un
+	 * pedido para ese mercado, no una etiqueta que se queda pegada.
+	 */
+	pidioLaSalida: boolean;
+
+	/**
 	 * Qué atributos subieron desde la última vez que se miró la tarjeta.
 	 *
 	 * Sirve para la flechita del ▲ al lado del número. Sin esto, subir dos puntos
@@ -409,6 +419,9 @@ export type Decision = {
 
 	/** Los dos, fase 1: qué compran esta temporada. Ver `inversiones.ts`. */
 	inversion?: string;
+
+	/** Futbolista, fase 2: si pide que lo dejen ir. Ver `salida.ts`. */
+	pedirSalida?: string;
 
 	/**
 	 * Los dos, fase 3: a qué club quiere ir, o `quedarse`.
