@@ -63,18 +63,29 @@
 	});
 
 	const ultima = $derived(temporadas[0]?.temporada ?? 0);
+
+	/**
+	 * Cuántas líneas se ven de la temporada abierta antes de plegar el resto.
+	 *
+	 * Una temporada entera son veinte y pico de líneas, casi dos mil píxeles al
+	 * pie de una pantalla que ya era larguísima. Las últimas seis alcanzan para
+	 * contar qué pasó desde la vez anterior, que es a lo que se baja hasta acá; el
+	 * archivo completo sigue estando a un toque.
+	 */
+	const A_LA_VISTA = 6;
 </script>
 
 {#if temporadas.length > 0}
 	<h2>Diario</h2>
 	{#each temporadas as t (t.temporada)}
+		{@const cortar = t.temporada === ultima && t.entradas.length > A_LA_VISTA + 2}
 		<details class="temporada" open={t.temporada === ultima}>
 			<summary>
 				<span class="titulo">Temporada {t.temporada}</span>
 				<span class="cuantas">{t.entradas.length}</span>
 			</summary>
 			<ul class="diario">
-				{#each t.entradas as entrada, i (i)}
+				{#each cortar ? t.entradas.slice(0, A_LA_VISTA) : t.entradas as entrada, i (i)}
 					<li>
 						<span class="signo">{SIGNO[entrada.tipo] ?? '·'}</span>
 						<span>
@@ -84,6 +95,22 @@
 					</li>
 				{/each}
 			</ul>
+			{#if cortar}
+				<details class="resto">
+					<summary>Ver las otras {t.entradas.length - A_LA_VISTA} de la temporada</summary>
+					<ul class="diario">
+						{#each t.entradas.slice(A_LA_VISTA) as entrada, i (i)}
+							<li>
+								<span class="signo">{SIGNO[entrada.tipo] ?? '·'}</span>
+								<span>
+									<span class="momento">{NOMBRE_FASE[entrada.fase as Fase]}</span>
+									{entrada.texto}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				</details>
+			{/if}
 		</details>
 	{/each}
 {/if}
@@ -120,6 +147,19 @@
 		border-radius: 999px;
 		padding: 0.05rem 0.5rem;
 	}
+	/* El resto de la temporada abierta, plegado. */
+	.resto > summary {
+		padding: 0.55rem 1.1rem 0.9rem;
+		font-size: 0.8rem;
+		color: var(--tenue);
+	}
+	.resto > summary:hover {
+		color: var(--texto);
+	}
+	.resto .diario {
+		padding-top: 0;
+	}
+
 	.diario {
 		list-style: none;
 		margin: 0;

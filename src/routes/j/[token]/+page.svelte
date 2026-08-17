@@ -14,6 +14,7 @@
 	import Confianza from '$lib/ui/Confianza.svelte';
 	import Alerta from '$lib/ui/Alerta.svelte';
 	import Sueno from '$lib/ui/Sueno.svelte';
+	import Paso from '$lib/ui/Paso.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
 	import Portada from '$lib/ui/Portada.svelte';
 	import Trayectoria from '$lib/ui/Trayectoria.svelte';
@@ -123,8 +124,14 @@
 		{#if vista.rol === 'futbolista'}
 			<TarjetaJugador {estado} opciones={vista.opciones} />
 
-			<div class="tarjeta" data-tema="cancha">
-				<h3>Todo lo que sabés hacer</h3>
+			<!--
+				La ficha de arriba ya trae la media, los acumulados, los cinco atributos
+				del puesto y la plata. Lo que queda acá es el detalle fino: los otros
+				tres atributos, los cuatro números que se mueven solos y la letra chica
+				del contrato. Es información de consulta, no de un vistazo, así que va
+				plegada: antes eran setecientos píxeles repitiendo lo de arriba.
+			-->
+			<Paso titulo="La ficha completa" dato="{futbolista.numero} · {puesto.nombre}">
 				<div class="conCamiseta">
 					<Camiseta
 						clubId={futbolista.contrato.clubId}
@@ -154,37 +161,21 @@
 						<span class="etiqueta">Desgaste</span>
 					</div>
 				</div>
-			</div>
 
-			<div class="tarjeta" data-tema="plata">
-				<h3>Tu contrato</h3>
-				<div style="margin-bottom:.7rem">
+				<div style="margin:1.1rem 0 .7rem">
 					<ClubLinea clubId={futbolista.contrato.clubId} tamano={40} />
 				</div>
-				{#if vista.opciones.situacion}
-					<p style="margin:0 0 .85rem">
-						<span class="chip {vista.opciones.situacion.tono === 'bien' ? 'listo' : 'espera'}"
-							>{vista.opciones.situacion.texto}</span
-						>
-					</p>
-				{/if}
 				<div class="cifras">
 					<div class="cifra">
-						<span class="valor" style="font-size:1.1rem"
-							>{plata(futbolista.contrato.salarioMensual)}</span
-						>
-						<span class="etiqueta">Por mes</span>
-					</div>
-					<div class="cifra">
 						<span class="valor">{futbolista.contrato.temporadasRestantes}</span>
-						<span class="etiqueta">Temporadas</span>
+						<span class="etiqueta">Temporadas de contrato</span>
 					</div>
 					<div class="cifra">
 						<span class="valor" style="font-size:1.1rem">{plata(futbolista.dineroUsd)}</span>
 						<span class="etiqueta">Ahorrado</span>
 					</div>
 				</div>
-			</div>
+			</Paso>
 		{:else}
 			<div class="tarjeta" data-tema="plata">
 				<h3>Tu agencia</h3>
@@ -218,8 +209,11 @@
 
 			<TarjetaJugador {estado} opciones={vista.opciones} />
 
-			<div class="tarjeta" data-tema="cancha">
-				<h3>Tu cliente, en detalle</h3>
+			<Paso
+				titulo="Tu cliente, en detalle"
+				dato="{estado.contratoRepresentacion.pctSalario}% del sueldo · {estado
+					.contratoRepresentacion.pctTransferencia}% del pase"
+			>
 				<div class="cifras">
 					<div class="cifra">
 						<span class="valor" style="font-size:1.1rem">{plata(futbolista.valorMercadoUsd)}</span>
@@ -232,18 +226,14 @@
 						<span class="etiqueta">Su sueldo</span>
 					</div>
 					<div class="cifra">
-						<span class="valor">{estado.contratoRepresentacion.pctSalario}%</span>
-						<span class="etiqueta">Tu parte</span>
-					</div>
-					<div class="cifra">
-						<span class="valor">{estado.contratoRepresentacion.pctTransferencia}%</span>
-						<span class="etiqueta">Del pase</span>
+						<span class="valor">{futbolista.contrato.temporadasRestantes}</span>
+						<span class="etiqueta">Temporadas de contrato</span>
 					</div>
 				</div>
 				<div style="margin-top:.9rem">
 					<AtributosLista atributos={futbolista.atributos} />
 				</div>
-			</div>
+			</Paso>
 		{/if}
 
 		<!--
@@ -280,16 +270,15 @@
 				<form method="POST" action="?/cerrarFase" use:enhance>
 					<Decisiones opciones={vista.opciones} {estado} rol={vista.rol} />
 
-					<div class="tarjeta">
+					<Paso
+						titulo="Dejarle una nota a {vista.elOtro.nombre}"
+						nota="Queda privada hasta que los dos cierren la fase. Después la ven los dos."
+					>
 						<label style="margin:0">
-							<span class="titulo">Nota para el otro (opcional)</span>
 							<textarea name="nota" maxlength="280" placeholder="Lo que quieras dejarle dicho…"
 							></textarea>
 						</label>
-						<p class="sutil" style="margin:0">
-							Queda privada hasta que los dos cierren la fase. Después la ven los dos.
-						</p>
-					</div>
+					</Paso>
 
 					<button type="submit">Cerrar mi parte de la fase</button>
 

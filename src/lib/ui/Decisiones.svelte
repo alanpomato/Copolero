@@ -13,6 +13,7 @@
 	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
 	import Opcion from './Opcion.svelte';
+	import Paso from './Paso.svelte';
 	import Ruleta from './Ruleta.svelte';
 
 	/**
@@ -70,6 +71,63 @@
 	}
 
 	const clubActual = $derived(contexto(estado.futbolista.contrato.clubId).club.nombre);
+
+	/*
+	 * Lo que va escrito en la línea de cada paso plegado.
+	 *
+	 * Es lo que hace que plegar no sea esconder: la decisión no se ve entera pero
+	 * sí se ve qué quedó elegido, así que se abre solo la que se quiere cambiar.
+	 * Y de paso los valores por defecto salen a la luz, que antes se aplicaban sin
+	 * que nadie los hubiera leído nunca.
+	 */
+	const nombreDelPlan = $derived(opciones.planes?.find((p) => p.id === plan)?.nombre ?? '');
+	const nombreDeLaIntensidad = $derived(
+		opciones.intensidades?.find((i) => i.id === intensidad)?.nombre ?? ''
+	);
+	const comoEntrena = $derived(
+		nombreDelPlan ? `${nombreDelPlan} · ${nombreDeLaIntensidad.toLowerCase()}` : ''
+	);
+	const queCompra = $derived(
+		compra === NADA
+			? 'No gastar nada'
+			: (opciones.inversiones?.puedeComprar.find((i) => i.id === compra)?.nombre ?? '')
+	);
+	const queGestiona = $derived(opciones.gestiones?.find((g) => g.id === gestion)?.nombre ?? '');
+	const queObjetivo = $derived(opciones.objetivos?.find((o) => o.id === objetivo)?.nombre ?? '');
+	const queTrato = $derived(
+		acuerdo === SIN_TRATO
+			? 'No firmar'
+			: (opciones.tratos?.find((t) => t.id === acuerdo)?.nombre ?? '')
+	);
+	const queDestino = $derived(
+		destino === QUEDARSE ? `Quedarse en ${clubActual}` : contexto(destino).club.nombre
+	);
+
+	/*
+	 * Cuál arranca abierto: uno solo, y el que define la fase.
+	 *
+	 * Abrir "el importante de cada bloque" no alcanzaba: hay pretemporadas donde
+	 * coinciden la renovación, la mesa y el entrenamiento, y tres paneles abiertos
+	 * son otra vez tres mil píxeles. El orden es por lo que pasa menos seguido y
+	 * decide más: una mesa de contrato aparece cada tres o cuatro temporadas y te
+	 * cambia la carrera; el plan de entrenamiento está siempre y casi nunca se
+	 * toca.
+	 */
+	const abierto = $derived(
+		opciones.renovacion?.oferta
+			? 'renovacion'
+			: opciones.tratos
+				? 'mesa'
+				: opciones.ofertas
+					? 'mercado'
+					: opciones.objetivos
+						? 'objetivo'
+						: opciones.gestiones
+							? 'gestion'
+							: opciones.planes
+								? 'entrenamiento'
+								: ''
+	);
 
 	function comoJuega(brecha: number): string {
 		if (brecha >= 10) return 'Sos la figura';
@@ -133,9 +191,13 @@
 <!-- ---------- En qué gastar la plata ---------- -->
 {#if opciones.inversiones}
 	{@const inv = opciones.inversiones}
-	<div class="tarjeta" data-tema="plata">
-		<h3>Tu plata</h3>
-		<div class="cifras">
+	<Paso
+		titulo="En qué gastás la plata"
+		elegido={queCompra}
+		tema="plata"
+		nota="Lo que comprás se paga una vez y después cuesta todos los años. Si un año no te alcanza, lo perdés."
+	>
+		<div class="cifras" style="margin-bottom:.9rem">
 			<div class="cifra">
 				<span class="valor" style="font-size:1.1rem">{plata(inv.plataUsd)}</span>
 				<span class="etiqueta">Tenés</span>
@@ -148,7 +210,7 @@
 			{/if}
 		</div>
 		{#if inv.tiene.length > 0}
-			<ul class="tenes">
+			<ul class="tenes" style="margin-bottom:1rem">
 				{#each inv.tiene as i (i.id)}
 					<li>
 						<b>{i.nombre}</b> — {i.efecto}
@@ -157,55 +219,55 @@
 				{/each}
 			</ul>
 		{/if}
-		<p class="sutil" style="margin:.75rem 0 0">
-			Lo que comprás se paga una vez y después cuesta todos los años. Si un año no te alcanza, lo
-			perdés.
-		</p>
-	</div>
 
-	{#if inv.puedeComprar.length > 0}
-		<Opcion
-			grupo="inversion"
-			valor={NADA}
-			titulo="No gastar nada este año"
-			detalle="Guardarla. Nunca está mal."
-			bind:elegido={compra}
-		/>
-		{#each [{ titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => !i.dura) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.dura) }] as grupo (grupo.titulo)}
-			{#if grupo.cuales.length > 0}
-				<p class="subtitulo">{grupo.titulo}</p>
-				{#each grupo.cuales as i (i.id)}
-					<Opcion
-						grupo="inversion"
-						valor={i.id}
-						titulo={i.nombre}
-						detalle={i.detalle}
-						bind:elegido={compra}
-						deshabilitada={inv.plataUsd < i.precioUsd}
-					>
-						{#snippet extra()}
-							<span class="sube">
-								<span class="chip-sube gana">{i.efecto}</span>
-								<span class="chip-sube {inv.plataUsd < i.precioUsd ? 'pierde' : ''}">
-									{plata(i.precioUsd)}{inv.plataUsd < i.precioUsd ? ' · no te alcanza' : ''}
+		{#if inv.puedeComprar.length > 0}
+			<Opcion
+				grupo="inversion"
+				valor={NADA}
+				titulo="No gastar nada este año"
+				detalle="Guardarla. Nunca está mal."
+				bind:elegido={compra}
+			/>
+			{#each [{ titulo: 'Para siempre · se paga todos los años', cuales: inv.puedeComprar.filter((i) => !i.dura) }, { titulo: 'Por una o dos temporadas · se paga una vez', cuales: inv.puedeComprar.filter((i) => i.dura) }] as grupo (grupo.titulo)}
+				{#if grupo.cuales.length > 0}
+					<p class="subtitulo">{grupo.titulo}</p>
+					{#each grupo.cuales as i (i.id)}
+						<Opcion
+							grupo="inversion"
+							valor={i.id}
+							titulo={i.nombre}
+							detalle={i.detalle}
+							bind:elegido={compra}
+							deshabilitada={inv.plataUsd < i.precioUsd}
+						>
+							{#snippet extra()}
+								<span class="sube">
+									<span class="chip-sube gana">{i.efecto}</span>
+									<span class="chip-sube {inv.plataUsd < i.precioUsd ? 'pierde' : ''}">
+										{plata(i.precioUsd)}{inv.plataUsd < i.precioUsd ? ' · no te alcanza' : ''}
+									</span>
+									{#if i.porTemporadaUsd > 0}
+										<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
+									{/if}
 								</span>
-								{#if i.porTemporadaUsd > 0}
-									<span class="chip-sube pierde">{plata(i.porTemporadaUsd)} por año</span>
-								{/if}
-							</span>
-						{/snippet}
-					</Opcion>
-				{/each}
-			{/if}
-		{/each}
-	{/if}
+							{/snippet}
+						</Opcion>
+					{/each}
+				{/if}
+			{/each}
+		{/if}
+	</Paso>
 {/if}
 
 <!-- ---------- Cuando vence el contrato con el club ---------- -->
 {#if opciones.renovacion}
 	{@const r = opciones.renovacion}
-	<div class="tarjeta" data-tema="plata">
-		<h3>{r.libre ? 'Quedó libre' : 'Se le vence el contrato'}</h3>
+	<Paso
+		titulo={r.libre ? 'Quedó libre' : 'Se le vence el contrato'}
+		elegido={r.oferta ? (renovacion === FIRMAR ? 'Firmar' : 'Salir libre') : ''}
+		tema="plata"
+		abierto={abierto === 'renovacion'}
+	>
 		{#if !r.oferta}
 			<p style="margin:0 0 .5rem">
 				<strong>{clubActual}</strong> no ofreció renovación. Con los minutos que le dan, en el club ya
@@ -222,60 +284,64 @@
 					: `${r.oferta.mejora}%`}— por {r.oferta.temporadas}
 				{r.oferta.temporadas === 1 ? 'temporada' : 'temporadas'}.
 			</p>
-			<p class="sutil" style="margin:0">
+			<p class="sutil" style="margin:0 0 1rem">
 				Tienen que <strong>elegir lo mismo</strong> para que pase algo. Si uno firma y el otro espera,
 				no se firma nada y la relación lo paga.
 			</p>
 		{/if}
-	</div>
 
-	{#if r.oferta}
-		{@const o = r.oferta}
-		<Opcion
-			grupo="renovacion"
-			valor={FIRMAR}
-			titulo="Firmar la renovación"
-			detalle="Lo seguro: más sueldo desde ya y {o.temporadas} {o.temporadas === 1
-				? 'temporada'
-				: 'temporadas'} tranquilo en {clubActual}."
-			bind:elegido={renovacion}
-		>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube gana">{plata(o.salarioMensual)} por mes</span>
-					{#if rol === 'representante'}
-						<span class="chip-sube gana">Tu comisión: {plata(o.comisionUsd)}</span>
-					{:else}
-						<span class="chip-sube">Los años acá siguen sumando para el final</span>
-					{/if}
-				</span>
-			{/snippet}
-		</Opcion>
+		{#if r.oferta}
+			{@const o = r.oferta}
+			<Opcion
+				grupo="renovacion"
+				valor={FIRMAR}
+				titulo="Firmar la renovación"
+				detalle="Lo seguro: más sueldo desde ya y {o.temporadas} {o.temporadas === 1
+					? 'temporada'
+					: 'temporadas'} tranquilo en {clubActual}."
+				bind:elegido={renovacion}
+			>
+				{#snippet extra()}
+					<span class="sube">
+						<span class="chip-sube gana">{plata(o.salarioMensual)} por mes</span>
+						{#if rol === 'representante'}
+							<span class="chip-sube gana">Tu comisión: {plata(o.comisionUsd)}</span>
+						{:else}
+							<span class="chip-sube">Los años acá siguen sumando para el final</span>
+						{/if}
+					</span>
+				{/snippet}
+			</Opcion>
 
-		<Opcion
-			grupo="renovacion"
-			valor={ESPERAR}
-			titulo="No firmar y salir libre"
-			detalle="La apuesta: si termina el contrato el pase no cuesta nada, así que muchos más clubes pueden ir a buscarlo y pagan más."
-			bind:elegido={renovacion}
-		>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube gana">Sueldos ~18% mejores y prima por firmar</span>
-					<span class="chip-sube pierde">El técnico lo hace jugar menos este año</span>
-					<span class="chip-sube pierde">Y jugar menos es crecer menos</span>
-				</span>
-			{/snippet}
-		</Opcion>
-	{/if}
+			<Opcion
+				grupo="renovacion"
+				valor={ESPERAR}
+				titulo="No firmar y salir libre"
+				detalle="La apuesta: si termina el contrato el pase no cuesta nada, así que muchos más clubes pueden ir a buscarlo y pagan más."
+				bind:elegido={renovacion}
+			>
+				{#snippet extra()}
+					<span class="sube">
+						<span class="chip-sube gana">Sueldos ~18% mejores y prima por firmar</span>
+						<span class="chip-sube pierde">El técnico lo hace jugar menos este año</span>
+						<span class="chip-sube pierde">Y jugar menos es crecer menos</span>
+					</span>
+				{/snippet}
+			</Opcion>
+		{/if}
+	</Paso>
 {/if}
 
 <!-- ---------- Cuando vence el contrato entre los dos ---------- -->
 {#if opciones.tratos}
-	<div class="tarjeta" data-tema="relacion">
-		<h3>La mesa</h3>
+	<Paso
+		titulo="La mesa: el contrato entre ustedes"
+		elegido={queTrato}
+		tema="relacion"
+		abierto={abierto === 'mesa'}
+	>
 		<p style="margin:0 0 .5rem">Se venció el contrato entre ustedes. Hay que firmar de nuevo.</p>
-		<p class="sutil" style="margin:0">
+		<p class="sutil" style="margin:0 0 1rem">
 			{#if rol === 'futbolista'}
 				Elegí <strong>hasta dónde estás dispuesto a llegar</strong>. Si él pide menos o lo mismo,
 				hay trato al número que pidió. Si pide más, no hay acuerdo y siguen con lo de antes un año
@@ -285,53 +351,76 @@
 				pasás, no hay acuerdo. Lo que podés pedir depende de tu prestigio y tu negociación.
 			{/if}
 		</p>
-	</div>
 
-	{#if opciones.consejo}
-		<div class="tarjeta consejo" data-tema="relacion">
-			<p style="margin:0">{opciones.consejo}</p>
-		</div>
-	{/if}
+		{#if opciones.consejo}
+			<div class="tarjeta consejo" data-tema="relacion">
+				<p style="margin:0">{opciones.consejo}</p>
+			</div>
+		{/if}
 
-	{#each opciones.tratos as t (t.id)}
-		<Opcion grupo="trato" valor={t.id} titulo={t.nombre} detalle={t.detalle} bind:elegido={acuerdo}>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube">{t.duracionTemporadas} temporadas</span>
-					{#if rol === 'representante'}
-						<span class="chip-sube gana">
-							Hoy serían {plata(
-								Math.round((estado.futbolista.contrato.salarioMensual * 12 * t.pctSalario) / 100)
-							)} por año
-						</span>
-					{:else}
-						<span class="chip-sube pierde">
-							Te cuesta {plata(
-								Math.round((estado.futbolista.contrato.salarioMensual * 12 * t.pctSalario) / 100)
-							)} por año
-						</span>
-					{/if}
-				</span>
-				<span class="acambio">{t.acambio}</span>
-			{/snippet}
-		</Opcion>
-	{/each}
+		{#each opciones.tratos as t (t.id)}
+			<Opcion
+				grupo="trato"
+				valor={t.id}
+				titulo={t.nombre}
+				detalle={t.detalle}
+				bind:elegido={acuerdo}
+			>
+				{#snippet extra()}
+					<span class="sube">
+						<span class="chip-sube">{t.duracionTemporadas} temporadas</span>
+						{#if rol === 'representante'}
+							<span class="chip-sube gana">
+								Hoy serían {plata(
+									Math.round((estado.futbolista.contrato.salarioMensual * 12 * t.pctSalario) / 100)
+								)} por año
+							</span>
+						{:else}
+							<span class="chip-sube pierde">
+								Te cuesta {plata(
+									Math.round((estado.futbolista.contrato.salarioMensual * 12 * t.pctSalario) / 100)
+								)} por año
+							</span>
+						{/if}
+					</span>
+					<span class="acambio">{t.acambio}</span>
+				{/snippet}
+			</Opcion>
+		{/each}
 
-	{#if rol === 'futbolista'}
-		<Opcion
-			grupo="trato"
-			valor={SIN_TRATO}
-			titulo="No firmar"
-			detalle="No te ata a nada. Siguen juntos un año más, por inercia."
-			bind:elegido={acuerdo}
-		/>
-	{/if}
+		{#if rol === 'futbolista'}
+			<Opcion
+				grupo="trato"
+				valor={SIN_TRATO}
+				titulo="No firmar"
+				detalle="No te ata a nada. Siguen juntos un año más, por inercia."
+				bind:elegido={acuerdo}
+			/>
+		{/if}
+	</Paso>
 {/if}
 
 <!-- ---------- Fase 1: pretemporada ---------- -->
+<!--
+	Qué entrena y con cuánta intensidad van juntos, y no separados como estaban.
+	Son una sola decisión: la intensidad no significa nada sin saber sobre qué se
+	aplica, y elegirlas en dos tarjetas distintas obligaba a subir y bajar para
+	comparar. Los atributos de hoy van adentro, que es donde se miran: al lado de
+	lo que se está por entrenar.
+-->
 {#if opciones.planes}
-	<div class="tarjeta" data-tema="cancha">
-		<h3>Qué entrenás</h3>
+	<Paso
+		titulo="Cómo entrenás la pretemporada"
+		elegido={comoEntrena}
+		tema="cancha"
+		abierto={abierto === 'entrenamiento'}
+	>
+		<AtributosLista atributos={estado.futbolista.atributos} destacados={queSube} />
+		<p class="sutil" style="margin:.6rem 0 1rem">
+			Lo verde es lo que va a subir con <strong>{subeDe(plan).toLowerCase()}</strong>.
+		</p>
+
+		<p class="subtitulo">Qué entrenás</p>
 		{#each opciones.planes as p (p.id)}
 			<Opcion
 				grupo="entrenamiento"
@@ -352,13 +441,9 @@
 				{/snippet}
 			</Opcion>
 		{/each}
-	</div>
 
-	<div class="tarjeta" data-tema="cancha">
-		<h3>Con cuánta intensidad</h3>
-		<p class="sutil" style="margin:-.35rem 0 .8rem">
-			Tenés {estado.futbolista.edad} años y {estado.futbolista.desgaste} de desgaste. Lo que ganás de
-			más lo paga el cuerpo, y después de los 30 esa cuenta deja de cerrar.
+		<p class="subtitulo">
+			Con cuánta intensidad · {estado.futbolista.edad} años, {estado.futbolista.desgaste} de desgaste
 		</p>
 		{#each opciones.intensidades ?? [] as i (i.id)}
 			<Opcion
@@ -378,46 +463,39 @@
 				{/snippet}
 			</Opcion>
 		{/each}
-	</div>
-
-	<div class="tarjeta" data-tema="cancha">
-		<h3>Cómo estás hoy</h3>
-		<p class="sutil" style="margin:-.35rem 0 .85rem">
-			Lo verde es lo que va a subir con <strong>{subeDe(plan).toLowerCase()}</strong>.
-		</p>
-		<AtributosLista atributos={estado.futbolista.atributos} destacados={queSube} />
-	</div>
+	</Paso>
 {/if}
 
 <!-- ---------- Fase 2: cómo va a jugar el año ---------- -->
 {#if opciones.objetivos}
-	<div class="tarjeta" data-tema="cancha">
-		<h3>Cómo vas a jugar el año</h3>
-		<p style="margin:0 0 .5rem">
-			Es la decisión que más mueve la temporada. Ninguna es mejor que otra: cada una sube una parte
-			y baja otra.
-		</p>
+	<Paso
+		titulo="Cómo vas a jugar el año"
+		elegido={queObjetivo}
+		tema="cancha"
+		abierto={abierto === 'objetivo'}
+		nota="Es la decisión que más mueve la temporada. Ninguna es mejor que otra: cada una sube una parte y baja otra."
+	>
 		{#if opciones.consejoDelObjetivo}
-			<p class="sutil" style="margin:0">{opciones.consejoDelObjetivo}</p>
+			<p class="sutil" style="margin:-.4rem 0 1rem">{opciones.consejoDelObjetivo}</p>
 		{/if}
-	</div>
 
-	{#each opciones.objetivos as o (o.id)}
-		<Opcion
-			grupo="objetivo"
-			valor={o.id}
-			titulo={o.nombre}
-			detalle={o.detalle}
-			bind:elegido={objetivo}
-		>
-			{#snippet extra()}
-				<span class="sube">
-					<span class="chip-sube gana">{o.sube}</span>
-					<span class="chip-sube pierde">{o.cuesta}</span>
-				</span>
-			{/snippet}
-		</Opcion>
-	{/each}
+		{#each opciones.objetivos as o (o.id)}
+			<Opcion
+				grupo="objetivo"
+				valor={o.id}
+				titulo={o.nombre}
+				detalle={o.detalle}
+				bind:elegido={objetivo}
+			>
+				{#snippet extra()}
+					<span class="sube">
+						<span class="chip-sube gana">{o.sube}</span>
+						<span class="chip-sube pierde">{o.cuesta}</span>
+					</span>
+				{/snippet}
+			</Opcion>
+		{/each}
+	</Paso>
 {/if}
 
 <!-- ---------- Fase 2: la rueda de ocasión ---------- -->
@@ -454,11 +532,13 @@
 
 <!-- ---------- Fases 1 y 2: la gestión del representante ---------- -->
 {#if opciones.gestiones}
-	<div class="tarjeta" data-tema="plata">
-		<h3>Qué hacés esta fase</h3>
-		<p class="sutil" style="margin:-.35rem 0 .8rem">
-			Una sola. Las probabilidades salen de tu negociación, tu scouting y tus contactos.
-		</p>
+	<Paso
+		titulo="Qué hacés esta fase"
+		elegido={queGestiona}
+		tema="plata"
+		abierto={abierto === 'gestion'}
+		nota="Una sola. Las probabilidades salen de tu negociación, tu scouting y tus contactos."
+	>
 		{#each opciones.gestiones as g (g.id)}
 			<Opcion
 				grupo="gestion"
@@ -469,62 +549,63 @@
 				bind:elegido={gestion}
 			/>
 		{/each}
-	</div>
+	</Paso>
 {/if}
 
 <!-- ---------- Fase 3: el mercado ---------- -->
 {#if opciones.ofertas}
-	<div class="tarjeta" data-tema="mercado">
-		<h3>El mercado</h3>
-		<p style="margin:0 0 .5rem">
+	<Paso
+		titulo="El mercado"
+		elegido={queDestino}
+		tema="mercado"
+		abierto={abierto === 'mercado'}
+		nota="El pase se hace solo si los dos eligen el mismo club. Si no coinciden, no hay pase y la confianza se paga. Hablalo antes de cerrar."
+	>
+		<p style="margin:-.4rem 0 1rem">
 			Hoy vale <strong>{plata(opciones.valorDeMercadoUsd ?? 0)}</strong>.
 		</p>
-		<p class="sutil" style="margin:0">
-			El pase se hace <strong>solo si los dos eligen el mismo club</strong>. Si no coinciden, no hay
-			pase y la confianza se paga. Hablalo antes de cerrar.
-		</p>
-	</div>
 
-	<Opcion
-		grupo="destino"
-		valor={QUEDARSE}
-		titulo="Quedarse"
-		detalle={`Sigue en ${contexto(estado.futbolista.contrato.clubId).club.nombre}, por ${estado.futbolista.contrato.temporadasRestantes} ${estado.futbolista.contrato.temporadasRestantes === 1 ? 'temporada' : 'temporadas'} más.`}
-		bind:elegido={destino}
-	/>
-
-	{#each opciones.ofertas as oferta (oferta.clubId)}
 		<Opcion
 			grupo="destino"
-			valor={oferta.clubId}
-			titulo={contexto(oferta.clubId).club.nombre}
-			detalle={`${contexto(oferta.clubId).liga.nombre} · ${contexto(oferta.clubId).pais.nombre}`}
+			valor={QUEDARSE}
+			titulo="Quedarse"
+			detalle={`Sigue en ${contexto(estado.futbolista.contrato.clubId).club.nombre}, por ${estado.futbolista.contrato.temporadasRestantes} ${estado.futbolista.contrato.temporadasRestantes === 1 ? 'temporada' : 'temporadas'} más.`}
 			bind:elegido={destino}
-		>
-			{#snippet extra()}
-				<span class="oferta">
-					<Escudo clubId={oferta.clubId} tamano={30} />
-					<span class="numeros">
-						<span><b>{plata(oferta.salarioMensual)}</b> por mes</span>
-						<span>{oferta.temporadas} temporadas</span>
-						{#if oferta.montoUsd > 0}
-							<span>Pase: {plata(oferta.montoUsd)}</span>
-						{:else}
-							<span>Llega libre, sin pase</span>
-						{/if}
-						{#if oferta.primaUsd > 0}
-							<span class="mio">Prima al firmar: {plata(oferta.primaUsd)}</span>
-						{/if}
-						{#if rol === 'representante'}
-							<span class="mio">Tu comisión: {plata(oferta.comisionUsd)}</span>
-						{/if}
-						<span class:mio={rol === 'futbolista'}>{comoJuega(oferta.brecha)}</span>
-						{#if oferta.tecnico}<span>Te dirige {oferta.tecnico}</span>{/if}
+		/>
+
+		{#each opciones.ofertas as oferta (oferta.clubId)}
+			<Opcion
+				grupo="destino"
+				valor={oferta.clubId}
+				titulo={contexto(oferta.clubId).club.nombre}
+				detalle={`${contexto(oferta.clubId).liga.nombre} · ${contexto(oferta.clubId).pais.nombre}`}
+				bind:elegido={destino}
+			>
+				{#snippet extra()}
+					<span class="oferta">
+						<Escudo clubId={oferta.clubId} tamano={30} />
+						<span class="numeros">
+							<span><b>{plata(oferta.salarioMensual)}</b> por mes</span>
+							<span>{oferta.temporadas} temporadas</span>
+							{#if oferta.montoUsd > 0}
+								<span>Pase: {plata(oferta.montoUsd)}</span>
+							{:else}
+								<span>Llega libre, sin pase</span>
+							{/if}
+							{#if oferta.primaUsd > 0}
+								<span class="mio">Prima al firmar: {plata(oferta.primaUsd)}</span>
+							{/if}
+							{#if rol === 'representante'}
+								<span class="mio">Tu comisión: {plata(oferta.comisionUsd)}</span>
+							{/if}
+							<span class:mio={rol === 'futbolista'}>{comoJuega(oferta.brecha)}</span>
+							{#if oferta.tecnico}<span>Te dirige {oferta.tecnico}</span>{/if}
+						</span>
 					</span>
-				</span>
-			{/snippet}
-		</Opcion>
-	{/each}
+				{/snippet}
+			</Opcion>
+		{/each}
+	</Paso>
 {/if}
 
 <style>
