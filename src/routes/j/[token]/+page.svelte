@@ -445,7 +445,10 @@
 					no al costado: son las dos cosas que se leen, no las que se consultan
 					de reojo mientras se decide.
 				-->
-				<Trayectoria historial={vista.opciones.historial ?? []} />
+				<Trayectoria
+					historial={vista.opciones.historial ?? []}
+					seleccion={vista.opciones.seleccionCarrera ?? { partidos: 0, goles: 0, mundialesGanados: 0 }}
+				/>
 
 				<!--
 					Y por dónde pasó, que el gráfico no cuenta: el gráfico dice qué tan

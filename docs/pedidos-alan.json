@@ -92,16 +92,16 @@
       "numero": 12,
       "area": "Trayectoria",
       "pedido": "Hacer algo similar a la tabla de trayectoria, desplegable",
-      "estado": "Pendiente",
-      "observaciones": "Una fila por edad: edad, club, OVR, PJ, goles, asistencias, iconos de títulos, y la fila de selección abajo de todo.",
+      "estado": "Implementado",
+      "observaciones": "Nueva tarjeta desplegable, aparte del gráfico: una fila por temporada con edad, club (con escudo), OVR, PJ, goles, asistencias y los títulos de ese año (trofeo dibujado, no emoji). Abajo de todo, aparte y con línea propia, la fila de Selección con los partidos y goles totales de la selección y un trofeo por Mundial ganado: no es una temporada de club, así que no se mezcla con las de arriba.",
       "prioridad": 4
     },
     {
       "numero": 13,
       "area": "Trofeos",
       "pedido": "Vitrina de trofeos que se pueda acceder y ver miniatura de trofeos",
-      "estado": "Pendiente",
-      "observaciones": "Los trofeos se dibujan (SVG propio), no se copian de ningún lado.",
+      "estado": "Implementado",
+      "observaciones": "Los trofeos ahora se dibujan (Trofeo.svelte, SVG propio: copa, asas y base con formas simples, sin copiar nada de ningún lado) en vez del emoji 🏆 de antes. Y la vitrina dejó de vivir adentro del gráfico: es su propia tarjeta desplegable, accesible sin tener que abrir el gráfico primero.",
       "prioridad": 4
     },
     {
@@ -140,8 +140,8 @@
       "numero": 18,
       "area": "Pretemporada",
       "pedido": "Sacar 'cómo vas a jugar el año' y que una de las 3 decisiones de la temporada lo defina, según el azar",
-      "estado": "Pendiente",
-      "observaciones": "Deja de ser una decisión explícita y pasa a ser consecuencia de un momento.",
+      "estado": "Implementado",
+      "observaciones": "Ya no se elige: sale sorteado al cerrar la pretemporada, pesado por la intensidad elegida (\"suave\" tira mucho más seguido a cuidarse; \"a matar\", a ir al gol o ganarse al técnico). Se anuncia en el diario y se ve, ya cerrado, durante la temporada.",
       "prioridad": 2
     },
     {

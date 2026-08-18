@@ -115,7 +115,15 @@
 {/if}
 
 <!-- La carrera entera dibujada: veinte temporadas en un solo gráfico. -->
-<Trayectoria historial={estado.historial ?? []} />
+<Trayectoria
+	historial={estado.historial ?? []}
+	seleccion={{
+		partidos: estado.seleccion?.partidos ?? 0,
+		goles: estado.seleccion?.goles ?? 0,
+		mundialesGanados: (estado.seleccion?.mundiales ?? []).filter((m) => m.resultado === 'campeon')
+			.length
+	}}
+/>
 
 {#if retiro.duelo}
 	{@const d = retiro.duelo}

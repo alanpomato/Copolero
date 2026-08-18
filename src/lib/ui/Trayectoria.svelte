@@ -2,6 +2,7 @@
 	import { club } from '../../../content/mundo';
 	import type { HitoTemporada } from '$lib/engine/tipos';
 	import Escudo from './Escudo.svelte';
+	import Trofeo from './Trofeo.svelte';
 	import { escudoDe } from './escudos';
 
 	/**
@@ -14,8 +15,23 @@
 	 * Es la única pantalla donde se ve la forma de la carrera entera —el pico, la
 	 * meseta, la caída— y es lo que hace que uno quiera una temporada más para
 	 * ver hasta dónde llega la línea. Se toca una barra y abajo aparece ese año.
+	 *
+	 * Alan pidió dos cosas más, mirando esta misma pantalla: "algo similar a la
+	 * tabla de trayectoria, desplegable" —temporada por temporada, en números, no
+	 * solo en dibujo— y una vitrina de trofeos "que se pueda acceder", con
+	 * miniaturas de verdad y no el emoji de siempre. Las dos van acá abajo, cada
+	 * una en su propio desplegable: la tabla es otra manera de leer los mismos
+	 * datos del gráfico, y la vitrina ya no depende de abrir el gráfico para
+	 * verse.
 	 */
-	let { historial }: { historial: HitoTemporada[] } = $props();
+	let {
+		historial,
+		seleccion = { partidos: 0, goles: 0, mundialesGanados: 0 }
+	}: {
+		historial: HitoTemporada[];
+		/** Lo que hizo con la selección, aparte: no es una temporada de club. */
+		seleccion?: { partidos: number; goles: number; mundialesGanados: number };
+	} = $props();
 
 	/** Cuál está seleccionada. Por defecto, la última: la que acaba de pasar. */
 	let elegida = $state<number | null>(null);
@@ -268,40 +284,121 @@
 				{/if}
 			</div>
 		{/if}
-
-		{#if vitrina.length > 0 || mundialesJugados > 0}
-			<div class="vitrina">
-				<h4>La vitrina</h4>
-				<ul>
-					{#each vitrina as [clubId, cuantos] (clubId)}
-						<li>
-							<Escudo {clubId} tamano={22} />
-							<span>{club(clubId).nombre}</span>
-							<b>{cuantos}</b>
-						</li>
-					{/each}
-					{#if mundialesGanados > 0}
-						<li class="mundo">
-							<span class="icono">🌍</span>
-							<span>Campeón del mundo</span>
-							<b>{mundialesGanados}</b>
-						</li>
-					{:else if mundialesJugados > 0}
-						<li class="mundo">
-							<span class="icono">🌍</span>
-							<span>Mundiales jugados</span>
-							<b>{mundialesJugados}</b>
-						</li>
-					{/if}
-				</ul>
-			</div>
-		{/if}
 	</details>
+
+	<!--
+		La tabla, desplegable y aparte del gráfico: mismos datos, leídos temporada
+		por temporada en vez de en una curva. La fila de la selección va última y
+		separada —los mundiales no son una temporada de club, son aparte— con una
+		línea propia arriba para que no se confunda con una fila más.
+	-->
+	<details class="tarjeta laTabla" data-tema="historia">
+		<summary>
+			<span class="que">
+				<b>La trayectoria, en tabla</b>
+				<i>Temporada por temporada, con los números</i>
+			</span>
+			<span class="ver">Ver</span>
+		</summary>
+
+		<div class="tablaScroll">
+			<table>
+				<thead>
+					<tr>
+						<th>Edad</th>
+						<th>Club</th>
+						<th>OVR</th>
+						<th>PJ</th>
+						<th>Goles</th>
+						<th>Asist.</th>
+						<th>Títulos</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each historial as h (h.temporada)}
+						<tr class:elegida={hito?.temporada === h.temporada}>
+							<td>{h.edad}</td>
+							<td>
+								<span class="club">
+									<Escudo clubId={h.clubId} tamano={18} />
+									{club(h.clubId).nombre}
+								</span>
+							</td>
+							<td>{h.media}</td>
+							<td>{h.partidos}</td>
+							<td>{h.goles}</td>
+							<td>{h.asistencias}</td>
+							<td>
+								{#if h.titulo}<Trofeo tamano={16} tono="liga" />{/if}
+								{#if h.mundial === 'campeon'}<Trofeo tamano={16} tono="mundo" />{/if}
+							</td>
+						</tr>
+					{/each}
+					<tr class="seleccion">
+						<td colspan="2">Selección</td>
+						<td>—</td>
+						<td>{seleccion.partidos}</td>
+						<td>{seleccion.goles}</td>
+						<td>—</td>
+						<td>
+							{#each Array(seleccion.mundialesGanados) as _}<Trofeo tamano={16} tono="mundo" />{/each}
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</details>
+
+	<!--
+		La vitrina, aparte del gráfico y de la tabla: no hace falta abrir ninguno
+		de los dos para ver qué se ganó. Ver `Trofeo.svelte`.
+	-->
+	{#if vitrina.length > 0 || mundialesJugados > 0}
+		<details class="tarjeta laVitrina" data-tema="historia">
+			<summary>
+				<span class="que">
+					<b>La vitrina</b>
+					<i>Lo que se ganó, con el club y con la selección</i>
+				</span>
+				<span class="ver">Ver</span>
+			</summary>
+
+			<ul>
+				{#each vitrina as [clubId, cuantos] (clubId)}
+					<li>
+						<Escudo {clubId} tamano={22} />
+						<span>{club(clubId).nombre}</span>
+						<Trofeo tamano={18} tono="liga" />
+						<b>{cuantos}</b>
+					</li>
+				{/each}
+				{#if mundialesGanados > 0}
+					<li class="mundo">
+						<Trofeo tamano={22} tono="mundo" />
+						<span>Campeón del mundo</span>
+						<b>{mundialesGanados}</b>
+					</li>
+				{:else if mundialesJugados > 0}
+					<li class="mundo">
+						<Trofeo tamano={22} tono="mundo" />
+						<span>Mundiales jugados</span>
+						<b>{mundialesJugados}</b>
+					</li>
+				{/if}
+			</ul>
+		</details>
+	{/if}
 {/if}
 
 <style>
-	/* Plegado: el título, un resumen de una línea, y el gráfico adentro. */
-	.laCarrera > summary {
+	/*
+	 * Plegado: el título, un resumen de una línea, y el contenido adentro. Las
+	 * tres tarjetas de esta pantalla —el gráfico, la tabla, la vitrina— comparten
+	 * el mismo encabezado.
+	 */
+	.laCarrera > summary,
+	.laTabla > summary,
+	.laVitrina > summary {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -309,20 +406,28 @@
 		list-style: none;
 		cursor: pointer;
 	}
-	.laCarrera > summary::-webkit-details-marker {
+	.laCarrera > summary::-webkit-details-marker,
+	.laTabla > summary::-webkit-details-marker,
+	.laVitrina > summary::-webkit-details-marker {
 		display: none;
 	}
-	.laCarrera .que b {
+	.laCarrera .que b,
+	.laTabla .que b,
+	.laVitrina .que b {
 		display: block;
 		font-size: 0.95rem;
 		line-height: 1.25;
 	}
-	.laCarrera .que i {
+	.laCarrera .que i,
+	.laTabla .que i,
+	.laVitrina .que i {
 		font-style: normal;
 		font-size: 0.8rem;
 		color: var(--tenue);
 	}
-	.laCarrera .ver {
+	.laCarrera .ver,
+	.laTabla .ver,
+	.laVitrina .ver {
 		flex: none;
 		font-size: 0.72rem;
 		font-weight: 800;
@@ -392,45 +497,76 @@
 		margin: 0.75rem 0 0;
 	}
 
-	.vitrina {
-		margin-top: 0.9rem;
-		padding-top: 0.8rem;
-		border-top: 1px solid var(--borde);
-	}
-	.vitrina h4 {
-		margin: 0 0 0.5rem;
-		font-size: 0.74rem;
-		text-transform: uppercase;
-		letter-spacing: 0.09em;
-		color: var(--tenue);
-	}
-	.vitrina ul {
+	.laVitrina ul {
 		list-style: none;
-		margin: 0;
+		margin: 0.9rem 0 0;
 		padding: 0;
 		display: grid;
 		gap: 0.35rem;
 	}
-	.vitrina li {
+	.laVitrina li {
 		display: flex;
 		align-items: center;
 		gap: 0.55rem;
 		font-size: 0.88rem;
 	}
-	.vitrina li span:not(.icono) {
+	.laVitrina li span {
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.vitrina .icono {
-		width: 22px;
-		text-align: center;
-		font-size: 1rem;
-	}
-	.vitrina b {
+	.laVitrina b {
 		font-variant-numeric: tabular-nums;
 		color: var(--plata);
+	}
+
+	/* ---------- La tabla ---------- */
+	.tablaScroll {
+		margin-top: 0.9rem;
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.84rem;
+		white-space: nowrap;
+	}
+	th,
+	td {
+		padding: 0.45rem 0.6rem;
+		text-align: right;
+		border-bottom: 1px solid var(--borde);
+	}
+	th:first-child,
+	td:first-child,
+	th:nth-child(2),
+	td:nth-child(2) {
+		text-align: left;
+	}
+	th {
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--tenue);
+	}
+	td .club {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	tbody tr.elegida {
+		background: rgba(255, 255, 255, 0.05);
+	}
+	tr.seleccion td {
+		border-top: 2px solid var(--borde);
+		border-bottom: none;
+		font-weight: 700;
+		color: var(--tenue);
+	}
+	tr.seleccion td:first-child {
+		color: var(--texto);
 	}
 </style>

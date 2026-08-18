@@ -162,3 +162,26 @@ describe('los clubes que la pantalla nombra', () => {
 		}
 	});
 });
+
+describe('la carrera con la selección, para la tabla de la trayectoria', () => {
+	it('sin nada jugado con la selección, va en cero y no en undefined', () => {
+		const e = unPibe('centrodelantero', 'sin-seleccion');
+		const opciones = opcionesDeFase(e, 'futbolista', 'sin-seleccion');
+		expect(opciones.seleccionCarrera).toEqual({ partidos: 0, goles: 0, mundialesGanados: 0 });
+	});
+
+	it('lo que jugó y lo que ganó con la selección, tal cual está en el estado', () => {
+		const e = unPibe('centrodelantero', 'con-seleccion');
+		e.seleccion = {
+			debuto: true,
+			partidos: 40,
+			goles: 12,
+			mundiales: [
+				{ anio: 2030, resultado: 'campeon', partidos: 7, goles: 3 },
+				{ anio: 2034, resultado: 'cuartos', partidos: 4, goles: 1 }
+			]
+		};
+		const opciones = opcionesDeFase(e, 'futbolista', 'con-seleccion');
+		expect(opciones.seleccionCarrera).toEqual({ partidos: 40, goles: 12, mundialesGanados: 1 });
+	});
+});

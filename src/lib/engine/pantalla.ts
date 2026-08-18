@@ -236,6 +236,8 @@ export type OpcionesDeFase = {
 	}[];
 	/** La carrera entera, para dibujarla. */
 	historial?: HitoTemporada[];
+	/** La selección, resumida: para la fila de abajo de todo en la tabla. */
+	seleccionCarrera?: { partidos: number; goles: number; mundialesGanados: number };
 	/** El Mundial que viene y qué tan cerca está de jugarlo. */
 	mundial?: {
 		anio: number;
@@ -418,6 +420,16 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 	// La carrera dibujada va siempre: es donde se ve si está subiendo o bajando,
 	// y una curva de doce temporadas es lo que hace que uno quiera la trece.
 	opciones.historial = estado.historial ?? [];
+
+	// La selección, resumida: para la fila de abajo de todo en la tabla de la
+	// trayectoria. No es una temporada más —los mundiales llegan cada cuatro
+	// años, no todos— así que no entra como fila del club, entra aparte.
+	opciones.seleccionCarrera = {
+		partidos: estado.seleccion?.partidos ?? 0,
+		goles: estado.seleccion?.goles ?? 0,
+		mundialesGanados: (estado.seleccion?.mundiales ?? []).filter((m) => m.resultado === 'campeon')
+			.length
+	};
 
 	// La tapa del año que cerró, solo en pretemporada. Es lo primero que se ve
 	// al abrir la temporada nueva y lo único que convierte "nota 8.1" en algo
