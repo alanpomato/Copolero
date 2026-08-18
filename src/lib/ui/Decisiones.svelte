@@ -19,6 +19,7 @@
 	import Momento from './Momento.svelte';
 	import Opcion from './Opcion.svelte';
 	import Paso from './Paso.svelte';
+	import Velocimetro from './Velocimetro.svelte';
 	import { media } from '$lib/engine/estado';
 	import { CARISMA_POR_DEFECTO } from '$lib/engine/momentos';
 
@@ -696,6 +697,17 @@
 		<p class="subtitulo">
 			Con cuánta intensidad · {estado.futbolista.edad} años, {estado.futbolista.desgaste} de desgaste
 		</p>
+		<!--
+			El velocímetro, arriba de las tres tarjetas.
+
+			"Poner un velocímetro, aguja sobre arco de colores, como el que
+			mandaste", pidió Alan. Las tarjetas de abajo ya dicen en texto qué hace
+			cada intensidad; esto es para verlo de un vistazo, sin leer nada, antes
+			de leer nada.
+		-->
+		{#if opciones.intensidades}
+			<Velocimetro intensidades={opciones.intensidades} elegido={intensidad} />
+		{/if}
 		<!-- También tres, y también en fila: apiladas quedaban dos arriba y una
 		     colgando sola, que es peor que las tres juntas. -->
 		<div class="enFila">
