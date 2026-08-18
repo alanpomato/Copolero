@@ -127,6 +127,10 @@ export const actions: Actions = {
 				.map((v) => v.trim().slice(0, 60))
 				.filter((v) => v.length > 0)
 				.slice(0, cuantas);
+			// Intentar renegociar antes de tiempo con el club de hoy. Ver `renovacion.ts`.
+			if (vista.opciones.renegociarTemprano) {
+				decision.renegociar = campo(datos, 'renegociar') === 'si';
+			}
 		}
 		// Las dos mesas las juegan los dos: la de ellos y la del club.
 		if (vista.opciones.tratos) {

@@ -7,9 +7,15 @@ import { opcionesDeFase } from './pantalla';
 import {
 	ESPERAR,
 	FIRMAR,
+	TEMPORADAS_DE_SOBRA_PARA_RENEGOCIAR,
+	anosEnElClub,
+	chanceDeRenegociarTemprano,
 	estaLibre,
 	ofertaDeRenovacion,
+	rendimientoRecienteEnElClub,
+	resolverRenegociarTemprano,
 	resolverRenovacion,
+	tocaOfrecerRenegociarTemprano,
 	tocaRenovar
 } from './renovacion';
 import { rngPara } from './rng';
@@ -292,3 +298,198 @@ describe('en una partida de verdad', () => {
 function promedio(numeros: number[]): number {
 	return numeros.reduce((a, b) => a + b, 0) / Math.max(1, numeros.length);
 }
+
+/** Una fila de historial cualquiera, para armar el pasado sin escribir carrera. */
+function unaFila(clubId: string, nota: number) {
+	return {
+		temporada: 1,
+		anio: 2026,
+		edad: 20,
+		clubId,
+		media: 60,
+		nota,
+		partidos: 30,
+		goles: 5,
+		asistencias: 5,
+		fama: 40,
+		valorUsd: 1_000_000,
+		campeon: false,
+		titulo: false,
+		lesionado: false,
+		mundial: null,
+		seFue: false
+	};
+}
+
+describe('renegociar antes de tiempo, como acción del repre en el mercado', () => {
+	it('solo con contrato de sobra: si quedara poco, ya está la mesa de siempre', () => {
+		const e = unJugador();
+		e.futbolista.contrato.temporadasRestantes = TEMPORADAS_DE_SOBRA_PARA_RENEGOCIAR - 1;
+		expect(tocaOfrecerRenegociarTemprano(e)).toBe(false);
+
+		e.futbolista.contrato.temporadasRestantes = TEMPORADAS_DE_SOBRA_PARA_RENEGOCIAR;
+		expect(tocaOfrecerRenegociarTemprano(e)).toBe(true);
+	});
+
+	it('cuenta las temporadas seguidas en el club de hoy, y un pase corta la cuenta', () => {
+		const e = unJugador('ar-huracan');
+		e.historial = [
+			unaFila('ar2-moron', 6),
+			unaFila('ar-huracan', 7),
+			unaFila('ar-huracan', 7),
+			unaFila('ar-huracan', 8)
+		];
+		expect(anosEnElClub(e)).toBe(3);
+	});
+
+	it('sin historial en el club, ni una temporada', () => {
+		const e = unJugador();
+		e.historial = [];
+		expect(anosEnElClub(e)).toBe(0);
+	});
+
+	it('el rendimiento reciente mira la nota de verdad, no la media de hoy', () => {
+		const e = unJugador('ar-huracan');
+		e.historial = [
+			unaFila('ar-huracan', 5),
+			unaFila('ar-huracan', 8),
+			unaFila('ar-huracan', 9),
+			unaFila('ar-huracan', 8)
+		];
+		// Las últimas tres: 8, 9, 8.
+		expect(rendimientoRecienteEnElClub(e)).toBeCloseTo((8 + 9 + 8) / 3, 5);
+	});
+
+	it('sin historial, un rendimiento neutro y no un cero que hunda la cuenta', () => {
+		const e = unJugador();
+		e.historial = [];
+		expect(rendimientoRecienteEnElClub(e)).toBe(6);
+	});
+
+	it('un jugador mejor, con más años y mejor rendimiento, tiene más chance', () => {
+		const flojo = unJugador();
+		flojo.futbolista.contrato.temporadasRestantes = 3;
+		flojo.historial = [unaFila(flojo.futbolista.contrato.clubId, 5)];
+
+		const bueno = unJugador();
+		bueno.futbolista.contrato.temporadasRestantes = 3;
+		for (const k of Object.keys(bueno.futbolista.atributos)) {
+			(bueno.futbolista.atributos as Record<string, number>)[k] = 85;
+		}
+		bueno.historial = [
+			unaFila(bueno.futbolista.contrato.clubId, 8),
+			unaFila(bueno.futbolista.contrato.clubId, 8),
+			unaFila(bueno.futbolista.contrato.clubId, 9)
+		];
+
+		expect(chanceDeRenegociarTemprano(bueno)).toBeGreaterThan(chanceDeRenegociarTemprano(flojo));
+	});
+
+	it('y un representante que negocia mejor también empuja la chance', () => {
+		const e1 = unJugador();
+		e1.futbolista.contrato.temporadasRestantes = 3;
+		const e2 = unJugador();
+		e2.futbolista.contrato.temporadasRestantes = 3;
+		e2.representante.atributos.negociacion = 90;
+		e2.representante.atributos.contactos = 90;
+		e2.representante.prestigio = 80;
+
+		expect(chanceDeRenegociarTemprano(e2)).toBeGreaterThan(chanceDeRenegociarTemprano(e1));
+	});
+
+	it('no se ofrece nada si no toca: no muta y no pasa nada', () => {
+		const e = unJugador();
+		e.futbolista.contrato.temporadasRestantes = 1;
+		const salario = e.futbolista.contrato.salarioMensual;
+		const log: EntradaLog[] = [];
+
+		resolverRenegociarTemprano(e, 'renov', log);
+
+		expect(e.futbolista.contrato.salarioMensual).toBe(salario);
+		expect(log).toEqual([]);
+	});
+
+	it('si sale bien, mejora el sueldo y suma temporadas, y el repre cobra su parte', () => {
+		const e = unJugador();
+		e.futbolista.contrato.temporadasRestantes = 4;
+		for (const k of Object.keys(e.futbolista.atributos)) {
+			(e.futbolista.atributos as Record<string, number>)[k] = 88;
+		}
+		e.representante.atributos.negociacion = 95;
+		e.representante.atributos.contactos = 90;
+		e.representante.prestigio = 85;
+		e.historial = [
+			unaFila(e.futbolista.contrato.clubId, 9),
+			unaFila(e.futbolista.contrato.clubId, 9),
+			unaFila(e.futbolista.contrato.clubId, 9)
+		];
+
+		let saliobien = false;
+		for (const semilla of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+			const copia = structuredClone(e);
+			const antes = copia.futbolista.contrato.salarioMensual;
+			const antesTemporadas = copia.futbolista.contrato.temporadasRestantes;
+			const antesPlata = copia.representante.dineroUsd;
+			const log: EntradaLog[] = [];
+
+			resolverRenegociarTemprano(copia, semilla, log);
+
+			if (copia.futbolista.contrato.salarioMensual > antes) {
+				saliobien = true;
+				expect(copia.futbolista.contrato.temporadasRestantes).toBeGreaterThan(antesTemporadas);
+				expect(copia.representante.dineroUsd).toBeGreaterThan(antesPlata);
+				expect(log.some((l) => l.tipo === 'contrato' && l.visiblePara === 'ambos')).toBe(true);
+			}
+		}
+		expect(saliobien).toBe(true);
+	});
+
+	it('si sale mal, no toca el contrato y el aviso es solo para el repre', () => {
+		const e = unJugador();
+		e.futbolista.contrato.temporadasRestantes = 3;
+		e.representante.atributos.negociacion = 5;
+		e.representante.atributos.contactos = 5;
+		e.representante.prestigio = 5;
+		e.historial = [unaFila(e.futbolista.contrato.clubId, 3)];
+
+		let salioMal = false;
+		for (const semilla of ['a', 'b', 'c', 'd', 'e', 'f']) {
+			const copia = structuredClone(e);
+			const antes = copia.futbolista.contrato.salarioMensual;
+			const log: EntradaLog[] = [];
+
+			resolverRenegociarTemprano(copia, semilla, log);
+
+			if (copia.futbolista.contrato.salarioMensual === antes) {
+				salioMal = true;
+				expect(log.every((l) => l.visiblePara === 'representante')).toBe(true);
+			}
+		}
+		expect(salioMal).toBe(true);
+	});
+
+	it('es una acción del repre en el mercado: se juega junto con el filtro de cartas', () => {
+		const e = unJugador();
+		e.fase = 3;
+		e.futbolista.contrato.temporadasRestantes = 5;
+		e.futbolista.fama = 60;
+		for (const k of Object.keys(e.futbolista.atributos)) {
+			(e.futbolista.atributos as Record<string, number>)[k] = 70;
+		}
+		e.representante.atributos.negociacion = 90;
+		e.representante.atributos.contactos = 90;
+		e.representante.prestigio = 90;
+		e.historial = [unaFila(e.futbolista.contrato.clubId, 9)];
+
+		const antes = e.futbolista.contrato.salarioMensual;
+		const despues = resolverFase(
+			e,
+			[{ rol: 'futbolista', nota: '' }, { rol: 'representante', nota: '', filtradas: [], renegociar: true }],
+			'renegociando'
+		).estado;
+
+		// No hace falta que salga bien para que el mercado siga funcionando.
+		expect(despues.fase).toBe(3);
+		expect(despues.futbolista.contrato.salarioMensual).toBeGreaterThanOrEqual(antes);
+	});
+});

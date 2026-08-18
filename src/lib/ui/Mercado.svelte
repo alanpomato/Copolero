@@ -26,7 +26,8 @@
 		estado,
 		rol,
 		filtradas = $bindable([]),
-		destino = $bindable(QUEDARSE)
+		destino = $bindable(QUEDARSE),
+		renegociar = $bindable(false)
 	}: {
 		opciones: OpcionesDeFase;
 		estado: Estado;
@@ -35,6 +36,8 @@
 		filtradas?: string[];
 		/** Futbolista: a dónde va. */
 		destino?: string;
+		/** Representante: si intenta renegociar antes de tiempo con el club de hoy. */
+		renegociar?: boolean;
 	} = $props();
 
 	const mercado = $derived(opciones.mercado);
@@ -87,6 +90,32 @@
 					Las que prosperen son las únicas que él va a poder elegir. Las que no, no existieron.
 				</p>
 			</header>
+
+			{#if opciones.renegociarTemprano}
+				{@const rt = opciones.renegociarTemprano}
+				<label class="carta renegociar" class:elegida={renegociar}>
+					<input type="checkbox" name="renegociar" value="si" bind:checked={renegociar} />
+					<span class="quien">
+						<Escudo clubId={estado.futbolista.contrato.clubId} tamano={34} />
+						<span class="nombre">
+							<b>Renegociar con {clubActual}</b>
+							<i
+								>{rt.anosEnElClub} {rt.anosEnElClub === 1 ? 'temporada' : 'temporadas'} ahí, todavía
+								con contrato</i
+							>
+						</span>
+					</span>
+
+					<Reloj probabilidad={rt.chance} tamano={78} />
+
+					<span class="numeros">
+						<span>Hoy cobra <b>{plata(rt.salarioMensual)}</b> por mes</span>
+						<span>Es aparte de las {cuantasPuede} de arriba: no te resta ninguna.</span>
+					</span>
+
+					<span class="marca">{renegociar ? 'La intentás' : 'Intentarla'}</span>
+				</label>
+			{/if}
 
 			<div class="cartas">
 				{#each opciones.cartas as carta (carta.clubId)}
@@ -356,6 +385,11 @@
 	}
 	.carta :global(svg.reloj) {
 		grid-area: reloj;
+	}
+
+	/* Va suelta, arriba de la grilla de las seis: no es una más de ellas. */
+	.carta.renegociar {
+		margin: 0.9rem 1rem 0;
 	}
 
 	.carta.elegida,

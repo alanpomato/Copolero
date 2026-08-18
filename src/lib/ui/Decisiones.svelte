@@ -51,6 +51,8 @@
 	let destino = $state(QUEDARSE);
 	/** Representante, primer tiempo del mercado: las que deja pasar. Ver `cartas.ts`. */
 	let filtradas = $state<string[]>([]);
+	/** Representante, primer tiempo del mercado: intentar renegociar antes de tiempo. */
+	let renegociar = $state(false);
 	let acuerdo = $state('estandar');
 	let renovacion = $state(FIRMAR);
 	let compras = $state<string[]>([]);
@@ -985,7 +987,7 @@
 	distinto —o esperando—. Eso no entra en un desplegable con un título y un
 	elegido, así que tiene su propia caja. Ver `Mercado.svelte` y `cartas.ts`.
 -->
-<Mercado {opciones} {estado} {rol} bind:filtradas bind:destino />
+<Mercado {opciones} {estado} {rol} bind:filtradas bind:destino bind:renegociar />
 
 <style>
 	/*

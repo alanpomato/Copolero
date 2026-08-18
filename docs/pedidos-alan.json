@@ -220,8 +220,8 @@
       "numero": 28,
       "area": "Repre",
       "pedido": "Renegociar y tratar de renovar con el club como acción del repre en el mercado",
-      "estado": "Pendiente",
-      "observaciones": "La probabilidad tiene que salir de la media del jugador, de cuántas temporadas lleva en el club, de si rindió (no sólo la media) y de las stats del repre.",
+      "estado": "Implementado",
+      "observaciones": "Nueva: en cualquier mercado con 2+ temporadas de contrato (con 1 o menos ya está la mesa de siempre), el repre puede tirar \"Renegociar con [club]\" en vez de solo filtrar cartas. La chance sale de la media, de cuántas temporadas seguidas lleva en el club, del promedio de nota de los últimos 3 años ahí (no la media de hoy) y de negociación/contactos/prestigio del repre. Si sale bien: mejora el sueldo, suma 1-2 temporadas, el repre cobra comisión. Si sale mal: sólo se entera él, no pasa nada más.",
       "prioridad": 3
     },
     {

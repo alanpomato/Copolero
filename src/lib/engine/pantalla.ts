@@ -36,8 +36,11 @@ import {
 } from './representacion';
 import { portadaDe, type Portada } from './portada';
 import {
+	anosEnElClub,
+	chanceDeRenegociarTemprano,
 	comoLlegaAlMercado,
 	ofertaDeRenovacion,
+	tocaOfrecerRenegociarTemprano,
 	tocaRenovar,
 	type OfertaDeRenovacion
 } from './renovacion';
@@ -139,6 +142,16 @@ export type OpcionesDeFase = {
 	cuantasDejaPasar?: number;
 	/** La calificación con la que se mide contra la fama de cada club. */
 	loQueValenJuntos?: number;
+	/**
+	 * Representante, primer tiempo del mercado: intentar renegociar antes de
+	 * tiempo con el club de hoy, en vez de esperar a que se lo pidan. Ver
+	 * `renovacion.ts`.
+	 */
+	renegociarTemprano?: {
+		chance: number;
+		anosEnElClub: number;
+		salarioMensual: number;
+	};
 	/**
 	 * Representante, segundo tiempo del mercado: qué pasó con las que filtró.
 	 *
@@ -463,6 +476,16 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 				opciones.cartas = cartasDelMercado(enElMercado, semilla);
 				opciones.cuantasDejaPasar = CARTAS_QUE_DEJA_PASAR;
 				opciones.loQueValenJuntos = loQueValenJuntos(enElMercado);
+				// Con contrato de sobra, y no cuando ya toca la mesa de siempre: ver
+				// `tocaOfrecerRenegociarTemprano`. Sale del estado real, no de la copia
+				// ya descontada: es la misma cuenta que hace `resolverRenegociarTemprano`.
+				if (tocaOfrecerRenegociarTemprano(estado)) {
+					opciones.renegociarTemprano = {
+						chance: chanceDeRenegociarTemprano(estado),
+						anosEnElClub: anosEnElClub(estado),
+						salarioMensual: estado.futbolista.contrato.salarioMensual
+					};
+				}
 			} else if (paso === 'eleccion') {
 				// Ya filtró y ya se jugó cada probabilidad: esto es leer el resultado,
 				// no volver a tirar. Mientras el futbolista elige, él mira con qué cara

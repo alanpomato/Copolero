@@ -293,3 +293,165 @@ export function contratoDeUltimoRecurso(
 export function primaDeFirmaLibre(valorDeMercadoUsd: number): number {
 	return Math.round((valorDeMercadoUsd * 0.22) / 10_000) * 10_000;
 }
+
+/**
+ * Renegociar temprano, como acción del representante en el mercado.
+ *
+ * Alan lo pidió: "renegociar y tratar de renovar con el club como acción del
+ * repre en el mercado". La mesa de arriba solo se sienta cuando el contrato
+ * está por vencerse —le queda una temporada o menos—; hasta ahí, el
+ * representante no tiene nada que hacer con el contrato del club, aunque
+ * lleve años ahí y le esté yendo bien. Esto es lo que le falta: en cualquier
+ * mercado con contrato de sobra, puede intentar torcerlo antes de que haga
+ * falta, apostando su chance del año en vez de filtrar una carta más.
+ *
+ * La probabilidad, tal cual la pidió, sale de cuatro cosas: la media del
+ * jugador, cuántas temporadas seguidas lleva en el club, cómo rindió
+ * jugando —no solo la media de hoy— y las tres del representante.
+ */
+
+/**
+ * Con contrato de sobra para esto: si quedara una temporada o menos, ya está
+ * la mesa de siempre (`tocaRenovar`), y ofrecer las dos juntas sería la misma
+ * decisión dos veces.
+ */
+export const TEMPORADAS_DE_SOBRA_PARA_RENEGOCIAR = 2;
+
+export function tocaOfrecerRenegociarTemprano(estado: Estado): boolean {
+	return (
+		!estado.carreraTerminada &&
+		estado.futbolista.contrato.temporadasRestantes >= TEMPORADAS_DE_SOBRA_PARA_RENEGOCIAR
+	);
+}
+
+/**
+ * Cuántas temporadas seguidas lleva jugando en el club de hoy.
+ *
+ * Se cuenta desde el final del historial hacia atrás, mientras el club siga
+ * siendo el mismo. Un pase corta la cuenta: la lealtad es al club actual, no
+ * a la carrera entera.
+ */
+export function anosEnElClub(estado: Estado): number {
+	const clubId = estado.futbolista.contrato.clubId;
+	let anos = 0;
+	for (let i = estado.historial.length - 1; i >= 0; i--) {
+		if (estado.historial[i].clubId !== clubId) break;
+		anos++;
+	}
+	return anos;
+}
+
+/**
+ * Cómo rindió, no cuánto vale hoy.
+ *
+ * La media sube y baja con la edad y el entrenamiento; esto mira las notas de
+ * verdad, de las últimas temporadas en este club. Un 8 dos años seguidos pesa
+ * en la mesa aunque ese año la media no haya subido nada.
+ */
+const TEMPORADAS_DE_RENDIMIENTO_RECIENTE = 3;
+
+export function rendimientoRecienteEnElClub(estado: Estado): number {
+	const clubId = estado.futbolista.contrato.clubId;
+	const propias = estado.historial.filter((h) => h.clubId === clubId);
+	const recientes = propias.slice(-TEMPORADAS_DE_RENDIMIENTO_RECIENTE);
+	if (recientes.length === 0) return 6;
+	return recientes.reduce((suma, h) => suma + h.nota, 0) / recientes.length;
+}
+
+/** Los bordes de esta chance en particular: nunca imposible, nunca gratis. */
+export const CHANCE_MINIMA_RENEGOCIAR = 5;
+export const CHANCE_MAXIMA_RENEGOCIAR = 90;
+
+export function chanceDeRenegociarTemprano(estado: Estado): number {
+	const f = estado.futbolista;
+	const r = estado.representante;
+	const suMedia = media(f.atributos, f.posicion);
+	const anos = anosEnElClub(estado);
+	const rendimiento = rendimientoRecienteEnElClub(estado);
+
+	const bruto =
+		-10 +
+		(suMedia - 55) * 0.45 +
+		Math.min(anos, 6) * 3.5 +
+		(rendimiento - 6) * 6 +
+		(r.atributos.negociacion - 40) * 0.35 +
+		(r.atributos.contactos - 40) * 0.15 +
+		(r.prestigio - 40) * 0.15;
+
+	const chance = 100 / (1 + Math.exp(-bruto / 16));
+	return Math.max(CHANCE_MINIMA_RENEGOCIAR, Math.min(CHANCE_MAXIMA_RENEGOCIAR, Math.round(chance)));
+}
+
+/**
+ * Lo que ofrece si sale bien: una mejora modesta, no la de una mesa de
+ * verdad.
+ *
+ * No es la negociación del que se queda sin contrato —ahí el club ya sabe que
+ * puede perderlo gratis y por eso paga más—: acá el representante está
+ * pidiendo algo que el club no tiene por qué darle todavía. Sale más barato
+ * que `ofertaDeRenovacion` a propósito.
+ */
+function mejoraDeRenegociarTemprano(
+	estado: Estado,
+	semilla: string
+): { salarioMensual: number; temporadasSuma: number } {
+	const f = estado.futbolista;
+	const rng = rngPara(semilla, {
+		temporada: estado.temporada,
+		fase: 3,
+		clave: 'renegociar-temprano'
+	});
+	const mejora = 0.06 + rng.entero(0, 12) / 100;
+	return {
+		salarioMensual: Math.round((f.contrato.salarioMensual * (1 + mejora)) / 100) * 100,
+		temporadasSuma: rng.entero(1, 2)
+	};
+}
+
+/**
+ * Resuelve el intento. Muta el estado si sale bien.
+ */
+export function resolverRenegociarTemprano(
+	estado: Estado,
+	semilla: string,
+	log: EntradaLog[]
+): void {
+	if (!tocaOfrecerRenegociarTemprano(estado)) return;
+
+	const f = estado.futbolista;
+	const nombreClub = club(f.contrato.clubId).nombre;
+	const chance = chanceDeRenegociarTemprano(estado);
+	const rng = rngPara(semilla, {
+		temporada: estado.temporada,
+		fase: 3,
+		clave: 'renegociar-temprano-tirada'
+	});
+
+	if (!rng.ocurre(chance / 100)) {
+		log.push({
+			tipo: 'contrato',
+			visiblePara: 'representante',
+			texto: `Intentaste renegociar con ${nombreClub} antes de tiempo. No quisieron abrir el contrato todavía.`
+		});
+		return;
+	}
+
+	const antes = f.contrato.salarioMensual;
+	const mejora = mejoraDeRenegociarTemprano(estado, semilla);
+	f.contrato.salarioMensual = mejora.salarioMensual;
+	f.contrato.temporadasRestantes += mejora.temporadasSuma;
+
+	const comisionUsd = Math.round(
+		((mejora.salarioMensual - antes) * 12 * estado.contratoRepresentacion.pctSalario) / 100
+	);
+	estado.representante.dineroUsd += comisionUsd;
+
+	log.push({
+		tipo: 'contrato',
+		visiblePara: 'ambos',
+		texto:
+			`${estado.representante.nombre} renegoció con ${nombreClub} antes de que hiciera falta: de ` +
+			`USD ${antes.toLocaleString('es-AR')} a USD ${mejora.salarioMensual.toLocaleString('es-AR')} por mes, ` +
+			`y ${mejora.temporadasSuma} ${mejora.temporadasSuma === 1 ? 'temporada' : 'temporadas'} más de contrato.`
+	});
+}

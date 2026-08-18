@@ -526,6 +526,12 @@ export type Decision = {
 	 * ninguna. Ver `cartas.ts`.
 	 */
 	filtradas?: string[];
+
+	/**
+	 * Representante, primer tiempo del mercado: intentar renegociar antes de
+	 * tiempo con el club de hoy, en vez de solo filtrar. Ver `renovacion.ts`.
+	 */
+	renegociar?: boolean;
 };
 
 export type VisiblePara = 'ambos' | Rol;

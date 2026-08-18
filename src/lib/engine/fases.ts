@@ -29,6 +29,7 @@ import {
 	comoLlegaAlMercado,
 	contratoDeUltimoRecurso,
 	ofertaDeRenovacion,
+	resolverRenegociarTemprano,
 	resolverRenovacion,
 	tocaRenovar,
 	type OfertaDeRenovacion
@@ -382,6 +383,12 @@ export function resolverFase(
 				quisieronRenovar = cual.opcionId !== 'no-renovar';
 				comoRenovo = cual.opcionId;
 			}
+		}
+
+		// Renegociar antes de tiempo, si lo eligió: es una acción propia, no un
+		// momento sorteado, así que se juega tenga cartas o no. Ver `renovacion.ts`.
+		if (delRepresentante.renegociar) {
+			resolverRenegociarTemprano(siguiente, semilla, log);
 		}
 
 		const filtrado = filtrar(siguiente, delRepresentante.filtradas ?? [], semilla);
