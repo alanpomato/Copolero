@@ -16,6 +16,32 @@ import type { Estado, Fase, Rol, VisiblePara } from './tipos';
  * lado.
  */
 
+/**
+ * Lo que una gestión mueve, declarado.
+ *
+ * Existe porque Alan preguntó lo obvio: "¿cómo sabemos cómo afecta cada
+ * tarjetita a las stats del representante? Podemos ponerle que diga cuánto sube
+ * y cuánto baja". No se podía: los efectos estaban escritos a mano adentro de
+ * `aplicar`, en medio del texto que se narra, y no había forma de leerlos sin
+ * ejecutar la función.
+ *
+ * Ahora se declaran acá y `aplicar` los cobra desde acá mismo —ver
+ * `cobrarLoQueMueve`—, así que la tarjeta no puede decir una cosa y el motor
+ * hacer otra. Lo que no entra en un número —que suba el sueldo, que aparezca un
+ * representado— sigue en `aplicar` y se cuenta con `ademas`.
+ */
+export type LoQueMueve = {
+	prestigio?: number;
+	negociacion?: number;
+	scouting?: number;
+	contactos?: number;
+	confianza?: number;
+	/** Del otro lado: son compartidas. */
+	moral?: number;
+	fama?: number;
+	prensa?: number;
+};
+
 export type AccionDeGestion = {
 	id: string;
 	nombre: string;
@@ -24,9 +50,36 @@ export type AccionDeGestion = {
 	fases: Fase[];
 	/** 0–100, a la vista. Sale de los atributos del representante. */
 	probabilidad: (estado: Estado) => number;
+	/** Qué mueve si sale y qué mueve si no. A la vista antes de elegir. */
+	siSale: LoQueMueve;
+	siFalla: LoQueMueve;
+	/** Lo que no es un número: "una temporada más de contrato", "un representado". */
+	ademas?: { siSale?: string; siFalla?: string };
 	/** Lo que pasa. Muta el estado; devuelve una línea por cada rol que la ve. */
 	aplicar: (estado: Estado, salio: boolean, semilla: string) => LineaDeGestion[];
 };
+
+/**
+ * Cobra lo declarado. Lo llama `resolverGestion`, una sola vez, antes de narrar.
+ *
+ * Que lo cobre el motor y no cada `aplicar` es la mitad del punto: así lo que
+ * la tarjeta promete y lo que el estado recibe son literalmente el mismo
+ * objeto.
+ */
+export function cobrarLoQueMueve(estado: Estado, mueve: LoQueMueve): void {
+	const r = estado.representante;
+	const a = r.atributos;
+	if (mueve.prestigio) r.prestigio = acotar(r.prestigio + mueve.prestigio, 0, 100);
+	if (mueve.negociacion) a.negociacion = acotar(a.negociacion + mueve.negociacion, 0, 100);
+	if (mueve.scouting) a.scouting = acotar(a.scouting + mueve.scouting, 0, 100);
+	if (mueve.contactos) a.contactos = acotar(a.contactos + mueve.contactos, 0, 100);
+	if (mueve.confianza) estado.confianza = acotar(estado.confianza + mueve.confianza, 0, 100);
+	if (mueve.moral) estado.futbolista.moral = acotar(estado.futbolista.moral + mueve.moral, 0, 100);
+	if (mueve.fama) estado.futbolista.fama = acotar(estado.futbolista.fama + mueve.fama, 0, 100);
+	if (mueve.prensa) {
+		estado.futbolista.prensa = acotar(estado.futbolista.prensa + mueve.prensa, -100, 100);
+	}
+}
 
 export type LineaDeGestion = { visiblePara: VisiblePara; texto: string };
 
@@ -43,11 +96,13 @@ export const ACCIONES: AccionDeGestion[] = [
 		id: 'sondear',
 		nombre: 'Sondear el mercado',
 		detalle: 'Llamar a clubes, escuchar. Si aparece algo, en el cierre hay oferta.',
-		fases: [1, 2],
+		fases: [1],
 		probabilidad: (e) => chance(38, e.representante.atributos.contactos),
+		siSale: { contactos: 2 },
+		siFalla: { prestigio: -1 },
+		ademas: { siSale: 'Sube un 8% lo que vale' },
 		aplicar: (e, salio) => {
 			if (!salio) {
-				e.representante.prestigio = acotar(e.representante.prestigio - 1, 0, 100);
 				return [
 					{
 						visiblePara: 'representante',
@@ -55,7 +110,6 @@ export const ACCIONES: AccionDeGestion[] = [
 					}
 				];
 			}
-			e.representante.atributos.contactos = acotar(e.representante.atributos.contactos + 2, 0, 100);
 			e.futbolista.valorMercadoUsd = Math.round(e.futbolista.valorMercadoUsd * 1.08);
 			return [
 				{
@@ -73,7 +127,10 @@ export const ACCIONES: AccionDeGestion[] = [
 		id: 'renovar',
 		nombre: 'Apretar por una mejora',
 		detalle: 'Sentarse con el club y pedir por el contrato que ya tenés.',
-		fases: [1, 2],
+		fases: [1],
+		siSale: { confianza: 8, prestigio: 2 },
+		siFalla: { confianza: -3 },
+		ademas: { siSale: 'Mejor sueldo y una temporada más' },
 		probabilidad: (e) => {
 			// Con el contrato por vencer esto no corre: ahí la conversación es la
 			// renovación de verdad, que deciden los dos (ver `renovacion.ts`). Si
@@ -90,7 +147,6 @@ export const ACCIONES: AccionDeGestion[] = [
 			const f = e.futbolista;
 			const nombreClub = club(f.contrato.clubId).nombre;
 			if (!salio) {
-				e.confianza = acotar(e.confianza - 3, 0, 100);
 				return [
 					{
 						visiblePara: 'ambos',
@@ -104,8 +160,6 @@ export const ACCIONES: AccionDeGestion[] = [
 			const techo = salarioTipico(f.contrato.clubId, media(f.atributos, f.posicion)) * 1.15;
 			f.contrato.salarioMensual = Math.round(Math.min(Math.max(techo, antes * 1.05), antes * 1.6));
 			f.contrato.temporadasRestantes += 1;
-			e.confianza = acotar(e.confianza + 8, 0, 100);
-			e.representante.prestigio = acotar(e.representante.prestigio + 2, 0, 100);
 			return [
 				{
 					visiblePara: 'ambos',
@@ -120,8 +174,11 @@ export const ACCIONES: AccionDeGestion[] = [
 		id: 'prensa',
 		nombre: 'Instalarlo en los medios',
 		detalle: 'Notas, entrevistas, la foto en el lugar justo. Sube la fama, no siempre gusta.',
-		fases: [1, 2],
+		fases: [1],
 		probabilidad: (e) => chance(45, e.representante.atributos.contactos, 0.45),
+		siSale: { fama: 5, prensa: 5, prestigio: 1, confianza: -1 },
+		siFalla: { prensa: -6, confianza: -4 },
+		ademas: { siSale: 'La fama sube entre 3 y 7' },
 		aplicar: (e, salio, semilla) => {
 			const rng = rngPara(semilla, {
 				temporada: e.temporada,
@@ -129,8 +186,6 @@ export const ACCIONES: AccionDeGestion[] = [
 				clave: 'gestion-prensa'
 			});
 			if (!salio) {
-				e.futbolista.prensa = acotar(e.futbolista.prensa - 6, -100, 100);
-				e.confianza = acotar(e.confianza - 4, 0, 100);
 				return [
 					{
 						visiblePara: 'ambos',
@@ -139,12 +194,14 @@ export const ACCIONES: AccionDeGestion[] = [
 					}
 				];
 			}
+			/*
+			 * Lo declarado ya se cobró con +5 de fama y +5 de prensa; acá va solo la
+			 * diferencia contra la tirada de verdad, que va de 3 a 7. Así el chip no
+			 * miente —promete cinco y la media es cinco— y el año igual sorprende.
+			 */
 			const suma = rng.entero(3, 7);
-			e.futbolista.fama = acotar(e.futbolista.fama + suma, 0, 100);
-			e.futbolista.prensa = acotar(e.futbolista.prensa + suma, -100, 100);
-			e.representante.prestigio = acotar(e.representante.prestigio + 1, 0, 100);
-			// Al futbolista le sube la fama, pero no siempre le gusta cómo.
-			e.confianza = acotar(e.confianza - 1, 0, 100);
+			e.futbolista.fama = acotar(e.futbolista.fama + (suma - 5), 0, 100);
+			e.futbolista.prensa = acotar(e.futbolista.prensa + (suma - 5), -100, 100);
 			return [
 				{
 					visiblePara: 'ambos',
@@ -157,11 +214,13 @@ export const ACCIONES: AccionDeGestion[] = [
 		id: 'ojear',
 		nombre: 'Buscar el próximo',
 		detalle: 'Canchas de inferiores, viajes, informes. Si aparece alguien, tu agencia crece.',
-		fases: [1, 2],
+		fases: [1],
 		probabilidad: (e) => chance(30, e.representante.atributos.scouting, 0.7),
+		siSale: { prestigio: 2, confianza: -3 },
+		siFalla: { confianza: -2 },
+		ademas: { siSale: 'Un representado más en la agencia' },
 		aplicar: (e, salio) => {
 			if (!salio) {
-				e.confianza = acotar(e.confianza - 2, 0, 100);
 				return [
 					{
 						visiblePara: 'representante',
@@ -170,8 +229,6 @@ export const ACCIONES: AccionDeGestion[] = [
 				];
 			}
 			e.representante.representadosExtra += 1;
-			e.representante.prestigio = acotar(e.representante.prestigio + 2, 0, 100);
-			e.confianza = acotar(e.confianza - 3, 0, 100);
 			return [
 				{
 					visiblePara: 'representante',
@@ -190,11 +247,11 @@ export const ACCIONES: AccionDeGestion[] = [
 		id: 'acompanar',
 		nombre: 'Estar',
 		detalle: 'Ir a verlo, bancarlo, atender el teléfono. No mueve plata; mueve todo lo demás.',
-		fases: [1, 2],
+		fases: [1],
 		probabilidad: () => 100,
-		aplicar: (e) => {
-			e.confianza = acotar(e.confianza + 5, 0, 100);
-			e.futbolista.moral = acotar(e.futbolista.moral + 5, 0, 100);
+		siSale: { confianza: 5, moral: 5 },
+		siFalla: {},
+		aplicar: () => {
 			return [
 				{
 					visiblePara: 'futbolista',
@@ -234,6 +291,10 @@ export const ACCIONES: AccionDeGestion[] = [
 		detalle: `${cual.detalle} Es tuyo y no de él: esta temporada vas a estar menos encima.`,
 		fases: [1],
 		probabilidad: () => 100,
+		// Lo declarado es el promedio de lo que se tira abajo; la diferencia se
+		// cobra en `aplicar`. El chip promete cuatro y la media es cuatro.
+		siSale: { [cual.id]: 4, confianza: -2 } as LoQueMueve,
+		siFalla: {},
 		aplicar: (e, _salio, semilla) => {
 			const rng = rngPara(semilla, {
 				temporada: e.temporada,
@@ -245,8 +306,7 @@ export const ACCIONES: AccionDeGestion[] = [
 			// el potencial del futbolista, para que crecer se sienta igual de los
 			// dos lados de la mesa.
 			const suma = Math.max(1, Math.round(rng.entero(4, 7) * (1 - a[cual.id] / 130)));
-			a[cual.id] = acotar(a[cual.id] + suma, 0, 100);
-			e.confianza = acotar(e.confianza - 2, 0, 100);
+			a[cual.id] = acotar(a[cual.id] + (suma - 4), 0, 100);
 			return [
 				{
 					visiblePara: 'representante',
@@ -334,6 +394,9 @@ export function resolverGestion(
 	const probabilidad = accion.probabilidad(estado);
 	const salio = probabilidad >= 100 || rng.ocurre(probabilidad / 100);
 
+	// Primero lo declarado —lo mismo que la tarjeta prometía— y después lo que
+	// no entra en un número. Ver `cobrarLoQueMueve`.
+	cobrarLoQueMueve(estado, salio ? accion.siSale : accion.siFalla);
 	const lineas = accion.aplicar(estado, salio, semilla);
 	// Haciendo se aprende, salga o no salga. Va después de aplicar para que lo
 	// que se aprendió este año no cambie la tirada de este mismo año.

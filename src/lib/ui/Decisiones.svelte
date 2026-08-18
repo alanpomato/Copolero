@@ -15,6 +15,7 @@
 	import AtributosLista from './Atributos.svelte';
 	import Escudo from './Escudo.svelte';
 	import Mercado from './Mercado.svelte';
+	import { chipsDe } from './efectos';
 	import Momento from './Momento.svelte';
 	import Opcion from './Opcion.svelte';
 	import Paso from './Paso.svelte';
@@ -491,7 +492,8 @@
 				no cuentan con él.
 			</p>
 			<p class="sutil" style="margin:0">
-				No hay nada que decidir acá. La decisión es en el mercado, al final de la temporada.
+				Tu representante puede intentar torcerlo en el mercado, al final de la temporada. Y si no lo
+				consigue, ahí se define a dónde vas.
 			</p>
 		{:else}
 			<p style="margin:0 0 .75rem">
@@ -858,9 +860,11 @@
 		elegido={queGestiona}
 		tema="plata"
 		abierto={abierto === 'gestion'}
-		nota="Una sola. Las probabilidades salen de tu negociación, tu scouting y tus contactos."
+		nota="Una sola, y vale para todo el año. Las probabilidades salen de tu negociación, tu scouting y tus contactos."
 	>
 		{#each opciones.gestiones as g (g.id)}
+			{@const gana = chipsDe(g.siSale)}
+			{@const pierde = chipsDe(g.siFalla)}
 			<Opcion
 				grupo="gestion"
 				valor={g.id}
@@ -868,7 +872,43 @@
 				detalle={g.detalle}
 				probabilidad={g.probabilidad}
 				bind:elegido={gestion}
-			/>
+			>
+				{#snippet extra()}
+					<!--
+						Qué sube y qué baja, que era lo que no se podía saber.
+
+						Alan preguntó lo obvio: "¿cómo sabemos cómo afecta cada tarjetita a
+						las stats del representante?". No se podía, porque los efectos
+						estaban escritos a mano adentro del código que los aplica. Ahora se
+						declaran, y esto muestra exactamente lo que el motor va a cobrar.
+						Ver `gestion.ts`.
+					-->
+					<span class="mueve">
+						{#if gana.length > 0 || g.ademas?.siSale}
+							<span class="fila">
+								<span class="cuando sube">Si sale</span>
+								<span class="chips">
+									{#each gana as chip (chip.texto)}
+										<span class="chip {chip.tono}">{chip.texto}</span>
+									{/each}
+									{#if g.ademas?.siSale}<span class="chip sube">{g.ademas.siSale}</span>{/if}
+								</span>
+							</span>
+						{/if}
+						{#if pierde.length > 0 || g.ademas?.siFalla}
+							<span class="fila">
+								<span class="cuando baja">Si no</span>
+								<span class="chips">
+									{#each pierde as chip (chip.texto)}
+										<span class="chip {chip.tono}">{chip.texto}</span>
+									{/each}
+									{#if g.ademas?.siFalla}<span class="chip baja">{g.ademas.siFalla}</span>{/if}
+								</span>
+							</span>
+						{/if}
+					</span>
+				{/snippet}
+			</Opcion>
 		{/each}
 	</Paso>
 {/if}
@@ -885,6 +925,38 @@
 <Mercado {opciones} {estado} {rol} bind:filtradas bind:destino />
 
 <style>
+	/* Lo que mueve una gestión: los mismos chips que ya tienen los momentos. */
+	.mueve {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		margin-top: 0.55rem;
+	}
+	.mueve .fila {
+		display: flex;
+		align-items: baseline;
+		gap: 0.45rem;
+	}
+	.cuando {
+		flex: none;
+		width: 3.4rem;
+		font-size: 0.66rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+	.cuando.sube {
+		color: var(--acento);
+	}
+	.cuando.baja {
+		color: var(--malo);
+	}
+	.mueve .chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
 	/*
 	 * Una pregunta con sus respuestas adentro.
 	 *

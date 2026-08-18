@@ -5,7 +5,7 @@ import {
 	type PerfilDeIntensidad,
 	type PlanDeEntrenamiento
 } from './entrenamiento';
-import { accionesDe } from './gestion';
+import { accionesDe, type LoQueMueve } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
 import {
 	carismaDe,
@@ -30,12 +30,7 @@ import {
 	type SuenoOfrecido
 } from './suenos';
 import { ofertasPara, valorDeMercado, type Oferta } from './pases';
-import {
-	CARTAS_QUE_DEJA_PASAR,
-	cartasDelMercado,
-	loQueValenJuntos,
-	type Carta
-} from './cartas';
+import { CARTAS_QUE_DEJA_PASAR, cartasDelMercado, loQueValenJuntos, type Carta } from './cartas';
 import {
 	TRATOS,
 	loQueLeConviene,
@@ -87,6 +82,11 @@ export type GestionVisible = {
 	nombre: string;
 	detalle: string;
 	probabilidad: number;
+	/** Qué mueve si sale y qué mueve si no. Ver `gestion.ts`. */
+	siSale: LoQueMueve;
+	siFalla: LoQueMueve;
+	/** Lo que no entra en un número: "una temporada más", "un representado". */
+	ademas?: { siSale?: string; siFalla?: string };
 };
 
 export type OpcionesDeFase = {
@@ -307,12 +307,24 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			opciones.momentos = momentosDelRepresentante(estado, semilla);
 			opciones.carisma = { cuanto: carismaDe(estado), salva: cuantoSalvaElCarisma(estado) };
 		}
-		opciones.gestiones = accionesDe(estado.fase).map((a) => ({
-			id: a.id,
-			nombre: a.nombre,
-			detalle: a.detalle,
-			probabilidad: a.probabilidad(estado)
-		}));
+		/*
+		 * Y solo si hay alguna. Con la gestión limitada a la pretemporada,
+		 * `accionesDe(2)` devuelve una lista vacía, y una lista vacía es
+		 * `truthy`: la pantalla dibujaba el bloque "Qué hacés esta fase" sin nada
+		 * adentro. Lo que no hay no se manda.
+		 */
+		const suyas = accionesDe(estado.fase);
+		if (suyas.length > 0) {
+			opciones.gestiones = suyas.map((a) => ({
+				id: a.id,
+				nombre: a.nombre,
+				detalle: a.detalle,
+				probabilidad: a.probabilidad(estado),
+				siSale: a.siSale,
+				siFalla: a.siFalla,
+				ademas: a.ademas
+			}));
+		}
 	}
 
 	// En qué gastar la plata, en pretemporada. Cada uno ve solo lo suyo: es la

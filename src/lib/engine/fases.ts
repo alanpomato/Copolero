@@ -375,7 +375,11 @@ export function resolverFase(
 			paso: 'eleccion',
 			llegaron: filtrado.llegaron,
 			seCayeron: filtrado.seCayeron,
-			renovacion: { conseguida: renovacionConseguida, quisieron: quisieronRenovar, como: comoRenovo }
+			renovacion: {
+				conseguida: renovacionConseguida,
+				quisieron: quisieronRenovar,
+				como: comoRenovo
+			}
 		};
 
 		for (const linea of contarElFiltro(filtrado)) {
@@ -417,9 +421,17 @@ export function resolverFase(
 		}
 	}
 
-	// El representante trabaja en las dos primeras fases. En la tercera manda el
-	// mercado, que se resuelve solo.
-	if (estado.fase === 1 || estado.fase === 2) {
+	/*
+	 * La gestión del representante, una por año.
+	 *
+	 * Se elige en la pretemporada y vale para toda la temporada. Antes se elegía
+	 * dos veces —en la fase 1 y otra vez en la fase 2— y Alan lo marcó con todas
+	 * las letras: "dejarlo solo en la pretemporada y que aplique a toda la
+	 * temporada". Tenía razón por lo que produce: elegir dos veces por año lo
+	 * mismo lo convertía en un trámite, y encima competía con los momentos, que
+	 * es lo que de verdad tiene para hacer durante la temporada.
+	 */
+	if (estado.fase === 1) {
 		for (const linea of resolverGestion(siguiente, delRepresentante.gestion, semilla)) {
 			log.push({ tipo: 'gestion', visiblePara: linea.visiblePara, texto: linea.texto });
 		}
