@@ -21,6 +21,7 @@
 	import Portada from '$lib/ui/Portada.svelte';
 	import Trayectoria from '$lib/ui/Trayectoria.svelte';
 	import Mapa from '$lib/ui/Mapa.svelte';
+	import Avisos from '$lib/ui/Avisos.svelte';
 	import Diario from '$lib/ui/Diario.svelte';
 	import Retiro from '$lib/ui/Retiro.svelte';
 	import type { ActionData, PageData } from './$types';
@@ -86,6 +87,20 @@
 		SEASON_COMPLETE: 'Temporada terminada',
 		CAREER_OVER: 'Carrera terminada'
 	};
+
+	/**
+	 * Cuántos momentos le quedan por jugar.
+	 *
+	 * Se cuenta contra lo que el servidor ya escribió —las tiradas— y no contra
+	 * lo que la pantalla cree: una tirada es irreversible y vive en la base, así
+	 * que es el único número que no puede mentir.
+	 */
+	const faltanMomentos = $derived(
+		Math.max(
+			0,
+			(vista.opciones.ocasiones ?? vista.opciones.momentos ?? []).length - vista.tiradas.length
+		)
+	);
 
 	function plata(usd: number): string {
 		return `USD ${usd.toLocaleString('es-AR')}`;
@@ -349,7 +364,25 @@
 								tiradas={vista.tiradas}
 							/>
 
-							<button type="submit">Cerrar mi parte de la fase</button>
+							<!--
+								Con momentos sin jugar no se cierra nada.
+
+								El servidor es el que manda —ver `enviarDecision`— pero avisarlo
+								acá cambia lo que se siente: enterarte de que te falta algo
+								*después* de apretar el botón es un error; verlo antes es una
+								instrucción. Los dos botones se apagan, incluido "avanzar sin
+								esperar", que era justamente por donde Alan encontró el agujero.
+							-->
+							{#if faltanMomentos > 0}
+								<p class="faltan">
+									Te {faltanMomentos === 1 ? 'falta' : 'faltan'}
+									{faltanMomentos}
+									{faltanMomentos === 1 ? 'momento' : 'momentos'} por jugar. Son lo que define el año.
+								</p>
+							{/if}
+
+							<button type="submit" disabled={faltanMomentos > 0}>Cerrar mi parte de la fase</button
+							>
 
 							<button
 								type="submit"
@@ -357,6 +390,7 @@
 								value="si"
 								class="secundario"
 								style="margin-top:.6rem"
+								disabled={faltanMomentos > 0}
 							>
 								Avanzar sin esperar a {vista.elOtro.nombre}
 							</button>
@@ -388,9 +422,26 @@
 	{:else}
 		<div class="angosta"><Diario entradas={vista.diario} /></div>
 	{/if}
+
+	<!--
+		Los avisos van fuera de las dos columnas y del scroll: son de la partida,
+		no de la pantalla. Ver `Avisos.svelte`.
+	-->
+	<Avisos {vista} />
 {/if}
 
 <style>
+	/* Lo que falta para poder cerrar. Amarillo: no es un error, es un pendiente. */
+	.faltan {
+		margin: 0 0 0.7rem;
+		padding: 0.7rem 0.85rem;
+		border-radius: 12px;
+		border-left: 3px solid var(--espera);
+		background: rgba(251, 191, 36, 0.09);
+		font-size: 0.88rem;
+		line-height: 1.4;
+	}
+
 	.conCamiseta {
 		display: flex;
 		align-items: center;

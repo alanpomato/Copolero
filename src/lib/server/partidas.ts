@@ -262,6 +262,17 @@ export function vistaPara(db: Db, token: string): Vista | null {
 	};
 }
 
+/**
+ * Cuántos momentos tiene que jugar este rol en esta fase.
+ *
+ * Sale de lo mismo que pinta la pantalla, así que no puede desincronizarse: si
+ * el servidor le mostró tres, son tres los que tiene que tirar.
+ */
+function cuantosMomentos(estado: Estado, rol: Rol, semilla: string): number {
+	const opciones = opcionesDeFase(estado, rol, semilla);
+	return (opciones.ocasiones ?? opciones.momentos ?? []).length;
+}
+
 /** Lo que ya tiró este rol este año, en el orden en que pasó. */
 function tiradasDe(db: Db, partidaId: string, temporada: number, rol: Rol): Tirada[] {
 	return db
@@ -514,6 +525,31 @@ export function enviarDecision(
 			// una elección de la que ya se vio el resultado. Lo escrito manda.
 			if (fase === 2 || fase === 3) {
 				const hechas = tiradasDe(tx as unknown as Db, partida.id, temporada, jugador.rol);
+
+				/*
+				 * Y los momentos hay que jugarlos.
+				 *
+				 * Alan lo encontró probando: se podía cerrar la fase —o apretar
+				 * "avanzar sin esperar"— sin haber tirado ninguno, y quedaban
+				 * resueltos con la opción por defecto. Los momentos son lo que más
+				 * mueve el año: saltearlos no es una forma de jugar más rápido, es
+				 * dejar que el juego juegue solo.
+				 *
+				 * Se cuenta contra lo que el servidor le ofreció a este rol en esta
+				 * fase, no contra un número fijo: los del futbolista y los del
+				 * representante son distintos, y en el mercado no son los mismos que
+				 * en la temporada.
+				 */
+				const suyos = cuantosMomentos(estado, jugador.rol, partida.semilla);
+				if (hechas.length < suyos) {
+					const faltan = suyos - hechas.length;
+					throw new ErrorDePartida(
+						`Te ${faltan === 1 ? 'falta' : 'faltan'} ${faltan} ${
+							faltan === 1 ? 'momento' : 'momentos'
+						} por jugar. Son lo que define el año: no se cierra la fase sin jugarlos.`
+					);
+				}
+
 				if (hechas.length > 0) {
 					const campo = jugador.rol === 'futbolista' ? 'ocasiones' : 'momentos';
 					const elegidas = [...(payload[campo] ?? [])];

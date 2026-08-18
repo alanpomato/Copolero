@@ -4,6 +4,7 @@ import {
 	crearPartida,
 	enviarDecision,
 	ErrorDePartida,
+	tirarOcasion,
 	unirseAPartida,
 	vistaPara
 } from './partidas';
@@ -48,8 +49,24 @@ function unaTemporada(tokens: { tokenFutbolista: string; tokenRepresentante: str
 		if (vista.estado.carreraTerminada || vista.estado.temporada !== desde) return;
 		for (const rol of quienesDeciden(vista.estado)) {
 			const token = rol === 'futbolista' ? tokens.tokenFutbolista : tokens.tokenRepresentante;
+			jugarSusMomentos(token);
 			enviarDecision(db, token, { rol, nota: '' });
 		}
+	}
+}
+
+/**
+ * Tira todos los momentos que le toquen a ese jugador.
+ *
+ * Hace falta porque los momentos son obligatorios: sin jugarlos no se cierra la
+ * fase. Antes se podía cerrar de una y quedaban resueltos por defecto, que es
+ * exactamente el agujero que encontró Alan.
+ */
+function jugarSusMomentos(token: string) {
+	const vista = vistaPara(db, token)!;
+	const suyos = vista.opciones.ocasiones ?? vista.opciones.momentos ?? [];
+	for (let i = vista.tiradas.length; i < suyos.length; i++) {
+		tirarOcasion(db, token, i, suyos[i].opciones[0].id);
 	}
 }
 

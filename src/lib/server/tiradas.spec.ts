@@ -97,13 +97,20 @@ describe('tirar la rueda', () => {
 		expect(() => tirarOcasion(db, futbolista, 0, 'volarse-por-el-aire')).toThrow(ErrorDePartida);
 	});
 
-	it('no se tira después de cerrar la fase', () => {
+	it('no se vuelve a tirar después de cerrar la fase', () => {
 		const { futbolista } = enLaTemporada();
 		const cuales = vistaPara(db, futbolista)!.opciones.ocasiones!;
 
+		// Jugarlos todos es lo que habilita cerrar: son obligatorios.
+		for (const [i, ocasion] of cuales.entries()) {
+			tirarOcasion(db, futbolista, i, ocasion.opciones[0].id);
+		}
 		enviarDecision(db, futbolista, nada('futbolista'));
 
+		// Con la fase cerrada, ni siquiera se puede repetir una que ya se tiró.
+		const antes = vistaPara(db, futbolista)!.tiradas.length;
 		expect(() => tirarOcasion(db, futbolista, 0, cuales[0].opciones[0].id)).toThrow(ErrorDePartida);
+		expect(vistaPara(db, futbolista)!.tiradas.length).toBe(antes);
 	});
 
 	it('la vista las devuelve en orden, para poder dibujarlas al recargar', () => {
@@ -141,6 +148,11 @@ describe('lo tirado es lo que cuenta', () => {
 			nota: '',
 			ocasiones: cuales.map((o) => o.opciones[o.opciones.length - 1].id)
 		});
+		// El representante también tiene que jugar los suyos para poder cerrar.
+		const suyos = vistaPara(db, representante)!.opciones.momentos ?? [];
+		for (const [i, momento] of suyos.entries()) {
+			tirarOcasion(db, representante, i, momento.opciones[0].id);
+		}
 		enviarDecision(db, representante, nada('representante'));
 
 		const diario = vistaPara(db, futbolista)!
@@ -155,17 +167,55 @@ describe('lo tirado es lo que cuenta', () => {
 		}
 	});
 
-	it('sin tirar nada, el formulario sigue mandando como siempre', () => {
-		// La rueda es una mejora, no un requisito: quien juegue sin JavaScript
-		// manda las tres opciones en el formulario y la fase se resuelve igual.
-		const { futbolista, representante } = enLaTemporada();
+	/*
+	 * Los momentos hay que jugarlos, y esto es lo que cambió.
+	 *
+	 * Antes la rueda era una mejora y no un requisito: se podían mandar las tres
+	 * opciones en el formulario y la fase se resolvía igual. Alan encontró el
+	 * agujero probando —"podés poner avanzar sin esperar SIN jugar los momentos,
+	 * cuando los momentos deben ser obligatorios"— y tenía razón: son lo que más
+	 * mueve el año, y saltearlos no era jugar más rápido sino dejar que el juego
+	 * jugara solo.
+	 *
+	 * El precio está anotado a propósito: con esto la fase 2 ya no se puede
+	 * cerrar sin JavaScript. Los momentos se juegan con el minijuego o no se
+	 * juegan.
+	 */
+	it('no se cierra la fase con momentos sin jugar', () => {
+		const { futbolista } = enLaTemporada();
 		const cuales = vistaPara(db, futbolista)!.opciones.ocasiones!;
 
-		enviarDecision(db, futbolista, {
-			rol: 'futbolista',
-			nota: '',
-			ocasiones: cuales.map((o) => o.opciones[0].id)
-		});
+		expect(() =>
+			enviarDecision(db, futbolista, {
+				rol: 'futbolista',
+				nota: '',
+				ocasiones: cuales.map((o) => o.opciones[0].id)
+			})
+		).toThrow(/momento/i);
+
+		expect(vistaPara(db, futbolista)!.estado.fase).toBe(2);
+	});
+
+	it('ni con "avanzar sin esperar", que era por donde se colaba', () => {
+		const { futbolista } = enLaTemporada();
+		expect(() =>
+			enviarDecision(db, futbolista, nada('futbolista'), { tambienPorElOtro: true })
+		).toThrow(/momento/i);
+	});
+
+	it('jugándolos todos, sí', () => {
+		const { futbolista, representante } = enLaTemporada();
+		const cuales = vistaPara(db, futbolista)!.opciones.ocasiones!;
+		for (const [i, ocasion] of cuales.entries()) {
+			tirarOcasion(db, futbolista, i, ocasion.opciones[0].id);
+		}
+
+		enviarDecision(db, futbolista, nada('futbolista'));
+		// El representante tiene los suyos y también los tiene que jugar.
+		const suyos = vistaPara(db, representante)!.opciones.momentos ?? [];
+		for (const [i, momento] of suyos.entries()) {
+			tirarOcasion(db, representante, i, momento.opciones[0].id);
+		}
 		enviarDecision(db, representante, nada('representante'));
 
 		expect(vistaPara(db, futbolista)!.estado.fase).toBe(3);
