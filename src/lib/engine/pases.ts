@@ -1,3 +1,4 @@
+import { loQueAporta } from './rasgos';
 import { entraEnElMercado } from './sondeo';
 import { club, clubes, contexto, salarioTipico } from '../../../content/mundo';
 import { media } from './estado';
@@ -69,8 +70,11 @@ export function valorDeMercado(estado: Estado): number {
 		f.edad <= 21 ? 8 : f.edad <= 25 ? 6.5 : f.edad <= 28 ? 4.5 : f.edad <= 31 ? 2.2 : 0.8;
 	const porNombre = 0.6 + f.fama / 60;
 	const porCuerpo = 1 - f.desgaste / 220;
+	// Hay jugadores que valen más de lo que rinden: los que llenan una cancha y
+	// venden camisetas. Es un rasgo, y entra acá. Ver `rasgos.ts`.
+	const porLoQueEs = loQueAporta(estado).valor;
 
-	return Math.round((anual * porEdad * porNombre * porCuerpo) / 1000) * 1000;
+	return Math.round((anual * porEdad * porNombre * porCuerpo * porLoQueEs) / 1000) * 1000;
 }
 
 /**

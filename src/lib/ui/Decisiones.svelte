@@ -447,6 +447,9 @@
 						<span class="sube">
 							<span class="chip-sube gana">+{r.cuanto} {ATRIBUTO[r.atributo]}</span>
 							<span class="chip-sube">{r.siempre}</span>
+							{#if r.pero}
+								<span class="chip-sube pierde">{r.pero}</span>
+							{/if}
 						</span>
 					{/snippet}
 				</Opcion>

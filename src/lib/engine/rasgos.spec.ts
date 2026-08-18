@@ -46,6 +46,9 @@ describe('el catálogo de rasgos', () => {
 			expect(r.posiciones.length, r.id).toBeGreaterThan(0);
 			expect(r.siempre.length, r.id).toBeGreaterThan(10);
 
+			// Las seis últimas se sumaron con el catálogo grande: sin ellas, este
+			// test daba por muertos a los rasgos que sólo mueven fama, hinchada,
+			// prensa, moral, confianza o valor de mercado.
 			const encendido =
 				r.goles ||
 				r.asistencias ||
@@ -54,7 +57,13 @@ describe('el catálogo de rasgos', () => {
 				r.desgaste ||
 				r.dt ||
 				r.equipo ||
-				r.crecimiento;
+				r.crecimiento ||
+				r.fama ||
+				r.hinchada ||
+				r.prensa ||
+				r.moral ||
+				r.confianza ||
+				r.valor;
 			expect(encendido, `${r.id} no deja nada encendido`).toBeTruthy();
 		}
 	});
@@ -204,5 +213,201 @@ describe('el retiro lo recuerda', () => {
 		expect(r.carrera.temporadas).toBeGreaterThan(5);
 		expect(r.carrera.partidos).toBe(e.futbolista.partidos);
 		expect(r.carrera.mediaMaxima).toBeGreaterThan(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Lo que se agregó cuando el catálogo pasó de trece rasgos a treinta y ocho
+// ---------------------------------------------------------------------------
+
+/**
+ * Y sobre todo: que lo que prometen pase.
+ *
+ * Al ir a agregar rasgos nuevos aparecieron tres viejos que prometían cosas que
+ * el motor no aplicaba nunca. "De fierro: te lesionás un 30% menos" estaba
+ * declarado, se mostraba al elegirlo, y la línea que calcula el riesgo leía el
+ * multiplicador del plan del año y no el del rasgo. Lo mismo el desgaste de
+ * "Espalda ancha" y el de "Elástico".
+ *
+ * Un rasgo que miente es peor que no tenerlo: se elige por lo que promete y se
+ * juega una carrera entera creyendo que algo está pasando. El test de abajo no
+ * verifica una fórmula: corre dos carreras idénticas que sólo se diferencian en
+ * el rasgo, y exige que se note.
+ */
+
+/** El puesto con el que se prueba cada posición. */
+const PUESTO_DE: Record<string, string> = {
+	arquero: 'arquero',
+	defensor: 'central',
+	mediocampista: 'cinco',
+	delantero: 'centrodelantero'
+};
+
+/**
+ * El control: un rasgo que no existe.
+ *
+ * `null` no serviría, porque entonces la primera pretemporada elige uno sola y
+ * la carrera «sin rasgo» terminaría con el primero de los tres que le tocaron.
+ * Un id inventado deja `estado.rasgo` ocupado —así no se elige nada— y
+ * `loQueAporta` devuelve todo en neutro, que es el control que hace falta.
+ */
+const NINGUNO = 'sin-rasgo-para-el-test';
+
+/** Lo observable de una carrera, para comparar dos que sólo difieren en el rasgo. */
+function comoLeFue(posicion: string, rasgoId: string, semilla: string, anios = 8) {
+	let e = unPibe(PUESTO_DE[posicion], semilla);
+	e.rasgo = rasgoId;
+	for (let i = 0; i < anios * 4 && !e.carreraTerminada; i++) {
+		e = resolverFase(e, NADA, semilla).estado;
+	}
+	const f = e.futbolista;
+	return [
+		f.goles,
+		f.asistencias,
+		f.minutos,
+		f.partidos,
+		f.desgaste,
+		f.fama,
+		f.hinchada,
+		f.prensa,
+		f.moral,
+		f.dt,
+		f.valorMercadoUsd,
+		e.confianza,
+		e.historial.length,
+		e.historial.reduce((suma, h) => suma + h.nota, 0)
+	].join('·');
+}
+
+describe('el catálogo, ahora que es grande', () => {
+	it('los ids no se repiten', () => {
+		expect(new Set(RASGOS.map((r) => r.id)).size).toBe(RASGOS.length);
+	});
+
+	it('cada puesto tiene de dónde elegir', () => {
+		/*
+		 * Eran cinco para el arquero y siete para el resto. Con siete y una tirada
+		 * de tres, la segunda partida con el mismo puesto ya repetía caras. Alan lo
+		 * pidió así: "poner muchas opciones para que la tirada saque cosas
+		 * distintas".
+		 */
+		for (const posicion of POSICIONES) {
+			const suyos = RASGOS.filter((r) => r.posiciones.includes(posicion));
+			expect(suyos.length, posicion).toBeGreaterThanOrEqual(15);
+		}
+	});
+
+	it('todos prometen algo por escrito y suben algo al elegirlos', () => {
+		for (const r of RASGOS) {
+			expect(r.nombre.length, r.id).toBeGreaterThan(3);
+			expect(r.detalle.length, r.id).toBeGreaterThan(20);
+			expect(r.siempre.length, r.id).toBeGreaterThan(15);
+			expect(r.cuanto, r.id).toBeGreaterThan(0);
+			expect(r.posiciones.length, r.id).toBeGreaterThan(0);
+		}
+	});
+
+	it('el que tiene una contra la dice', () => {
+		/*
+		 * Los que sacan algo tienen que decirlo en el `pero`, que se dibuja en
+		 * rojo. Un rasgo que baja el trato con el técnico y sólo enumera ventajas
+		 * se elige sin pensar, y después la carrera no se entiende.
+		 */
+		for (const r of RASGOS) {
+			const saca =
+				(r.dt ?? 0) < 0 ||
+				(r.prensa ?? 0) < 0 ||
+				(r.hinchada ?? 0) < 0 ||
+				(r.fama ?? 0) < 0 ||
+				(r.moral ?? 0) < 0 ||
+				(r.minutos ?? 0) < 0 ||
+				(r.desgaste ?? 0) > 0 ||
+				(r.lesion ?? 1) > 1;
+			if (saca) expect(r.pero, `${r.id} saca algo y no lo dice`).toBeTruthy();
+		}
+	});
+
+	it('ninguno es sólo el golpe inicial: todos dejan algo prendido', () => {
+		for (const r of RASGOS) {
+			const deja =
+				r.goles ??
+				r.asistencias ??
+				r.lesion ??
+				r.minutos ??
+				r.desgaste ??
+				r.dt ??
+				r.equipo ??
+				r.crecimiento ??
+				r.fama ??
+				r.hinchada ??
+				r.prensa ??
+				r.moral ??
+				r.confianza ??
+				r.valor;
+			expect(deja, r.id).toBeDefined();
+		}
+	});
+});
+
+describe('lo que prometen, pasa', () => {
+	/*
+	 * El test que hubiera cantado el agujero.
+	 *
+	 * Dos carreras con la misma semilla, el mismo puesto y las mismas decisiones:
+	 * lo único distinto es el rasgo. Si el rasgo no cambia absolutamente nada de
+	 * lo observable en ocho temporadas, es porque el motor no lo está leyendo, y
+	 * eso es exactamente lo que pasaba con `lesion` y `desgaste`.
+	 */
+	it('cada rasgo del catálogo cambia el resultado de una carrera', () => {
+		const muertos: string[] = [];
+
+		for (const r of RASGOS) {
+			const posicion = r.posiciones[0];
+			const cambia = ['a', 'b', 'c'].some(
+				(semilla) => comoLeFue(posicion, r.id, semilla) !== comoLeFue(posicion, NINGUNO, semilla)
+			);
+			if (!cambia) muertos.push(r.id);
+		}
+
+		expect(muertos, `rasgos que el motor no aplica: ${muertos.join(', ')}`).toEqual([]);
+	});
+});
+
+describe('la tirada', () => {
+	it('ofrece tres', () => {
+		for (const posicion of POSICIONES) {
+			const e = unPibe(PUESTO_DE[posicion], 'tirada');
+			expect(rasgosQueLeTocaron(e, 'tirada'), posicion).toHaveLength(CUANTOS_SE_OFRECEN);
+		}
+	});
+
+	it('sólo ofrece rasgos del puesto', () => {
+		for (const posicion of POSICIONES) {
+			const e = unPibe(PUESTO_DE[posicion], 'tirada');
+			for (const r of rasgosQueLeTocaron(e, 'tirada')) {
+				expect(r.posiciones, `${posicion}: ${r.id}`).toContain(posicion);
+			}
+		}
+	});
+
+	it('no repite ninguno dentro de la misma tirada', () => {
+		for (const posicion of POSICIONES) {
+			for (const semilla of ['a', 'b', 'c', 'd']) {
+				const tres = rasgosQueLeTocaron(unPibe(PUESTO_DE[posicion], semilla), semilla);
+				expect(new Set(tres.map((r) => r.id)).size, `${posicion}/${semilla}`).toBe(tres.length);
+			}
+		}
+	});
+
+	it('y dos partidas distintas no ven siempre lo mismo', () => {
+		// Es la mitad de para qué sirve que el catálogo sea grande.
+		for (const posicion of POSICIONES) {
+			const vistos = new Set<string>();
+			for (const semilla of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+				for (const r of rasgosQueLeTocaron(unPibe(PUESTO_DE[posicion], semilla), semilla))
+					vistos.add(r.id);
+			}
+			expect(vistos.size, posicion).toBeGreaterThanOrEqual(10);
+		}
 	});
 });

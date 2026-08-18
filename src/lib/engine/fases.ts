@@ -17,7 +17,7 @@ import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } f
 import { filtrar, type Filtrado } from './cartas';
 import { empujarElTecho, loQueEmpujaElTecho, loQueSeCuenta } from './techo';
 import { objetivo as objetivoPorId } from './objetivos';
-import { elegirRasgo, tocaElegirRasgo } from './rasgos';
+import { elegirRasgo, loQueAporta, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
 import { loQueDejaLaCarteraAlAnio, loQueSumaLaCarteraAlAnio } from './cartera';
 import { dondePuedeSondear, laDeCasa } from './sondeo';
@@ -774,7 +774,10 @@ function cerrarTemporada(
 	// Deriva natural: si nadie la trabaja, se enfría sola. Lo que la sostiene es
 	// que el representante elija estar, y eso le cuesta las gestiones que sí dan
 	// plata. Ésa es la decisión del juego.
-	estado.confianza = acotar(estado.confianza - 5, 0, 100);
+	//
+	// Y hay jugadores a los que se les enfría más despacio, porque llaman ellos.
+	// Es un rasgo; ver `rasgos.ts`.
+	estado.confianza = acotar(estado.confianza - 5 + loQueAporta(estado).confianza, 0, 100);
 
 	// El contrato de representación vence junto con el del club (los dos corren
 	// arriba, antes del mercado). Cuando llega a cero, la pretemporada siguiente

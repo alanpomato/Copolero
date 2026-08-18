@@ -224,7 +224,17 @@ export function jugarTemporada(
 
 	// La lesión se descuenta de los partidos, no del rendimiento: el que se
 	// rompe en agosto no juega mal, no juega.
-	const riesgoLesion = (0.07 + f.desgaste / 500 + Math.max(0, f.edad - 30) * 0.012) * plan.lesion;
+	/*
+	 * El rasgo entra acá, y hasta ahora no entraba.
+	 *
+	 * "De fierro: te lesionás un 30% menos que el resto" es lo que dice la carta
+	 * desde que existe, y el multiplicador estaba declarado en `rasgos.ts`, pero
+	 * esta línea sólo leía el del plan del año. O sea: se elegía el rasgo, se
+	 * mostraba la promesa, y no pasaba nada nunca. Lo mismo con el desgaste, más
+	 * abajo. Un rasgo que miente es peor que no tenerlo.
+	 */
+	const riesgoLesion =
+		(0.07 + f.desgaste / 500 + Math.max(0, f.edad - 30) * 0.012) * plan.lesion * suyo.lesion;
 	const lesionado = rng.ocurre(Math.min(0.5, riesgoLesion));
 	const partidosPerdidos = lesionado ? rng.entero(4, 14) : 0;
 
@@ -333,17 +343,21 @@ export function jugarTemporada(
 
 	f.desgaste = Math.max(
 		0,
-		Math.min(100, f.desgaste + Math.round(minutos / 1600) + rng.entero(0, 1) + plan.desgaste)
+		Math.min(
+			100,
+			f.desgaste + Math.round(minutos / 1600) + rng.entero(0, 1) + plan.desgaste + suyo.desgaste
+		)
 	);
 	// El psicólogo no te hace jugar mejor: te sostiene el año malo, que es
 	// justamente cuando hace falta.
-	f.moral = acotar(f.moral + Math.round((nota - 6) * 4), pisoDeMoral(estado), 100);
+	f.moral = acotar(f.moral + Math.round((nota - 6) * 4) + suyo.moral, pisoDeMoral(estado), 100);
 	f.dt = acotar(f.dt + Math.round((nota - 6) * 3) + plan.dt + suyo.dt, -100, 100);
-	f.hinchada = acotar(f.hinchada + Math.round((nota - 6) * 4 + goles), 0, 100);
-	f.prensa = acotar(f.prensa + Math.round((nota - 6) * 2), -100, 100);
+	f.hinchada = acotar(f.hinchada + Math.round((nota - 6) * 4 + goles) + suyo.hinchada, 0, 100);
+	f.prensa = acotar(f.prensa + Math.round((nota - 6) * 2) + suyo.prensa, -100, 100);
 	// La fama la limita dónde jugás. Ver `techoDeFama`.
 	const techo = techoDeFama(clubId);
-	const subeFama = Math.round(goles * 0.7 + asistencias * 0.4 + (campeon ? 6 : 0) + (nota - 6) * 2);
+	const subeFama =
+		Math.round(goles * 0.7 + asistencias * 0.4 + (campeon ? 6 : 0) + (nota - 6) * 2) + suyo.fama;
 	f.fama = acotar(Math.min(f.fama + subeFama, Math.max(f.fama, techo)), 0, 100);
 
 	return {
