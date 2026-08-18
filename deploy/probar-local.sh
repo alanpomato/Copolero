@@ -2,7 +2,7 @@
 #
 # Baja Copolero y lo levanta en tu propia máquina, para verlo.  Mac y Linux.
 #
-#   curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/main/deploy/probar-local.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/claude/buenas-9b6dk2/deploy/probar-local.sh | bash
 #
 # La primera vez clona y compila (tarda un par de minutos). Las siguientes solo
 # baja lo nuevo. Necesita Node 22+ y git instalados.
@@ -10,7 +10,14 @@
 set -euo pipefail
 
 REPOSITORIO="https://github.com/alanpomato/Copolero.git"
-RAMA="${RAMA:-main}"
+# La rama donde vive el juego.
+#
+# `main` todavía tiene sólo el commit inicial: todo el juego está en la rama de
+# trabajo. Mientras siga así, ése es el default, porque bajar `main` te deja con
+# un proyecto vacío y el error no dice eso en ningún lado. El día que esto se
+# mergee a `main`, se cambia esta línea y nada más.
+RAMA_POR_DEFECTO="claude/buenas-9b6dk2"
+RAMA="${RAMA:-$RAMA_POR_DEFECTO}"
 CARPETA="${CARPETA:-$HOME/Copolero}"
 
 rojo() { printf '\033[1;31m%s\033[0m\n' "$*"; }

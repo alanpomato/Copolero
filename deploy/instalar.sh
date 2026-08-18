@@ -18,7 +18,14 @@ set -euo pipefail
 
 REPOSITORIO="https://github.com/alanpomato/Copolero.git"
 DOMINIO="${1:-}"
-RAMA="${2:-main}"
+# La rama donde vive el juego.
+#
+# `main` todavía tiene sólo el commit inicial: todo el juego está en la rama de
+# trabajo. Mientras siga así, ése es el default, porque bajar `main` te deja con
+# un proyecto vacío y el error no dice eso en ningún lado. El día que esto se
+# mergee a `main`, se cambia esta línea y nada más.
+RAMA_POR_DEFECTO="claude/buenas-9b6dk2"
+RAMA="${2:-$RAMA_POR_DEFECTO}"
 
 USUARIO="copolero"
 DIR_CODIGO="/opt/copolero"

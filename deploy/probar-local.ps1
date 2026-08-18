@@ -1,6 +1,6 @@
 # Baja Copolero y lo levanta en tu propia máquina, para verlo.  Windows.
 #
-#   irm https://raw.githubusercontent.com/alanpomato/Copolero/main/deploy/probar-local.ps1 | iex
+#   irm https://raw.githubusercontent.com/alanpomato/Copolero/claude/buenas-9b6dk2/deploy/probar-local.ps1 | iex
 #
 # La primera vez clona y compila (tarda un par de minutos). Las siguientes solo
 # baja lo nuevo. Necesita Node 22+ y git instalados.
@@ -8,7 +8,11 @@
 $ErrorActionPreference = 'Stop'
 
 $repositorio = 'https://github.com/alanpomato/Copolero.git'
-$rama = if ($env:RAMA) { $env:RAMA } else { 'main' }
+# La rama donde vive el juego. `main` todavía tiene sólo el commit inicial, así
+# que bajar `main` te deja con un proyecto vacío. Ver el comentario equivalente
+# en probar-local.sh.
+$ramaPorDefecto = 'claude/buenas-9b6dk2'
+$rama = if ($env:RAMA) { $env:RAMA } else { $ramaPorDefecto }
 $carpeta = if ($env:CARPETA) { $env:CARPETA } else { Join-Path $HOME 'Copolero' }
 
 function Paso($texto) { Write-Host "`n> $texto" -ForegroundColor Cyan }

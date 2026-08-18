@@ -5,6 +5,12 @@ que los dos entren desde donde quieran sin instalar nada.
 
 Todo el trabajo está en `deploy/`. Lo que sigue es qué contratar y qué escribir.
 
+> **Ojo con la rama.** Hoy `main` tiene sólo el README: el juego entero vive en
+> `claude/buenas-9b6dk2`. Todos los comandos de acá apuntan a esa rama. Si
+> alguna vez esto se mergea a `main`, hay que cambiar la rama por defecto en
+> `deploy/probar-local.sh`, `deploy/probar-local.ps1` y `deploy/instalar.sh`, y
+> las direcciones de los comandos de esta guía.
+
 ---
 
 ## Antes: verlo en tu propia máquina
@@ -16,13 +22,13 @@ código, lo compila y lo levanta. Hace falta tener [Node](https://nodejs.org)
 **Mac o Linux**, en la terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/main/deploy/probar-local.sh | bash
+curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/claude/buenas-9b6dk2/deploy/probar-local.sh | bash
 ```
 
 **Windows**, en PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/alanpomato/Copolero/main/deploy/probar-local.ps1 | iex
+irm https://raw.githubusercontent.com/alanpomato/Copolero/claude/buenas-9b6dk2/deploy/probar-local.ps1 | iex
 ```
 
 Después abrís `http://localhost:5173`. Para cortarlo, `Ctrl + C`.
@@ -88,14 +94,14 @@ La primera vez te pregunta si confiás en la máquina: escribí `yes`.
 Un solo comando, ya adentro del servidor:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/main/deploy/instalar.sh \
+curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/claude/buenas-9b6dk2/deploy/instalar.sh \
   | bash -s -- copolero.tudominio.com
 ```
 
 Si todavía no tenés dominio, poné la IP en su lugar:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/main/deploy/instalar.sh \
+curl -fsSL https://raw.githubusercontent.com/alanpomato/Copolero/claude/buenas-9b6dk2/deploy/instalar.sh \
   | bash -s -- 203.0.113.10
 ```
 
@@ -175,6 +181,62 @@ la web: **Actions → Desplegar al servidor → Run workflow**, eligiendo la ram
 
 El primer despliegue, en cambio, sí es a mano: hasta que la clave esté puesta en
 el servidor, GitHub no puede entrar.
+
+---
+
+## 5.1 Desde otra PC, o desde el celular
+
+Tres formas, de menos a más trabajo. La primera es la que conviene.
+
+### a. No compilar nada: que compile GitHub
+
+Con los tres secretos cargados, **cada push despliega solo**. No hace falta
+tener el proyecto en ninguna máquina: se toca el código donde sea, se pushea, y
+a los dos minutos el servidor está actualizado.
+
+Y si querés desplegar sin pushear nada —por ejemplo para volver a subir una rama
+que ya está—, se hace **desde el navegador del celular**:
+
+1. Entrás a **github.com/alanpomato/Copolero → Actions**.
+2. **Desplegar al servidor** → **Run workflow**.
+3. Elegís la rama y listo.
+
+Funciona igual desde el navegador del teléfono que desde una computadora. Es la
+única forma de desplegar que no necesita ni terminal ni tener el código bajado.
+
+### b. Editar desde el navegador, sin instalar nada
+
+Para cambios chicos —un texto, un número— se puede editar en
+[github.dev](https://github.dev/alanpomato/Copolero): es Visual Studio Code
+adentro del navegador, andando desde el celular. Se edita, se hace commit, y el
+push dispara el deploy de arriba.
+
+Lo que **no** hace github.dev es correr nada: no compila, no corre los tests. Si
+el cambio rompe algo, te enterás cuando falle el deploy —que no reinicia con un
+build roto, así que el juego no se cae, pero se queda en la versión anterior—.
+
+Para eso está **Codespaces** (Code → Codespaces → Create), que sí es una máquina
+de verdad con Node adentro y corre `npm test` y `npm run dev`. Anda en el
+navegador del celular, pero en una pantalla de teléfono es incómodo de usar.
+
+### c. Compilarlo en otra PC
+
+Lo mismo que en «Antes: verlo en tu propia máquina», al principio de esta guía:
+un comando que clona, compila y levanta. Necesita Node 22+ y git.
+
+Para trabajar de verdad en esa otra PC, con git ya instalado:
+
+```bash
+git clone -b claude/buenas-9b6dk2 https://github.com/alanpomato/Copolero.git
+cd Copolero
+npm install
+npm test          # 457 tests
+npm run dev       # http://localhost:5173
+```
+
+`npm run dev` levanta el juego con recarga en caliente: guardás un archivo y la
+pantalla se actualiza sola. `npm run build` es lo que compila para producción, y
+`npm run preview` sirve eso compilado, que es lo que corre en el servidor.
 
 ## 6. El día a día
 
