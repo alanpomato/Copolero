@@ -359,6 +359,27 @@ export function elQueSeCumplioEn(estado: Estado, temporada: number): Sueno | nul
 }
 
 /**
+ * Anota la marca más alta que llegó a tener cada uno.
+ *
+ * De acá sale que la barra del sueño no baje nunca, y por eso hay que llamarlo
+ * al cerrar **cada** fase y no sólo al cerrar la temporada. Vivió un tiempo
+ * adentro de `revisarSuenos`, que corre una vez por año, y con eso alcanzaba
+ * mientras la plata del representante se movía únicamente en el mercado.
+ * Cuando sus momentos empezaron a costar plata en el medio de la temporada
+ * apareció el agujero: llegaba a 780 mil en la fase 2, gastaba 30 mil, y como
+ * la marca del año anterior era más baja la barra retrocedía un punto. Se ve
+ * poco y se siente mal, que es la peor combinación.
+ */
+export function anotarElTope(estado: Estado): void {
+	estado.suenos = normalizar(estado);
+	for (const rol of ['futbolista', 'representante'] as const) {
+		const s = suenoDe(estado, rol);
+		if (!s) continue;
+		estado.suenos.tope[rol] = cuantoLleva(estado, rol, s);
+	}
+}
+
+/**
  * Revisa si alguno se cumplió recién, y lo anota.
  *
  * Muta el estado: una vez cumplido queda cumplido para siempre, aunque después
@@ -369,17 +390,13 @@ export function elQueSeCumplioEn(estado: Estado, temporada: number): Sueno | nul
 export function revisarSuenos(estado: Estado): { rol: Rol; texto: string }[] {
 	const nuevas: { rol: Rol; texto: string }[] = [];
 
-	estado.suenos = normalizar(estado);
+	anotarElTope(estado);
 
 	for (const rol of ['futbolista', 'representante'] as const) {
 		const s = suenoDe(estado, rol);
 		if (!s) continue;
 
-		// La marca más alta se actualiza siempre, aunque el sueño ya esté cumplido:
-		// es de donde sale que la barra no baje nunca.
 		const lleva = cuantoLleva(estado, rol, s);
-		estado.suenos.tope[rol] = lleva;
-
 		if (yaLoCumplio(estado, s) || lleva < s.meta) continue;
 
 		estado.suenos.cumplidos.push({ id: s.id, temporada: estado.temporada });

@@ -243,27 +243,39 @@ describe('en una partida de verdad', () => {
 	});
 
 	it('una carrera entera con todo comprado no rompe nada ni deja plata negativa', () => {
+		/*
+		 * Se avanza fase por fase y no de a tres.
+		 *
+		 * Antes el bucle de adentro contaba `for (f = 0; f < 3; f++)` dando por
+		 * hecho que una temporada eran tres resoluciones. Dejó de serlo cuando el
+		 * mercado pasó a jugarse en dos tiempos —el representante filtra, el
+		 * futbolista elige— y el test empezó a pedirle una fase de más a una
+		 * carrera ya terminada. Preguntar en qué fase está no se rompe cuando
+		 * cambia el calendario.
+		 */
 		let e = unaPartida();
-		let vueltas = 0;
-		while (!e.carreraTerminada && vueltas < 30) {
-			for (let f = 0; f < 3; f++) {
-				const puede = f === 0 ? loQuePuedeComprar(e, 'futbolista')[0]?.id : undefined;
-				e = resolverFase(
-					e,
-					[
-						{ rol: 'futbolista', nota: '', inversion: puede },
-						{
-							rol: 'representante',
-							nota: '',
-							inversion: loQuePuedeComprar(e, 'representante')[0]?.id
-						}
-					],
-					'inv'
-				).estado;
-			}
+		let pasos = 0;
+		while (!e.carreraTerminada && pasos < 120) {
+			const enPretemporada = e.fase === 1;
+			e = resolverFase(
+				e,
+				[
+					{
+						rol: 'futbolista',
+						nota: '',
+						inversion: enPretemporada ? loQuePuedeComprar(e, 'futbolista')[0]?.id : undefined
+					},
+					{
+						rol: 'representante',
+						nota: '',
+						inversion: enPretemporada ? loQuePuedeComprar(e, 'representante')[0]?.id : undefined
+					}
+				],
+				'inv'
+			).estado;
 			expect(e.futbolista.dineroUsd).toBeGreaterThanOrEqual(0);
 			expect(e.representante.dineroUsd).toBeGreaterThanOrEqual(0);
-			vueltas++;
+			pasos++;
 		}
 		expect(e.carreraTerminada).toBe(true);
 	});

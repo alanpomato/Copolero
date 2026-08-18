@@ -19,7 +19,7 @@ import { empujarElTecho, loQueEmpujaElTecho, loQueSeCuenta } from './techo';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
-import { elegirSueno, revisarSuenos } from './suenos';
+import { anotarElTope, elegirSueno, revisarSuenos } from './suenos';
 import { correrleElAnio } from './rival';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
 import {
@@ -388,6 +388,7 @@ export function resolverFase(
 
 		// Y hasta acá llega el primer tiempo. La fase sigue siendo la 3: lo que
 		// cambió es de quién es el turno.
+		anotarElTope(siguiente);
 		return { estado: siguiente, log };
 	}
 
@@ -457,6 +458,10 @@ export function resolverFase(
 	} else {
 		siguiente.fase = faseSiguiente(estado.fase);
 	}
+
+	// La marca más alta de cada sueño se anota al cerrar cualquier fase, no sólo
+	// al cerrar el año: ver `anotarElTope`.
+	anotarElTope(siguiente);
 
 	return { estado: siguiente, log };
 }

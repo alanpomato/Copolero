@@ -2,7 +2,29 @@ import { club, contexto, clubesDe } from '../../../content/mundo';
 import { arqueroActualDe, dtActualDe, jugadoresActualesDe } from './mercado';
 import { media } from './estado';
 import { rngPara } from './rng';
-import type { Atributos, CambiosMundo, Estado, Posicion } from './tipos';
+import { DE_LA_VIDA } from './ocasiones-vida';
+import {
+	aQuien,
+	arqueroDelRival,
+	chance,
+	Mayus,
+	unCompaniero,
+	type Escenario,
+	type Familia,
+	type Ocasion,
+	type Plantilla,
+	type ResultadoDeOcasion
+} from './ocasion-tipos';
+import type { CambiosMundo, Estado, Posicion } from './tipos';
+
+export type {
+	Efecto,
+	Familia,
+	Minijuego,
+	Ocasion,
+	Opcion,
+	ResultadoDeOcasion
+} from './ocasion-tipos';
 
 /**
  * La rueda de ocasión.
@@ -16,72 +38,11 @@ import type { Atributos, CambiosMundo, Estado, Posicion } from './tipos';
  * Las probabilidades salen de los atributos, así que la misma ocasión se juega
  * distinto a los 17 que a los 27. Y el resultado sale de la semilla: no se
  * puede recargar la página para que salga mejor.
+ *
+ * Los momentos de cancha están acá, ordenados por puesto. Los que pasan fuera
+ * de la cancha —la prensa, el cuerpo, la mesa, los árbitros, lo turbio— están
+ * en `ocasiones-vida.ts`, que es la mitad que más creció.
  */
-
-/** Lo que mueve una ocasión cuando sale, o cuando no. */
-export type Efecto = {
-	goles?: number;
-	asistencias?: number;
-	fama?: number;
-	moral?: number;
-	dt?: number;
-	hinchada?: number;
-	prensa?: number;
-	confianza?: number;
-	desgaste?: number;
-};
-
-export type Opcion = {
-	id: string;
-	etiqueta: string;
-	/** Qué significa elegir esto. Se muestra abajo del botón. */
-	detalle: string;
-	/** 0–100. Se muestra siempre: es el corazón del minijuego. */
-	probabilidad: number;
-	siSale: string;
-	siFalla: string;
-	premio: Efecto;
-	castigo: Efecto;
-};
-
-/**
- * Con qué se juega este momento.
- *
- * Los tres momentos del año eran siempre la misma rueda, y tres temporadas más
- * tarde ya no se miraba: se elegía la opción de arriba y se apretaba. Un
- * minijuego que se repite quince años seguidos deja de ser un minijuego.
- *
- * Así que cada momento se juega con lo que le corresponde. No es variedad por
- * variedad: un penal no es una ruleta, es un arco con alguien adentro; y una
- * charla con el técnico no es un arco, es una tirada contra tu número. Lo que
- * cambia es la forma de mirar la misma probabilidad, que sigue siendo la de
- * verdad en los tres casos.
- *
- *  - `ruleta`: la rueda que gira. Para lo que pasa con la pelota en movimiento.
- *  - `arco`:   el arco y el que ataja. Para definir, patear y atajar.
- *  - `dado`:   un número contra el tuyo. Para lo que se juega fuera de la cancha.
- *  - `quiz`:   una charla en la que hay que contestar. Para los momentos del
- *              representante, donde lo que se juega es lo que se dice.
- */
-export type Minijuego = 'ruleta' | 'arco' | 'dado' | 'quiz';
-
-export type Ocasion = {
-	id: string;
-	titulo: string;
-	/** El planteo, ya narrado y con los nombres reales del mundo. */
-	contexto: string;
-	/** Con qué se juega. Lo decide el momento, no la pantalla. */
-	juego: Minijuego;
-	opciones: Opcion[];
-};
-
-export type ResultadoDeOcasion = {
-	ocasionId: string;
-	opcionId: string;
-	salio: boolean;
-	texto: string;
-	efecto: Efecto;
-};
 
 export const OCASIONES_POR_TEMPORADA = 3;
 
@@ -98,16 +59,36 @@ export const OCASIONES_EN_EL_MERCADO = 1;
 // El escenario: contra quién y con quién
 // ---------------------------------------------------------------------------
 
-type Escenario = {
-	/** Un rival de la misma liga, distinto del club propio. */
-	rival: string;
-	/** El arquero del rival, si es alguien conocido. */
-	arqueroRival: string | null;
-	/** Un jugador de campo conocido del rival. */
-	figuraRival: string | null;
-	/** El técnico propio, si es alguien conocido. */
-	tecnico: string | null;
-};
+/**
+ * Los que no están en la base de datos.
+ *
+ * Árbitros y periodistas son inventados a propósito. Los clubes, los técnicos
+ * y los jugadores conocidos son reales porque el mundo tiene que sonar al
+ * mundo; un árbitro real al que el juego le hace cobrar mal, o un periodista
+ * real al que le hace escribir una operación, es otra cosa. Estos nombres no
+ * son de nadie.
+ */
+const ARBITROS = [
+	'Ramiro Sosa',
+	'Julián Peralta',
+	'Édgar Villalba',
+	'Nicolás Bustos',
+	'Marcelo Iriarte',
+	'Adrián Colombo',
+	'Fabio Rossi',
+	'Hernán Maidana'
+];
+
+const PERIODISTAS = [
+	'Cacho Ferrari',
+	'Vicky Arrieta',
+	'Beto Sandoval',
+	'Lucía Prado',
+	'Gustavo Rinaldi',
+	'Mónica Belén',
+	'Tato Guzmán',
+	'Andrea Cifuentes'
+];
 
 function escenario(estado: Estado, indice: number, semilla: string): Escenario {
 	const rng = rngPara(semilla, {
@@ -128,49 +109,25 @@ function escenario(estado: Estado, indice: number, semilla: string): Escenario {
 		.filter((p) => p.posicion !== 'arquero')
 		.sort((a, b) => b.fama - a.fama);
 
+	// Un compañero para los momentos de vestuario: el más conocido del plantel
+	// propio, que es el que pesa cuando hay que bancar a alguien o no bancarlo.
+	const propios = jugadoresActualesDe(propio, cambios).sort((a, b) => b.fama - a.fama);
+
 	return {
 		rival,
 		arqueroRival: arquero?.nombre ?? null,
 		figuraRival: deCampo[0]?.nombre ?? null,
-		tecnico: dtActualDe(propio, cambios)?.nombre ?? null
+		tecnico: dtActualDe(propio, cambios)?.nombre ?? null,
+		propio,
+		companiero: propios[0]?.nombre ?? null,
+		arbitro: rng.elegir(ARBITROS),
+		periodista: rng.elegir(PERIODISTAS)
 	};
 }
 
 // ---------------------------------------------------------------------------
-// Las probabilidades
+// Las plantillas de cancha
 // ---------------------------------------------------------------------------
-
-/**
- * Convierte una puntería cruda en una probabilidad que se pueda mostrar.
- *
- * `base` es lo que sale con atributo 50 y ninguna ventaja. Cada punto de
- * atributo por encima o por debajo mueve la aguja, pero nunca a los extremos:
- * nada baja de 8% ni sube de 92%, porque una ocasión que sale siempre no es
- * una ocasión.
- */
-function chance(base: number, atributo: number, peso = 0.55): number {
-	return Math.round(Math.max(8, Math.min(92, base + (atributo - 50) * peso)));
-}
-
-// ---------------------------------------------------------------------------
-// Las plantillas
-// ---------------------------------------------------------------------------
-
-type Plantilla = (a: Atributos, e: Escenario) => Ocasion;
-
-const arqueroDelRival = (e: Escenario) => e.arqueroRival ?? `el arquero de ${club(e.rival).nombre}`;
-
-/** Para las frases que arrancan con un nombre que puede venir en minúscula. */
-const Mayus = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
-
-/**
- * "a" delante de un nombre que a veces es una persona y a veces un puesto.
- *
- * El rival puede ser "Franco Armani" o "el arquero de Temperley", según si el
- * club tiene a alguien conocido en el arco. Concatenar "a" con las dos daba
- * "Se la cruzaste a el arquero", que en castellano no existe.
- */
-const aQuien = (quien: string) => (quien.startsWith('el ') ? `al ${quien.slice(3)}` : `a ${quien}`);
 
 const PARA_DELANTERO: Plantilla[] = [
 	(a, e) => ({
@@ -352,6 +309,44 @@ const PARA_DELANTERO: Plantilla[] = [
 				castigo: {}
 			}
 		]
+	}),
+	(a, e) => ({
+		id: 'el-hat-trick',
+		juego: 'arco',
+		titulo: 'El que te falta',
+		contexto: `Llevás dos goles a ${club(e.rival).nombre} y cobran penal a los ochenta y ocho. El pateador es otro y ya tiene la pelota en la mano.`,
+		opciones: [
+			{
+				id: 'pedirsela',
+				etiqueta: 'Pedírsela',
+				detalle: 'Es tu hat-trick. También es el penal de él.',
+				probabilidad: chance(58, a.definicion, 0.5),
+				siSale: 'Te la dio, la pusiste abajo, y te fuiste con la pelota abajo del brazo.',
+				siFalla: 'Te la dio y la mandaste al travesaño. La cara del otro lo dijo todo.',
+				premio: { goles: 1, fama: 10, moral: 9, hinchada: 6, prensa: 5 },
+				castigo: { moral: -7, hinchada: -5, dt: -3 }
+			},
+			{
+				id: 'dejarsela',
+				etiqueta: 'Dejársela',
+				detalle: 'El hat-trick se va. El vestuario no.',
+				probabilidad: chance(80, a.liderazgo, 0.2),
+				siSale: 'La metió él, te abrazó primero a vos, y todo el mundo vio quién se la dejó.',
+				siFalla: 'La erró. Nadie te dijo nada, pero todos pensaron lo mismo.',
+				premio: { asistencias: 1, dt: 8, moral: 5, hinchada: 5 },
+				castigo: { moral: -3, dt: 2 }
+			},
+			{
+				id: 'discutirla',
+				etiqueta: 'Discutírsela delante de todos',
+				detalle: 'Con la cámara encima y el estadio mirando.',
+				probabilidad: chance(34, a.liderazgo, 0.45),
+				siSale: 'Te la terminó dando, la metiste, y quedó como carácter.',
+				siFalla: 'Se vio la discusión desde la platea y el gol lo metió él.',
+				premio: { goles: 1, fama: 8, moral: 6 },
+				castigo: { dt: -8, prensa: -6, moral: -5 }
+			}
+		]
 	})
 ];
 
@@ -526,6 +521,47 @@ const PARA_MEDIO: Plantilla[] = [
 				castigo: { moral: -2 }
 			}
 		]
+	}),
+	(a, e) => ({
+		id: 'el-cambio',
+		juego: 'dado',
+		titulo: 'El número que se levanta',
+		contexto: e.tecnico
+			? `Van sesenta y cinco contra ${club(e.rival).nombre}, vas empatando, y ${e.tecnico} levanta tu número. Todavía estás a treinta metros del banco.`
+			: `Van sesenta y cinco contra ${club(e.rival).nombre}, vas empatando, y levantan tu número.`,
+		opciones: [
+			{
+				id: 'pedirle-quedarse',
+				etiqueta: 'Pedirle diez minutos más',
+				detalle: 'De frente y sin gestos. A veces te los dan.',
+				probabilidad: chance(38, a.liderazgo, 0.5),
+				siSale: 'Te dio diez minutos y en esos diez salió el gol tuyo.',
+				siFalla: 'No te los dio y encima quedó la imagen de que discutiste el cambio.',
+				premio: { asistencias: 1, dt: 5, moral: 7, hinchada: 5, desgaste: 2 },
+				castigo: { dt: -7, prensa: -4, moral: -4 }
+			},
+			{
+				id: 'salir-aplaudiendo',
+				etiqueta: 'Salir aplaudiendo a la gente',
+				detalle: 'Lo que hace el que ya jugó mil. No cuesta nada y se ve todo.',
+				probabilidad: 100,
+				siSale:
+					'Saliste aplaudiendo y la tribuna te devolvió el aplauso. Se te fue el enojo en el camino.',
+				siFalla: '',
+				premio: { dt: 4, hinchada: 4, moral: 1, desgaste: -2 },
+				castigo: {}
+			},
+			{
+				id: 'tirar-la-pechera',
+				etiqueta: 'Salir de mala gana',
+				detalle: 'Es honesto. Sale caro.',
+				probabilidad: chance(30, a.liderazgo, 0.35),
+				siSale: 'Se leyó como que querías ganar. Hasta la hinchada te lo festejó.',
+				siFalla: 'Tiraste la pechera y la repitieron toda la semana en todos los programas.',
+				premio: { hinchada: 6, moral: 3 },
+				castigo: { dt: -11, prensa: -7, moral: -3 }
+			}
+		]
 	})
 ];
 
@@ -649,6 +685,84 @@ const PARA_DEFENSOR: Plantilla[] = [
 				siFalla: '',
 				premio: { hinchada: 1 },
 				castigo: {}
+			}
+		]
+	}),
+	(a, e) => ({
+		id: 'la-marca-personal',
+		juego: 'ruleta',
+		titulo: e.figuraRival ? `Te toca ${e.figuraRival}` : 'Te toca el mejor de ellos',
+		contexto: e.figuraRival
+			? `El técnico te lo dijo el jueves: ${e.figuraRival} es tuyo los noventa minutos. Donde vaya él, vas vos.`
+			: `El técnico te lo dijo el jueves: la figura de ${club(e.rival).nombre} es tuya los noventa minutos.`,
+		opciones: [
+			{
+				id: 'encima',
+				etiqueta: 'Írsele encima desde el minuto uno',
+				detalle: 'No lo dejás girar nunca. Y la amarilla llega temprano.',
+				probabilidad: chance(46, (a.defensa + a.potencia) / 2, 0.5),
+				siSale: 'No la tocó. A los setenta lo cambiaron y salió puteando.',
+				siFalla: 'Amarilla a los doce y noventa minutos jugando con la soga al cuello.',
+				premio: { dt: 10, hinchada: 8, moral: 7, desgaste: 3 },
+				castigo: { moral: -5, dt: -4, desgaste: 4 }
+			},
+			{
+				id: 'de-lejos',
+				etiqueta: 'Marcarlo de lejos y esperarlo',
+				detalle: 'Lo dejás recibir y le cerrás el camino. Menos riesgo, menos premio.',
+				probabilidad: chance(64, a.defensa, 0.45),
+				siSale: 'La tocó veinte veces y no pasó nunca. Partido perfecto y sin una falta.',
+				siFalla: 'Le diste dos metros y con dos metros le alcanzó.',
+				premio: { dt: 7, moral: 5, desgaste: 1 },
+				castigo: { dt: -6, moral: -5, hinchada: -3 }
+			},
+			{
+				id: 'hablarle',
+				etiqueta: 'Marcarlo hablándole todo el partido',
+				detalle: 'La marca vieja. Funciona con algunos y con otros los enciende.',
+				probabilidad: chance(42, a.liderazgo, 0.5),
+				siSale: 'Se calentó, se fue del partido solo, y encima lo echaron a él.',
+				siFalla: 'Lo encendiste. Te hizo dos y el segundo te lo festejó en la cara.',
+				premio: { dt: 8, hinchada: 9, moral: 6 },
+				castigo: { moral: -8, hinchada: -5, prensa: -3 }
+			}
+		]
+	}),
+	(a, e) => ({
+		id: 'el-penal-que-no-fue',
+		juego: 'ruleta',
+		titulo: 'Adentro del área',
+		contexto: `Uno contra uno adentro de tu área, minuto noventa y uno, ganan uno a cero a ${club(e.rival).nombre}. Si lo pasa, es gol.`,
+		opciones: [
+			{
+				id: 'barrerse',
+				etiqueta: 'Barrerte',
+				detalle: 'Si le sacás la pelota, sos el héroe. Si le sacás la pierna, es penal.',
+				probabilidad: chance(44, a.defensa, 0.55),
+				siSale: 'Te la sacaste limpia al córner. Se levantó la cancha entera.',
+				siFalla: 'Le pegaste primero a él. Penal, roja, y el partido se fue.',
+				premio: { dt: 11, hinchada: 12, moral: 9, desgaste: 2 },
+				castigo: { dt: -12, hinchada: -9, moral: -10, desgaste: 2 }
+			},
+			{
+				id: 'aguantar',
+				etiqueta: 'Aguantarlo de pie',
+				detalle: 'Sin meter la pierna. Que defina él y que el arquero haga lo suyo.',
+				probabilidad: chance(56, (a.defensa + a.velocidad) / 2, 0.45),
+				siSale: 'Lo llevaste al rincón y terminó tirando un centro a nadie.',
+				siFalla: 'Te lo comió con una gambeta y la puso abajo. Empate.',
+				premio: { dt: 8, moral: 6, hinchada: 5 },
+				castigo: { dt: -7, moral: -7, hinchada: -6 }
+			},
+			{
+				id: 'la-que-no-se-cuenta',
+				etiqueta: 'Frenarlo como sea',
+				detalle: 'Camiseta, brazo, lo que haya. Si el árbitro no lo ve, no pasó.',
+				probabilidad: chance(30, a.defensa, 0.35),
+				siSale: 'No lo vio nadie. Terminó el partido y ganaron uno a cero.',
+				siFalla: 'Lo vio el línea. Penal, roja, y toda la semana repitiendo la imagen.',
+				premio: { dt: 6, moral: 3 },
+				castigo: { dt: -13, prensa: -8, hinchada: -6, moral: -8 }
 			}
 		]
 	})
@@ -777,188 +891,89 @@ const PARA_ARQUERO: Plantilla[] = [
 				castigo: { moral: -5, hinchada: -3 }
 			}
 		]
+	}),
+	(a, e) => ({
+		id: 'salir-a-los-pies',
+		juego: 'arco',
+		titulo: 'A los pies',
+		contexto: e.figuraRival
+			? `${e.figuraRival} le ganó la espalda al último y viene solo contra vos. Tenés medio segundo para decidir.`
+			: `Le ganaron la espalda al último y viene uno solo contra vos. Tenés medio segundo para decidir.`,
+		opciones: [
+			{
+				id: 'salir',
+				etiqueta: 'Salir a los pies',
+				detalle:
+					'Achicar todo. Es lo que hacen los que atajan de verdad y lo que duele cuando sale mal.',
+				probabilidad: chance(50, (a.defensa + a.potencia) / 2, 0.5),
+				siSale: 'Le tapaste el arco entero y la pelota te quedó abajo del cuerpo.',
+				siFalla: 'Te la picó por arriba y entró despacio. De esas se habla una semana.',
+				premio: { dt: 10, hinchada: 9, moral: 8, desgaste: 2 },
+				castigo: { moral: -9, hinchada: -6, prensa: -4 }
+			},
+			{
+				id: 'esperar',
+				etiqueta: 'Quedarte y hacerte grande',
+				detalle: 'Que defina él. Menos épico, más probable.',
+				probabilidad: chance(58, a.defensa, 0.45),
+				siSale: 'Te hiciste enorme y le tapaste el remate con la pierna.',
+				siFalla: 'Te la cruzó al segundo palo. No había mucho que hacer.',
+				premio: { dt: 8, moral: 6, hinchada: 5 },
+				castigo: { moral: -6, dt: -3 }
+			},
+			{
+				id: 'adivinar',
+				etiqueta: 'Tirarte antes de que defina',
+				detalle: 'Adivinar el palo. O sale espectacular o sale ridículo.',
+				probabilidad: chance(32, a.velocidad, 0.4),
+				siSale: 'Adivinaste el palo y la sacaste con la punta de los dedos. Foto de tapa.',
+				siFalla: 'Te tiraste antes y la puso del otro lado, con el arco vacío.',
+				premio: { dt: 9, hinchada: 11, moral: 9, prensa: 6 },
+				castigo: { moral: -10, hinchada: -8, prensa: -6, dt: -5 }
+			}
+		]
+	}),
+	(a, e) => ({
+		id: 'el-corner-que-llueve',
+		juego: 'ruleta',
+		titulo: 'El córner con lluvia',
+		contexto: `Llueve hace una hora, la cancha está pesada y ${club(e.rival).nombre} tiene córner en el minuto noventa. Están todos adentro del área, ellos y ustedes.`,
+		opciones: [
+			{
+				id: 'salir-a-cortar',
+				etiqueta: 'Salir a cortarla',
+				detalle: 'Con la pelota mojada y doce tipos adentro. Si la sacás, se termina el partido.',
+				probabilidad: chance(42, (a.potencia + a.defensa) / 2, 0.5),
+				siSale: 'Saliste entre todos, la sacaste con los dos puños, y ahí se acabó el partido.',
+				siFalla: 'Se te resbaló de las manos y la empujaron adentro. Empate sobre la hora.',
+				premio: { dt: 9, hinchada: 8, moral: 7, desgaste: 2 },
+				castigo: { moral: -9, hinchada: -7, prensa: -5, dt: -5 }
+			},
+			{
+				id: 'quedarse-en-la-linea',
+				etiqueta: 'Quedarte en la línea',
+				detalle: 'Lo que dice el manual con la pelota mojada.',
+				probabilidad: chance(62, a.defensa, 0.4),
+				siSale: 'Cabecearon al medio del arco y estabas parado justo ahí.',
+				siFalla: 'Cabecearon al primer palo y desde la línea no se llega.',
+				premio: { dt: 6, moral: 5 },
+				castigo: { moral: -6, dt: -4 }
+			},
+			{
+				id: 'gritar',
+				etiqueta: 'Ordenar la marca a los gritos',
+				detalle: 'Diez segundos para reacomodar a seis tipos empapados.',
+				probabilidad: chance(52, a.liderazgo, 0.5),
+				siSale: 'Los ordenaste, el centro salió a nadie, y se terminó el partido.',
+				siFalla: 'Gritaste, no te escuchó nadie con la lluvia, y quedó uno solo adentro del área.',
+				premio: { dt: 8, moral: 6, hinchada: 4 },
+				castigo: { moral: -5, dt: -4 }
+			}
+		]
 	})
 ];
 
 /** Ocasiones que no son de pelota: sirven para cualquier puesto. */
-const PARA_CUALQUIERA: Plantilla[] = [
-	(a, e) => ({
-		id: 'el-pibe-del-club',
-		juego: 'quiz',
-		titulo: 'El pibe de inferiores',
-		contexto: `Subió un pibe de la séptima a entrenar con el plantel y no le habla nadie. Lo mismo que te pasó a vos.`,
-		opciones: [
-			{
-				id: 'bancarlo',
-				etiqueta: 'Sentarte con él',
-				detalle: 'Diez minutos. No te cuesta nada y a él le cambia la semana.',
-				probabilidad: chance(74, a.liderazgo, 0.3),
-				siSale:
-					'Le hablaste, entrenó suelto y la rompió. Todo el club se enteró de quién lo bancó.',
-				siFalla: 'Se puso más nervioso todavía y no le salió una. Igual te lo agradeció.',
-				premio: { dt: 5, hinchada: 4, moral: 4 },
-				castigo: { moral: 1 }
-			},
-			{
-				id: 'exigirle',
-				etiqueta: 'Exigirle como al resto',
-				detalle: 'Nadie te regaló nada a vos tampoco.',
-				probabilidad: chance(46, a.liderazgo, 0.45),
-				siSale: 'Lo apuraste todo el entrenamiento y respondió. Después te lo agradeció.',
-				siFalla: 'Se fue llorando al vestuario y el técnico te lo hizo saber.',
-				premio: { dt: 6, moral: 3 },
-				castigo: { dt: -5, prensa: -2 }
-			},
-			{
-				id: 'ignorarlo',
-				etiqueta: 'Dejarlo que se arregle solo',
-				detalle: 'Así se aprende. O eso dicen.',
-				probabilidad: 100,
-				siSale: 'No le dijiste nada. Entrenó, se fue, y nadie se acordó.',
-				siFalla: '',
-				premio: {},
-				castigo: {}
-			}
-		]
-	}),
-	(a, e) => ({
-		id: 'la-multa',
-		juego: 'dado',
-		titulo: 'La multa',
-		contexto: `Llegaste tarde a la concentración por segunda vez en el mes. ${e.tecnico ? e.tecnico + ' te espera' : 'El técnico te espera'} en la puerta con cara de pocos amigos.`,
-		opciones: [
-			{
-				id: 'pedir-disculpas',
-				etiqueta: 'Pedir disculpas y bancarte la multa',
-				detalle: 'Pagar y no discutir. Es lo más barato que hay.',
-				probabilidad: chance(70, a.liderazgo, 0.3),
-				siSale: 'Pagaste sin chistar y ahí murió. Al otro día ni se hablaba del tema.',
-				siFalla: 'Igual quedó picando. Te lo van a recordar la próxima.',
-				premio: { dt: 3 },
-				castigo: { dt: -3, moral: -2 }
-			},
-			{
-				id: 'explicarle',
-				etiqueta: 'Explicarle qué pasó',
-				detalle: 'Si tenés motivo y sabés contarlo. Si no, es una excusa.',
-				probabilidad: chance(44, a.liderazgo, 0.5),
-				siSale: 'Le contaste lo que pasaba en tu casa y te levantó la multa él mismo.',
-				siFalla: 'Le sonó a excusa. Multa doble y una charla que no querías tener.',
-				premio: { dt: 6, moral: 4 },
-				castigo: { dt: -7, moral: -4 }
-			},
-			{
-				id: 'plantarse',
-				etiqueta: 'Decirle que es un problema suyo',
-				detalle: 'Nunca es buena idea. A veces igual se dice.',
-				probabilidad: chance(24, a.liderazgo, 0.4),
-				siSale: 'Le paraste el carro y te respetó. No a todos les sale.',
-				siFalla: 'Te mandó al banco tres fechas y lo contó a la prensa.',
-				premio: { dt: 4, hinchada: 3, moral: 5 },
-				castigo: { dt: -14, prensa: -6, moral: -5 }
-			}
-		]
-	}),
-	(a, e) => ({
-		id: 'la-fundacion',
-		juego: 'quiz',
-		titulo: 'El barrio',
-		contexto: `Te llaman del club donde empezaste: se les llueve el vestuario y no tienen para arreglarlo. No te piden nada, te lo cuentan.`,
-		opciones: [
-			{
-				id: 'ponerla',
-				etiqueta: 'Poner la plata vos',
-				detalle: 'Sale de tu bolsillo. No sale en ningún lado.',
-				probabilidad: chance(82, a.liderazgo, 0.2),
-				siSale:
-					'Arreglaron el vestuario y le pusieron tu nombre. No lo pediste y no lo pudiste evitar.',
-				siFalla: 'La plata se usó mal y quedó a medio hacer. Igual lo intentaste.',
-				premio: { hinchada: 8, prensa: 6, moral: 8, fama: 3 },
-				castigo: { moral: -2 }
-			},
-			{
-				id: 'conseguirla',
-				etiqueta: 'Conseguir que la ponga alguien',
-				detalle: 'Usar el nombre para que aparezca otro. Cuesta más llamadas.',
-				probabilidad: chance(48, a.liderazgo, 0.5),
-				siSale: 'Conseguiste un sponsor y quedaron todos contentos, vos incluido.',
-				siFalla: 'No te atendió nadie. Quedaste como el que promete y no cumple.',
-				premio: { hinchada: 6, prensa: 5, fama: 4 },
-				castigo: { prensa: -4, moral: -3 }
-			},
-			{
-				id: 'no-puedo',
-				etiqueta: 'Decirles que ahora no podés',
-				detalle: 'Es la verdad y no te va a hacer sentir bien igual.',
-				probabilidad: 100,
-				siSale: 'Les dijiste que ahora no. Lo entendieron. Vos no tanto.',
-				siFalla: '',
-				premio: {},
-				castigo: { moral: -2 }
-			}
-		]
-	}),
-	(a, e) => ({
-		id: 'la-camara',
-		juego: 'dado',
-		titulo: 'El micrófono',
-		contexto: e.tecnico
-			? `Salís del vestuario y te frenan con un micrófono. ${e.tecnico} te está mirando desde el pasillo.`
-			: 'Salís del vestuario y te frenan con un micrófono.',
-		opciones: [
-			{
-				id: 'hablar',
-				etiqueta: 'Decir lo que pensás',
-				detalle: 'La hinchada lo va a agradecer. El club, no tanto.',
-				probabilidad: chance(45, a.liderazgo, 0.45),
-				siSale: 'Dijiste lo que pensabas y quedó bien parado. Te lo citaron toda la semana.',
-				siFalla: 'Te fuiste de boca y lo sacaron de contexto.',
-				premio: { fama: 6, hinchada: 7, prensa: 5, moral: 3 },
-				castigo: { prensa: -7, dt: -5, confianza: -3 }
-			},
-			{
-				id: 'esquivar',
-				etiqueta: 'Contestar con lugares comunes',
-				detalle: 'Partido a partido. Nadie se enoja, nadie se acuerda.',
-				probabilidad: 100,
-				siSale: 'Dijiste que hay que ir partido a partido. Nadie se acordó al día siguiente.',
-				siFalla: '',
-				premio: { prensa: 1 },
-				castigo: {}
-			}
-		]
-	}),
-	(a, e) => ({
-		id: 'el-pedido',
-		juego: 'dado',
-		titulo: e.tecnico ? `El pedido de ${e.tecnico}` : 'El pedido del técnico',
-		contexto: e.tecnico
-			? `${e.tecnico} te pide que juegues en un puesto que no es el tuyo para el partido con ${club(e.rival).nombre}.`
-			: `El técnico te pide que juegues fuera de puesto contra ${club(e.rival).nombre}.`,
-		opciones: [
-			{
-				id: 'aceptar',
-				etiqueta: 'Aceptar y jugar donde sea',
-				detalle: 'Sumás con el técnico. Rendís peor.',
-				probabilidad: chance(62, a.resistencia, 0.35),
-				siSale: 'Jugaste fuera de puesto y la rompiste igual. El técnico no se lo va a olvidar.',
-				siFalla: 'Jugaste fuera de puesto y se notó. Igual te lo agradecieron.',
-				premio: { dt: 9, moral: 4, desgaste: 1 },
-				castigo: { dt: 4, moral: -3, desgaste: 2 }
-			},
-			{
-				id: 'negarse',
-				etiqueta: 'Decirle que sos de tu puesto',
-				detalle: 'Te la jugás con el técnico, pero jugás donde sabés.',
-				probabilidad: chance(40, a.liderazgo, 0.4),
-				siSale: 'Se lo dijiste de frente, te entendió y te dejó en tu puesto.',
-				siFalla: 'No le gustó nada. Fuiste al banco el partido siguiente.',
-				premio: { moral: 5, dt: 2, confianza: 2 },
-				castigo: { dt: -10, moral: -4 }
-			}
-		]
-	})
-];
 
 const POR_POSICION: Record<Posicion, Plantilla[]> = {
 	delantero: PARA_DELANTERO,
@@ -1108,6 +1123,87 @@ const EN_EL_MERCADO: Plantilla[] = [
 				castigo: { fama: -2, moral: -3 }
 			}
 		]
+	}),
+	(a, e) => ({
+		id: 'la-llamada-directa',
+		juego: 'quiz',
+		titulo: 'La llamada directa',
+		contexto:
+			`Te suena un número que no conocés y del otro lado hay alguien de ${club(e.rival).nombre} ` +
+			`preguntándote a vos, no a tu representante, si te interesaría. Es la primera vez que te ` +
+			`pasa y sabés que no es como se hace.`,
+		opciones: [
+			{
+				id: 'derivarlo',
+				etiqueta: 'Pasarle el teléfono de tu representante',
+				detalle: 'Es lo que corresponde. Y es lo que después te lo va a agradecer.',
+				probabilidad: chance(78, a.liderazgo, 0.2),
+				siSale: 'Llamaron a tu representante esa misma tarde y la charla arrancó como corresponde.',
+				siFalla: 'Nunca llamaron. Querían hablar con vos y con nadie más.',
+				premio: { confianza: 9, prensa: 2 },
+				castigo: { confianza: 2 }
+			},
+			{
+				id: 'escuchar-solo',
+				etiqueta: 'Escuchar vos solo',
+				detalle: 'Saber qué hay antes de contarlo. Si se entera después, se entera mal.',
+				probabilidad: chance(44, a.liderazgo, 0.45),
+				siSale: 'Escuchaste, tomaste nota, y se lo contaste todo esa misma noche. Quedó bien.',
+				siFalla: 'Se enteró por otro lado de que habías hablado. No lo tomó bien.',
+				premio: { fama: 4, moral: 3, confianza: 3 },
+				castigo: { confianza: -11, moral: -3 }
+			},
+			{
+				id: 'cortar',
+				etiqueta: 'Cortar',
+				detalle: 'No escuchaste nada y no pasó nada.',
+				probabilidad: 100,
+				siSale: 'Cortaste. Nunca vas a saber qué te iban a ofrecer.',
+				siFalla: '',
+				premio: { confianza: 3 },
+				castigo: {}
+			}
+		]
+	}),
+	(a) => ({
+		id: 'la-bandera',
+		juego: 'dado',
+		titulo: 'La bandera',
+		contexto:
+			`Amaneciste con una bandera colgada en el paredón de tu casa. La pintaron de noche, dice tu ` +
+			`apellido y abajo dice "quedate". Hay veinte pibes esperándote en la vereda.`,
+		opciones: [
+			{
+				id: 'salir',
+				etiqueta: 'Salir a saludarlos',
+				detalle: 'Diez minutos, fotos, y algo que decir. Todo va a salir filmado.',
+				probabilidad: chance(66, a.liderazgo, 0.35),
+				siSale: 'Saliste, te sacaste fotos con todos y no prometiste nada. Salió perfecto.',
+				siFalla: 'Te preguntaron si te quedabas, dijiste algo a medias, y quedó grabado.',
+				premio: { hinchada: 12, prensa: 6, fama: 5, moral: 5 },
+				castigo: { hinchada: -6, prensa: -5, confianza: -4 }
+			},
+			{
+				id: 'prometer',
+				etiqueta: 'Salir y decirles que te quedás',
+				detalle: 'Es lo que quieren escuchar. Y no depende solo de vos.',
+				probabilidad: chance(30, a.liderazgo, 0.35),
+				siSale: 'Lo dijiste y lo cumpliste. En ese barrio no se olvidan de eso nunca.',
+				siFalla: 'Lo dijiste, te fuiste igual, y la misma bandera apareció tachada.',
+				premio: { hinchada: 18, moral: 8, prensa: 5 },
+				castigo: { hinchada: -14, prensa: -8, confianza: -8, moral: -6 }
+			},
+			{
+				id: 'no-salir',
+				etiqueta: 'No salir',
+				detalle: 'Ni prometés ni desmentís. Se van igual.',
+				probabilidad: 100,
+				siSale: 'No saliste. Se fueron a la hora y la bandera quedó ahí una semana.',
+				siFalla: '',
+				premio: {},
+				castigo: { hinchada: -4 }
+			}
+		]
 	})
 ];
 
@@ -1128,6 +1224,73 @@ function delMercado(estado: Estado, semilla: string): Ocasion[] {
 	return elegidas.map((plantilla, i) =>
 		plantilla(estado.futbolista.atributos, escenario(estado, i, semilla))
 	);
+}
+
+// ---------------------------------------------------------------------------
+// Armar y resolver
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Fuera de la cancha
+// ---------------------------------------------------------------------------
+
+/**
+ * De qué familia es una plantilla de la vida.
+ *
+ * Hay que armar el momento para leerle la familia, y armarlo necesita un
+ * escenario de verdad: los contextos nombran clubes y `club('')` no existe.
+ * Por eso se lee con el escenario que ya trae el llamador y no con uno
+ * inventado —ése fue el primer intento y se rompía al arrancar—.
+ */
+const ATRIBUTOS_NEUTROS = {
+	definicion: 50,
+	velocidad: 50,
+	potencia: 50,
+	resistencia: 50,
+	pase: 50,
+	regate: 50,
+	defensa: 50,
+	liderazgo: 50
+};
+
+function familiaDe(plantilla: Plantilla, e: Escenario): Familia {
+	return plantilla(ATRIBUTOS_NEUTROS, e).familia ?? 'partido';
+}
+
+/**
+ * El momento de la vida de esta temporada.
+ *
+ * La familia sale de una rotación —una por año, con el corrimiento inicial
+ * sacado de la semilla para que dos partidas no vean el mismo orden—; cuál de
+ * esa familia, del sorteo. Sortear también la familia parecía más variado y
+ * era peor: con sorteo puro, más de una de cada siete temporadas repetía el
+ * mismo palo. Rotando no se repite hasta dar la vuelta entera, y con veintidós
+ * momentos repartidos en siete familias una carrera de quince temporadas no
+ * llega a ver dos veces el mismo.
+ */
+function elDeLaVida(estado: Estado, semilla: string, e: Escenario): Plantilla {
+	const familias = [...new Set(DE_LA_VIDA.map((p) => familiaDe(p, e)))];
+	const corrimiento = rngPara(semilla, {
+		temporada: 0,
+		fase: 0,
+		clave: 'orden-de-la-vida'
+	}).entero(0, familias.length - 1);
+
+	const paso = estado.temporada - 1 + corrimiento;
+	const cual = familias[paso % familias.length];
+	const dentro = DE_LA_VIDA.filter((p) => familiaDe(p, e) === cual);
+
+	/*
+	 * Y adentro de la familia, la vuelta que va.
+	 *
+	 * Sortear acá era lo natural y medía peor: en dieciocho temporadas una
+	 * carrera veía veinticinco momentos distintos de los treinta y tres que
+	 * existen, porque el sorteo repetía dentro de la familia antes de haber
+	 * mostrado todos. Contando las vueltas —cuántas veces ya tocó esta familia—
+	 * se recorre la lista entera antes de repetir ninguno.
+	 */
+	const vuelta = Math.floor(paso / familias.length);
+	return dentro[vuelta % dentro.length];
 }
 
 // ---------------------------------------------------------------------------
@@ -1156,7 +1319,7 @@ export function ocasionesDe(estado: Estado, semilla: string): Ocasion[] {
 	});
 
 	/*
-	 * Dos de puesto y una de las otras: que la temporada no sea siempre pelota.
+	 * Dos de puesto y una de la vida: que la temporada no sea siempre pelota.
 	 *
 	 * Las dos de puesto salen sorteadas y sin repetirse. Antes se copiaba la
 	 * lista a un array llamado `mezcla` y se le hacía `slice(0, 2)` sin mezclar
@@ -1172,7 +1335,7 @@ export function ocasionesDe(estado: Estado, semilla: string): Ocasion[] {
 		elegidas.push(cual);
 		disponibles.splice(disponibles.indexOf(cual), 1);
 	}
-	elegidas.push(rng.elegir(PARA_CUALQUIERA));
+	elegidas.push(elDeLaVida(estado, semilla, escenario(estado, 2, semilla)));
 
 	return elegidas.map((plantilla, i) =>
 		plantilla(futbolista.atributos, escenario(estado, i, semilla))

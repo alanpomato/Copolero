@@ -418,12 +418,31 @@ function contraQuienes(clubId: string): number {
 	return Math.max(0.8, Math.min(1.45, 0.8 + (fuerza - 45) * 0.013));
 }
 
+export const EDAD_EN_QUE_SE_DEJA_DE_CRECER = 31;
+
 export function crecerPorJugar(
 	estado: Estado,
 	anio: { minutos: number; nota: number },
 	rng: Rng
 ): { atributo: keyof Atributos; puntos: number }[] {
 	const f = estado.futbolista;
+
+	/*
+	 * Después de los treinta no se crece jugando: se sostiene.
+	 *
+	 * Estaba puesto sólo en el multiplicador de la edad —0,12 a los 34— y no
+	 * alcanzaba: con el techo empujado por los buenos años, el margen contra el
+	 * potencial seguía siendo grande y ese 0,12 daba dos o tres puntos de
+	 * atributo por temporada, justo los que la edad le sacaba a la velocidad y a
+	 * la potencia. Resultado: una carrera que llegaba a 81 a los 31 y terminaba
+	 * en 81 a los 34, sin bajada. La carrera tiene que tener forma; el que no
+	 * baja nunca no se retira, se aburre.
+	 *
+	 * Entrenar sigue sirviendo a los 33 (ver `rindeDeLaEdad` en
+	 * `entrenamiento.ts`): lo que se termina es lo que da competir.
+	 */
+	if (f.edad >= EDAD_EN_QUE_SE_DEJA_DE_CRECER) return [];
+
 	const margen = f.potencial - media(f.atributos, f.posicion);
 	if (margen <= 0) return [];
 

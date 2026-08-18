@@ -55,10 +55,18 @@ function loQueLePasa(e: Estado, deQuien: 'futbolista' | 'representante'): Record
 const PUESTOS = ['centrodelantero', 'cinco', 'central', 'arquero'];
 
 describe('la variedad de una carrera', () => {
-	it('a un futbolista le pasan al menos diez cosas distintas', () => {
+	it('a un futbolista le pasan al menos veinticuatro cosas distintas', () => {
+		/*
+		 * Eran diez. Alan pidió la batería —"hay que empezar a poner momentos más
+		 * icónicos", "deberíamos tener 30 momentos y alternar"— y con treinta y
+		 * tres plantillas por puesto una carrera de dieciocho temporadas ve
+		 * veintiocho. El piso queda en veinticuatro para que haya aire, pero
+		 * bien por encima de lo que había: si alguien vuelve a poner un `slice`
+		 * sin mezclar, esto lo canta.
+		 */
 		for (const puesto of PUESTOS) {
 			const cuenta = loQueLePasa(unaCarrera(puesto), 'futbolista');
-			expect(Object.keys(cuenta).length, puesto).toBeGreaterThanOrEqual(10);
+			expect(Object.keys(cuenta).length, puesto).toBeGreaterThanOrEqual(24);
 		}
 	});
 
@@ -70,7 +78,7 @@ describe('la variedad de una carrera', () => {
 			const cuenta = loQueLePasa(unaCarrera(puesto), 'futbolista');
 			const total = Object.values(cuenta).reduce((a, b) => a + b, 0);
 			const [masRepetida, veces] = Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0];
-			expect(veces / total, `${puesto}: ${masRepetida}`).toBeLessThan(0.2);
+			expect(veces / total, `${puesto}: ${masRepetida}`).toBeLessThan(0.15);
 		}
 	});
 
@@ -85,14 +93,74 @@ describe('la variedad de una carrera', () => {
 	});
 
 	it('al representante también le pasan cosas distintas', () => {
+		/*
+		 * Eran cinco momentos en la temporada y tres en el mercado, y Alan lo
+		 * midió jugando: "repre → tiene 2 momentos, deberíamos tener 20 momentos
+		 * y alternar". Ahora son veinte en la temporada, repartidos en ocho
+		 * familias, y una carrera de dieciocho temporadas ve más de la mitad.
+		 */
 		const e = unaCarrera('centrodelantero');
 		e.representante.atributos.scouting = 60;
+		e.representante.representadosExtra = 3;
 		const cuenta = loQueLePasa(e, 'representante');
 
-		expect(Object.keys(cuenta).length).toBeGreaterThanOrEqual(7);
+		expect(Object.keys(cuenta).length).toBeGreaterThanOrEqual(14);
 		const total = Object.values(cuenta).reduce((a, b) => a + b, 0);
 		const veces = Object.values(cuenta).sort((a, b) => b - a)[0];
-		expect(veces / total).toBeLessThan(0.25);
+		expect(veces / total).toBeLessThan(0.12);
+	});
+
+	it('al representante no le tocan dos momentos del mismo palo el mismo año', () => {
+		// La otra mitad de lo que pidió Alan: "agregar de sociales, familiares,
+		// turbios, etc.". Tener veinte no sirve si los dos del año son turbios.
+		const e = unaCarrera('centrodelantero');
+		e.representante.atributos.scouting = 60;
+		e.representante.representadosExtra = 3;
+		e.fase = 2;
+
+		const vistas: string[][] = [];
+		for (let t = 1; t <= 18; t++) {
+			e.temporada = t;
+			const familias = momentosDelRepresentante(e, 'var').map((m) => m.familia!);
+			expect(familias.length, `temporada ${t}`).toBe(2);
+			expect(new Set(familias).size, `temporada ${t}: ${familias.join(' y ')}`).toBe(2);
+			vistas.push(familias);
+		}
+
+		// Y de un año al otro tampoco se repiten: la rotación avanza de a dos.
+		for (let i = 1; i < vistas.length; i++) {
+			for (const f of vistas[i]) {
+				expect(vistas[i - 1], `temporada ${i + 1}: ${f}`).not.toContain(f);
+			}
+		}
+	});
+
+	it('no toca dos años seguidos la misma familia fuera de la cancha', () => {
+		/*
+		 * Lo que Alan pidió con la lista adentro: "no pueden ser siempre lo
+		 * mismo, tenemos que tener una batería de momentos (sociales, prensa,
+		 * lesiones, comidas, incluso cosas turbias, momento del partido,
+		 * árbitros, tarjetas, etc.)".
+		 *
+		 * Tener veintidós momentos fuera de la cancha no sirve de nada si el
+		 * sorteo te da prensa tres años seguidos. Por eso la familia rota y lo
+		 * único que se sortea es cuál de esa familia.
+		 */
+		const e = unaCarrera('centrodelantero');
+		const familias: string[] = [];
+		for (let t = 1; t <= 18; t++) {
+			e.temporada = t;
+			e.fase = 2;
+			const deLaVida = ocasionesDe(e, 'var').find((o) => o.familia !== undefined);
+			expect(deLaVida, `temporada ${t}`).toBeDefined();
+			familias.push(deLaVida!.familia!);
+		}
+
+		for (let i = 1; i < familias.length; i++) {
+			expect(familias[i], `temporada ${i + 1}`).not.toBe(familias[i - 1]);
+		}
+		// Y las ocho familias aparecen: ninguna quedó escrita y sin usar.
+		expect(new Set(familias).size).toBeGreaterThanOrEqual(8);
 	});
 
 	it('dos puestos distintos no juegan la misma carrera', () => {
