@@ -119,13 +119,39 @@ export const TIERRAS: readonly { nombre: string; puntos: readonly Punto[] }[] = 
 	},
 	{
 		nombre: 'Norteamérica',
+		/*
+		 * Con Canadá, y no cortado en el paralelo 49.
+		 *
+		 * La primera versión terminaba en la frontera con Estados Unidos, que es
+		 * una línea recta y no una costa: en pantalla quedaba una cuña con un
+		 * tajo horizontal arriba y medio mapa vacío al lado. La bahía de Hudson,
+		 * Labrador y Terranova son las tres formas que hacen que el norte se
+		 * reconozca, y cuestan trece puntos.
+		 */
 		puntos: [
 			[-122, 48],
-			[-110, 49],
-			[-95, 49],
-			[-83, 42],
-			[-79, 43],
-			[-70, 45],
+			[-122, 60],
+			[-114, 62],
+			[-104, 62],
+			[-97, 60],
+			// La bahía de Hudson, por la costa oeste y bajando a la de James.
+			[-94, 58],
+			[-92, 57],
+			[-88, 56],
+			[-85, 55],
+			[-82, 55],
+			[-80, 52],
+			[-79, 54],
+			[-78, 58],
+			// Ungava, Labrador y Terranova.
+			[-74, 62],
+			[-68, 60],
+			[-64, 58],
+			[-61, 55],
+			[-57, 52],
+			[-53, 47],
+			[-59, 46],
+			[-64, 46],
 			[-67, 45],
 			[-70, 41],
 			[-76, 37],
