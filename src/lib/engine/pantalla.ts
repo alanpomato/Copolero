@@ -139,6 +139,15 @@ export type OpcionesDeFase = {
 	cuantasDejaPasar?: number;
 	/** La calificación con la que se mide contra la fama de cada club. */
 	loQueValenJuntos?: number;
+	/**
+	 * Representante, segundo tiempo del mercado: qué pasó con las que filtró.
+	 *
+	 * Ya elegido y jugado —"cada una se juega su probabilidad por separado"— así
+	 * que esto no es una tirada nueva, es el resultado de la que ya hizo. Sin
+	 * esto, después de filtrar no veía nada propio hasta que el futbolista
+	 * eligiera: el filtro pasaba y la pantalla no decía con qué cara.
+	 */
+	filtroResuelto?: { llegaron: string[]; seCayeron: string[] };
 
 	/**
 	 * En qué tiempo del mercado está y a quién le toca.
@@ -454,6 +463,14 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 				opciones.cartas = cartasDelMercado(enElMercado, semilla);
 				opciones.cuantasDejaPasar = CARTAS_QUE_DEJA_PASAR;
 				opciones.loQueValenJuntos = loQueValenJuntos(enElMercado);
+			} else if (paso === 'eleccion') {
+				// Ya filtró y ya se jugó cada probabilidad: esto es leer el resultado,
+				// no volver a tirar. Mientras el futbolista elige, él mira con qué cara
+				// quedaron las que movió.
+				opciones.filtroResuelto = {
+					llegaron: estado.mercado?.llegaron ?? [],
+					seCayeron: estado.mercado?.seCayeron ?? []
+				};
 			}
 			// Sus momentos del mercado van en el primer tiempo, que es cuando
 			// trabaja: lo llaman por abajo de la mesa mientras decide a quién

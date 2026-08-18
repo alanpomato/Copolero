@@ -342,6 +342,38 @@ describe('lo que ve cada uno', () => {
 		expect(opcionesDeFase(e, 'representante', 'cartas').mercado!.meToca).toBe(true);
 		expect(opcionesDeFase(e, 'futbolista', 'cartas').mercado!.meToca).toBe(false);
 	});
+
+	/*
+	 * Alan lo pidió mirando la pantalla: "cuando elige 3, no te avisa cuál de
+	 * las 3 'ganaste' y pasan a elección del jugador". Filtró, cada carta ya
+	 * jugó su chance, y mientras el futbolista elige, el representante no veía
+	 * nada propio: `cartas` ya no está (no le toca a él) y `ofertas` es del
+	 * futbolista. `filtroResuelto` es exactamente esa ventana.
+	 */
+	it('mientras el futbolista elige, el representante ve con qué cara quedó lo que filtró', () => {
+		let e = enElMercado();
+		const cartas = cartasDelMercado(e, 'cartas');
+		const tres = cartas.slice(0, CARTAS_QUE_DEJA_PASAR).map((c) => c.clubId);
+		e = resolverFase(e, [{ rol: 'representante', nota: '', filtradas: tres }], 'cartas').estado;
+
+		const suyas = opcionesDeFase(e, 'representante', 'cartas');
+		expect(suyas.cartas).toBeUndefined();
+		expect(suyas.filtroResuelto).toBeDefined();
+		expect(suyas.filtroResuelto!.llegaron).toEqual(e.mercado!.llegaron);
+		expect(suyas.filtroResuelto!.seCayeron).toEqual(e.mercado!.seCayeron);
+		expect(suyas.filtroResuelto!.llegaron.length + suyas.filtroResuelto!.seCayeron.length).toBe(
+			CARTAS_QUE_DEJA_PASAR
+		);
+
+		// Y al futbolista no le llega este campo: no es lo suyo.
+		expect(opcionesDeFase(e, 'futbolista', 'cartas').filtroResuelto).toBeUndefined();
+	});
+
+	/* Antes de filtrar no hay nada resuelto todavía. */
+	it('antes de filtrar, filtroResuelto no existe', () => {
+		const e = enElMercado();
+		expect(opcionesDeFase(e, 'representante', 'cartas').filtroResuelto).toBeUndefined();
+	});
 });
 
 describe('el pase, al final', () => {

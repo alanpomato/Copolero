@@ -143,6 +143,52 @@
 			     de verdad y no un espejo. Esto es solo para que el orden sea el
 			     que se marcó, que es el que se muestra. -->
 
+			<!-- ---------- El representante ya filtró: con qué cara quedaron ---------- -->
+		{:else if opciones.filtroResuelto}
+			{@const { llegaron, seCayeron } = opciones.filtroResuelto}
+			<header class="cabeza">
+				<span class="rotulo">Tu trabajo del año, ya jugado</span>
+				<h3>
+					{#if llegaron.length === 0}
+						No prosperó ninguna
+					{:else}
+						Te prosperaron {llegaron.length} de {llegaron.length + seCayeron.length}
+					{/if}
+				</h3>
+				<p>
+					Cada una se jugó su chance por separado. Ahora {estado.futbolista.nombre} elige entre
+					las que prosperaron; las que se cayeron no van a aparecerle.
+				</p>
+			</header>
+			<div class="cartas">
+				{#each llegaron as clubId (clubId)}
+					{@const c = contexto(clubId)}
+					<div class="carta resultado gano">
+						<span class="quien">
+							<Escudo {clubId} tamano={34} />
+							<span class="nombre">
+								<b>{c.club.nombre}</b>
+								<i>{c.liga.nombre} · {c.pais.nombre}</i>
+							</span>
+						</span>
+						<span class="marca">Prosperó</span>
+					</div>
+				{/each}
+				{#each seCayeron as clubId (clubId)}
+					{@const c = contexto(clubId)}
+					<div class="carta resultado perdio">
+						<span class="quien">
+							<Escudo {clubId} tamano={34} />
+							<span class="nombre">
+								<b>{c.club.nombre}</b>
+								<i>{c.liga.nombre} · {c.pais.nombre}</i>
+							</span>
+						</span>
+						<span class="marca">No dio el sí</span>
+					</div>
+				{/each}
+			</div>
+
 			<!-- ---------- El futbolista espera ---------- -->
 		{:else if !mercado.meToca && mercado.paso === 'filtro'}
 			<header class="cabeza esperando">
@@ -320,6 +366,26 @@
 	/* Ya movió las tres: ésta se puede mirar, pero no sumar. */
 	.carta.lleno {
 		opacity: 0.5;
+	}
+
+	/* El resultado de lo que ya se jugó: no hay nada para tocar acá. */
+	.carta.resultado {
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'quien marca';
+		cursor: default;
+	}
+	.carta.resultado.gano {
+		border-color: var(--acento);
+		background: rgba(74, 222, 128, 0.08);
+	}
+	.carta.resultado.perdio {
+		opacity: 0.6;
+	}
+	.carta.resultado.gano .marca {
+		color: var(--acento);
+	}
+	.carta.resultado.perdio .marca {
+		color: var(--malo);
 	}
 
 	.carta input,
