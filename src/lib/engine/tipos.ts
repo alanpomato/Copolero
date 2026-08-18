@@ -454,9 +454,6 @@ export type Decision = {
 	/** Los dos, primera pretemporada: para qué está jugando. Ver `suenos.ts`. */
 	sueno?: string;
 
-	/** Futbolista, fase 2: cómo va a jugar el año. Ver `objetivos.ts`. */
-	objetivo?: string;
-
 	/** Futbolista, fase 2: qué eligió en cada ocasión marcada, en orden. */
 	ocasiones?: string[];
 

@@ -3,7 +3,6 @@
 	import { loQuePromete } from '$lib/engine/entrenamiento';
 	import { QUEDARSE } from '$lib/engine/pases';
 	import { NOMBRE_ATRIBUTO as ATRIBUTO } from '$lib/engine/puestos';
-	import { OBJETIVO_POR_DEFECTO } from '$lib/engine/objetivos';
 	import { ESPERAR, FIRMAR } from '$lib/engine/renovacion';
 	import { NOMBRE_ATRIBUTO } from '$lib/engine/puestos';
 	import { SIN_TRATO } from '$lib/engine/representacion';
@@ -54,7 +53,6 @@
 	let filtradas = $state<string[]>([]);
 	let acuerdo = $state('estandar');
 	let renovacion = $state(FIRMAR);
-	let objetivo = $state(OBJETIVO_POR_DEFECTO);
 	let compras = $state<string[]>([]);
 	let rasgo = $state('');
 	let sueno = $state('');
@@ -351,7 +349,6 @@
 				: `${compras.length} cosas · ${plata(loQueGasta)}`
 	);
 	const queGestiona = $derived(opciones.gestiones?.find((g) => g.id === gestion)?.nombre ?? '');
-	const queObjetivo = $derived(opciones.objetivos?.find((o) => o.id === objetivo)?.nombre ?? '');
 	const queTrato = $derived(
 		acuerdo === SIN_TRATO
 			? 'No firmar'
@@ -392,15 +389,13 @@
 				? 'mesa'
 				: opciones.ofertas
 					? 'mercado'
-					: opciones.objetivos
-						? 'objetivo'
-						: opciones.sondeo
-							? 'sondeo'
-							: opciones.gestiones
-								? 'gestion'
-								: opciones.planes
-									? 'entrenamiento'
-									: ''
+					: opciones.sondeo
+						? 'sondeo'
+						: opciones.gestiones
+							? 'gestion'
+							: opciones.planes
+								? 'entrenamiento'
+								: ''
 	);
 
 	function comoJuega(brecha: number): string {
@@ -733,38 +728,6 @@
 	</Paso>
 {/if}
 
-<!-- ---------- Fase 2: cómo va a jugar el año ---------- -->
-{#if opciones.objetivos}
-	<Paso
-		titulo="Cómo vas a jugar el año"
-		elegido={queObjetivo}
-		tema="cancha"
-		abierto={abierto === 'objetivo'}
-		nota="Es la decisión que más mueve la temporada. Ninguna es mejor que otra: cada una sube una parte y baja otra."
-	>
-		{#if opciones.consejoDelObjetivo}
-			<p class="sutil" style="margin:-.4rem 0 1rem">{opciones.consejoDelObjetivo}</p>
-		{/if}
-
-		{#each opciones.objetivos as o (o.id)}
-			<Opcion
-				grupo="objetivo"
-				valor={o.id}
-				titulo={o.nombre}
-				detalle={o.detalle}
-				bind:elegido={objetivo}
-			>
-				{#snippet extra()}
-					<span class="sube">
-						<span class="chip-sube gana">{o.sube}</span>
-						<span class="chip-sube pierde">{o.cuesta}</span>
-					</span>
-				{/snippet}
-			</Opcion>
-		{/each}
-	</Paso>
-{/if}
-
 <!-- ---------- Fase 2: pedir salir del club ---------- -->
 
 <!-- ---------- Fase 2: con qué está jugando el año ---------- -->
@@ -776,7 +739,8 @@
 		<span class="chip-sube gana">{o.sube}</span>
 		<span class="chip-sube pierde">{o.cuesta}</span>
 		<p class="sutil" style="margin:.5rem 0 0">
-			Se eligió en la pretemporada y ya no se cambia: el campeonato empezó.
+			Salió sorteado en la pretemporada, según la intensidad elegida, y ya no se cambia: el
+			campeonato empezó.
 		</p>
 	</div>
 {/if}

@@ -32,6 +32,7 @@
 		sueno_cumplido: '✧',
 		contrato: '✎',
 		entrenamiento: '↑',
+		objetivo: '➤',
 		progreso: '⤒',
 		seleccion: '⚑',
 		gestion: '☎',

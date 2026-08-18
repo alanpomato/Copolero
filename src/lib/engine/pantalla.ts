@@ -14,12 +14,7 @@ import {
 	type MomentoDelRepresentante
 } from './momentos';
 import { gastoAnual, loQuePuedeComprar, loQueTiene, type EnLaVidriera } from './inversiones';
-import {
-	loQueVaAPasar,
-	objetivo as objetivoPorId,
-	objetivosPara,
-	type Objetivo
-} from './objetivos';
+import { objetivo as objetivoPorId, type Objetivo } from './objetivos';
 import { rasgo, rasgosQueLeTocaron, tocaElegirRasgo, type Rasgo } from './rasgos';
 import { cuantoLlega, dondePuedeSondear, laDeCasa, type Destino } from './sondeo';
 import {
@@ -113,10 +108,7 @@ export type OpcionesDeFase = {
 	suenos?: SuenoOfrecido[];
 	miSueno?: Progreso;
 	elSuenoDelOtro?: Progreso & { deQuien: string };
-	/** Futbolista, fase 1: cómo va a jugar el año, y qué dice de lo elegido. */
-	objetivos?: Objetivo[];
-	consejoDelObjetivo?: string;
-	/** Y en la fase 2, el que ya eligió: se ve, no se cambia. */
+	/** Y en la fase 2, el que salió sorteado en la pretemporada: se ve, no se cambia. */
 	objetivoCerrado?: Objetivo;
 	/** Futbolista, fase 2: si puede pedir salir, y qué le va a costar. */
 	salida?: { seVa: boolean; aviso: string };
@@ -302,10 +294,8 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			// Tres y no seis: ver `planesPara`.
 			opciones.planes = planesPara(estado.futbolista.posicion, estado.temporada);
 			opciones.intensidades = INTENSIDADES;
-			// El plan de juego se decide antes de que arranque el campeonato, no con
-			// el campeonato empezado.
-			opciones.objetivos = objetivosPara(estado.futbolista.posicion);
-			opciones.consejoDelObjetivo = loQueVaAPasar(estado, undefined);
+			// "Cómo vas a jugar el año" ya no se elige acá: sale sorteado al cerrar
+			// la fase, pesado por la intensidad. Ver `objetivoPorAzar` en `fases.ts`.
 		} else if (estado.fase === 2) {
 			opciones.ocasiones = ocasionesDe(estado, semilla);
 			// Pedir salir del club: se pide durante la temporada y se cobra en el
@@ -313,8 +303,8 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			if (puedePedirLaSalida(estado)) {
 				opciones.salida = { seVa: estado.pidioLaSalida, aviso: loQuePasaSiLoPide(estado) };
 			}
-			// Ya está elegido y cerrado: se muestra para saber con qué se juega, pero
-			// no se toca.
+			// Ya salió sorteado en la pretemporada: se muestra para saber con qué se
+			// juega, pero no se toca.
 			opciones.objetivoCerrado = objetivoPorId(estado.objetivoDelAnio);
 		}
 	} else if (estado.fase === 1 || estado.fase === 2) {

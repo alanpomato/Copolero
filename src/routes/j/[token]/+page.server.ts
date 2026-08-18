@@ -78,7 +78,6 @@ export const actions: Actions = {
 		if (vista.rol === 'futbolista') {
 			decision.entrenamiento = campo(datos, 'entrenamiento');
 			decision.intensidad = campo(datos, 'intensidad');
-			decision.objetivo = campo(datos, 'objetivo');
 			// Solo la primera pretemporada, y solo si el servidor lo ofreció.
 			if (vista.opciones.rasgos) decision.rasgo = campo(datos, 'rasgo');
 			// Una elección por ocasión, en el mismo orden en que se mostraron.

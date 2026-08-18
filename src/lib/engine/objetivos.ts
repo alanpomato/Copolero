@@ -1,4 +1,5 @@
-import type { Estado, Posicion } from './tipos';
+import type { Rng } from './rng';
+import type { Posicion } from './tipos';
 
 /**
  * Cómo va a jugar el año.
@@ -8,15 +9,19 @@ import type { Estado, Posicion } from './tipos';
  * El futbolista elegía plan de pretemporada —que mueve un atributo dos puntos—
  * y después miraba cómo le iba. La temporada le pasaba por al lado.
  *
- * El objetivo es la palanca que faltaba: una decisión por año, con efecto en la
- * misma temporada, visible antes de elegir. Ninguno es mejor que otro; cada uno
- * sube una parte de la nota y baja otra. Ir siempre al gol te hace goleador y
- * te saca del juego colectivo; jugar para el equipo te da asistencias y el
- * equipo termina más arriba; ganarte al técnico te da minutos, que es lo que de
- * verdad hace crecer; cuidarte te deja entero para tres temporadas más.
+ * El objetivo es la palanca que faltaba: algo con efecto en la misma temporada.
+ * Ninguno es mejor que otro; cada uno sube una parte de la nota y baja otra. Ir
+ * siempre al gol te hace goleador y te saca del juego colectivo; jugar para el
+ * equipo te da asistencias y el equipo termina más arriba; ganarte al técnico
+ * te da minutos, que es lo que de verdad hace crecer; cuidarte te deja entero
+ * para tres temporadas más.
  *
- * Los números los sigue decidiendo el motor. El objetivo no regala nada: mueve
- * de dónde sale lo que ya iba a pasar.
+ * Alan lo pidió sacar como decisión explícita: "que una de las 3 decisiones de
+ * la temporada lo defina, según el azar". Antes era una cuarta tarjeta para
+ * elegir en la pretemporada, al lado de plan, intensidad y rasgo; ahora sale
+ * solo, sorteado, pesado por la intensidad que ya se elige —`objetivoPorAzar`—
+ * y se entera junto con el resto en el diario. Sigue sin regalar nada: mueve de
+ * dónde sale lo que ya iba a pasar, solo que ya no lo elige nadie.
  */
 
 export type Objetivo = {
@@ -125,26 +130,41 @@ export function objetivosPara(posicion: Posicion): Objetivo[] {
 }
 
 /**
- * Lo que el objetivo elegido va a hacer, dicho antes de elegirlo.
+ * Cuánto pesa cada objetivo según la intensidad de pretemporada elegida.
  *
- * La rueda de ocasión muestra las probabilidades a la vista y ésta es la misma
- * idea: nadie tiene que adivinar qué hace un botón.
+ * No es arbitrario: cada intensidad ya tiene una intención propia (ver
+ * `entrenamiento.ts`), y el objetivo sorteado sigue esa misma intención en vez
+ * de contradecirla. "Suave" es cuidarse, así que "cuidarse" pesa el triple que
+ * en las otras dos; "a matar" es jugarse entero, así que "ir siempre al gol" y
+ * "ganarte al técnico" —las dos apuestas— pesan más que en "suave"; "firme" es
+ * lo del medio, sin favorito.
  */
-export function loQueVaAPasar(estado: Estado, id: string | undefined): string {
-	const o = objetivo(id);
-	const f = estado.futbolista;
+const PESO_OBJETIVO_POR_INTENSIDAD: Record<string, Record<string, number>> = {
+	suave: { cuidarse: 55, equipo: 25, titular: 15, gol: 5 },
+	firme: { equipo: 35, titular: 30, gol: 25, cuidarse: 10 },
+	'a-matar': { gol: 40, titular: 35, equipo: 15, cuidarse: 10 }
+};
 
-	if (o.id === 'cuidarse' && f.desgaste >= 60) {
-		return `Con ${f.desgaste} de desgaste, cuidarte este año es lo que te deja llegar a los 34.`;
+/**
+ * Sortea el objetivo del año, pesado por la intensidad elegida.
+ *
+ * Reemplaza la tarjeta de "cómo vas a jugar el año": ya no lo elige el
+ * futbolista, sale solo al cerrar la pretemporada, como consecuencia de la
+ * intensidad que sí eligió. Sigue filtrado por puesto —un arquero nunca sale
+ * "ir siempre al gol"— y sigue siendo la misma tirada para la misma partida:
+ * `rng` ya viene de `rngPara`, así que dos corridas con la misma semilla dan el
+ * mismo objetivo.
+ */
+export function objetivoPorAzar(posicion: Posicion, intensidad: string | undefined, rng: Rng): Objetivo {
+	const disponibles = objetivosPara(posicion);
+	const pesos = PESO_OBJETIVO_POR_INTENSIDAD[intensidad ?? 'firme'] ?? PESO_OBJETIVO_POR_INTENSIDAD.firme;
+	const conPeso = disponibles.map((o) => ({ o, peso: pesos[o.id] ?? 10 }));
+	const total = conPeso.reduce((suma, x) => suma + x.peso, 0);
+
+	let tirada = rng.siguiente() * total;
+	for (const { o, peso } of conPeso) {
+		if (tirada < peso) return o;
+		tirada -= peso;
 	}
-	if (o.id === 'titular' && f.dt < 0) {
-		return `El técnico hoy no te tiene. Ganártelo es lo que más te puede cambiar el año.`;
-	}
-	if (o.id === 'gol' && f.posicion === 'delantero') {
-		return `Sos 9: si el año te sale, éste es el que te pone en la tapa del diario.`;
-	}
-	if (o.id === 'equipo' && f.posicion === 'mediocampista') {
-		return `Es lo tuyo. Un 5 que hace jugar al equipo termina el año con mejor nota que uno que mete dos goles.`;
-	}
-	return o.detalle;
+	return conPeso[conPeso.length - 1].o;
 }

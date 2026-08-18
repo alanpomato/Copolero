@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
-import { OBJETIVOS, objetivo, objetivosPara } from './objetivos';
+import { jugarTemporada } from './temporada';
+import { OBJETIVOS, objetivo, objetivoPorAzar, objetivosPara } from './objetivos';
 import { opcionesDeFase } from './pantalla';
 import { rngPara } from './rng';
-import type { Decision, Estado } from './tipos';
+import type { Estado } from './tipos';
 
 function unJugador(puesto = 'centrodelantero'): Estado {
 	const e = estadoInicial(
@@ -32,32 +33,18 @@ function unJugador(puesto = 'centrodelantero'): Estado {
 }
 
 /**
- * Corre la pretemporada eligiendo el objetivo y después la temporada.
+ * Le hace jugar la temporada directamente con el objetivo pedido, sin pasar
+ * por el sorteo.
  *
- * Son dos fases porque el objetivo se elige en la pretemporada: se decide cómo
- * se va a jugar el año antes de que el año arranque, y después no se cambia.
+ * `jugarTemporada` toma el id del objetivo como parámetro suelto —así lo usa
+ * el motor una vez que `objetivoPorAzar` ya lo resolvió— así que probar el
+ * efecto numérico de cada uno no necesita fingir un sorteo con la semilla
+ * justa: se llama directo, como hace `fases.ts` después de sortear.
  */
-function conElObjetivo(id: string, semilla = 'obj'): Estado {
-	const pretemporada = resolverFase(
-		unJugador(),
-		[
-			{ rol: 'futbolista', nota: '', objetivo: id },
-			{ rol: 'representante', nota: '', gestion: 'acompanar' }
-		],
-		semilla
-	).estado;
-	return resolverFase(
-		pretemporada,
-		[
-			{ rol: 'futbolista', nota: '' },
-			{ rol: 'representante', nota: '', gestion: 'acompanar' }
-		],
-		semilla
-	).estado;
-}
-
 function unaTemporadaCon(id: string, semilla = 'obj') {
-	return conElObjetivo(id, semilla).ultimaTemporada!;
+	const e = unJugador();
+	const temporada = jugarTemporada(e, [], semilla, id);
+	return { estado: e, resumen: temporada.resumen };
 }
 
 describe('cómo va a jugar el año', () => {
@@ -86,46 +73,94 @@ describe('cómo va a jugar el año', () => {
 	});
 
 	it('ir al gol mete más goles que jugar para el equipo', () => {
-		// Es la palanca que faltaba: la misma temporada, la misma semilla, y lo
-		// único distinto es cómo decidió jugarla.
+		// La misma temporada, la misma semilla, y lo único distinto es con qué
+		// objetivo se jugó: lo mismo que antes probaba la decisión, ahora prueba
+		// el sorteo una vez resuelto.
 		const alGol = unaTemporadaCon('gol');
 		const alEquipo = unaTemporadaCon('equipo');
 
-		expect(alGol.goles).toBeGreaterThan(alEquipo.goles);
-		expect(alEquipo.asistencias).toBeGreaterThan(alGol.asistencias);
+		expect(alGol.resumen.goles).toBeGreaterThan(alEquipo.resumen.goles);
+		expect(alEquipo.resumen.asistencias).toBeGreaterThan(alGol.resumen.asistencias);
 	});
 
 	it('ganarse al técnico da más minutos que cuidarse', () => {
-		expect(unaTemporadaCon('titular').minutos).toBeGreaterThan(unaTemporadaCon('cuidarse').minutos);
+		expect(unaTemporadaCon('titular').resumen.minutos).toBeGreaterThan(
+			unaTemporadaCon('cuidarse').resumen.minutos
+		);
 	});
 
 	it('cuidarse deja menos desgaste al final del año', () => {
-		const cuidado = conElObjetivo('cuidarse');
-		const exigido = conElObjetivo('titular');
+		const cuidado = unaTemporadaCon('cuidarse');
+		const exigido = unaTemporadaCon('titular');
 
-		expect(cuidado.futbolista.desgaste).toBeLessThan(exigido.futbolista.desgaste);
+		expect(cuidado.estado.futbolista.desgaste).toBeLessThan(exigido.estado.futbolista.desgaste);
+	});
+});
+
+describe('el objetivo ya no se elige: se sortea', () => {
+	it('no hay tarjeta para elegirlo, ni en la pretemporada ni en el mercado', () => {
+		const e = unJugador();
+		const suyas: Record<string, unknown> = opcionesDeFase(e, 'futbolista', 'obj');
+		expect('objetivos' in suyas).toBe(false);
+		expect('consejoDelObjetivo' in suyas).toBe(false);
 	});
 
-	it('se elige en la pretemporada y en la temporada ya está cerrado', () => {
+	it('se sortea al cerrar la pretemporada y queda cerrado durante la temporada', () => {
 		const e = unJugador();
-		const suyas = opcionesDeFase(e, 'futbolista', 'obj');
-		expect(suyas.objetivos?.length).toBeGreaterThan(2);
-		expect(suyas.consejoDelObjetivo?.length).toBeGreaterThan(10);
-
-		// Y no al representante, que no elige cómo juega el otro.
-		expect(opcionesDeFase(e, 'representante', 'obj').objetivos).toBeUndefined();
-
-		// Ya en la temporada no hay nada que elegir: se muestra con qué se juega.
-		const enLaTemporada = resolverFase(
+		const conLaPretemporadaCerrada = resolverFase(
 			e,
 			[
-				{ rol: 'futbolista', nota: '', objetivo: 'gol' },
+				{ rol: 'futbolista', nota: '', intensidad: 'firme' },
 				{ rol: 'representante', nota: '', gestion: 'acompanar' }
 			],
 			'obj'
 		).estado;
-		const mirando = opcionesDeFase(enLaTemporada, 'futbolista', 'obj');
-		expect(mirando.objetivos).toBeUndefined();
-		expect(mirando.objetivoCerrado?.id).toBe('gol');
+
+		expect(objetivosPara('delantero').some((o) => o.id === conLaPretemporadaCerrada.objetivoDelAnio)).toBe(
+			true
+		);
+
+		const mirando: Record<string, unknown> = opcionesDeFase(conLaPretemporadaCerrada, 'futbolista', 'obj');
+		expect('objetivos' in mirando).toBe(false);
+		expect((mirando.objetivoCerrado as { id: string } | undefined)?.id).toBe(
+			conLaPretemporadaCerrada.objetivoDelAnio
+		);
+	});
+
+	it('un arquero nunca sortea "ir siempre al gol", pase lo que pase en el dado', () => {
+		const arquero = unJugador('arquero');
+		for (let i = 0; i < 200; i++) {
+			const rng = rngPara(`arq-${i}`, { temporada: 1, fase: 1, clave: 'objetivo' });
+			const salido = objetivoPorAzar(arquero.futbolista.posicion, 'a-matar', rng);
+			expect(salido.id).not.toBe('gol');
+		}
+	});
+
+	it('la misma semilla sortea siempre el mismo objetivo: no es azar de verdad, es determinista', () => {
+		const rngA = rngPara('misma', { temporada: 1, fase: 1, clave: 'objetivo' });
+		const rngB = rngPara('misma', { temporada: 1, fase: 1, clave: 'objetivo' });
+		expect(objetivoPorAzar('delantero', 'firme', rngA).id).toBe(
+			objetivoPorAzar('delantero', 'firme', rngB).id
+		);
+	});
+
+	it('la intensidad pesa el sorteo: "suave" sale cuidarse mucho más seguido que "a matar"', () => {
+		function contar(intensidad: string) {
+			const conteo: Record<string, number> = {};
+			for (let i = 0; i < 300; i++) {
+				const rng = rngPara(`peso-${intensidad}-${i}`, { temporada: 1, fase: 1, clave: 'objetivo' });
+				const o = objetivoPorAzar('delantero', intensidad, rng);
+				conteo[o.id] = (conteo[o.id] ?? 0) + 1;
+			}
+			return conteo;
+		}
+
+		const suave = contar('suave');
+		const aMatar = contar('a-matar');
+
+		// "Suave" tiene que salir cuidarse mucho más seguido que "a matar".
+		expect(suave.cuidarse ?? 0).toBeGreaterThan(aMatar.cuidarse ?? 0);
+		// Y "a matar" tiene que salir ir al gol mucho más seguido que "suave".
+		expect(aMatar.gol ?? 0).toBeGreaterThan(suave.gol ?? 0);
 	});
 });

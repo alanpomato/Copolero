@@ -357,13 +357,24 @@ describe('lo que prometen, pasa', () => {
 	 * lo único distinto es el rasgo. Si el rasgo no cambia absolutamente nada de
 	 * lo observable en ocho temporadas, es porque el motor no lo está leyendo, y
 	 * eso es exactamente lo que pasaba con `lesion` y `desgaste`.
+	 *
+	 * Con tres semillas alcanzaba hasta que el objetivo del año pasó a sortearse
+	 * en vez de elegirse: para los rasgos que sólo tocan `lesion` —"de fierro",
+	 * "elástico"— la única ventana observable es un booleano de lesión por
+	 * temporada, y el objetivo sorteado le suma su propio multiplicador de
+	 * lesión encima, así que la diferencia que deja el rasgo (0.7, 0.75) se
+	 * puede perder en el redondeo del dado la mayoría de las veces. Con 26
+	 * semillas —el abecedario entero, nada especial en la elección— la
+	 * probabilidad de que las dos carreras coincidan en las 26 es casi nula,
+	 * incluso para estos dos rasgos que solo se juegan un ~15% de las veces.
 	 */
 	it('cada rasgo del catálogo cambia el resultado de una carrera', () => {
 		const muertos: string[] = [];
+		const semillas = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
 		for (const r of RASGOS) {
 			const posicion = r.posiciones[0];
-			const cambia = ['a', 'b', 'c'].some(
+			const cambia = semillas.some(
 				(semilla) => comoLeFue(posicion, r.id, semilla) !== comoLeFue(posicion, NINGUNO, semilla)
 			);
 			if (!cambia) muertos.push(r.id);

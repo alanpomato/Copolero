@@ -132,7 +132,8 @@ export function alertaDe(estado: Estado, rol: Rol): Alerta | null {
 	// sola vez y tarde —recién pasada la mitad de la carrera—, porque avisarle en
 	// la cuarta temporada que le faltan noventa goles no es información, es
 	// desánimo. Dicho a tiempo, en cambio, todavía se puede corregir: subir de
-	// liga, elegir el objetivo del año que empuja para ese lado, jugar más.
+	// liga, entrenar a matar —que empuja el sorteo del objetivo para ese lado—,
+	// jugar más.
 	const suSueno = comoVaElSueno(estado, rol);
 	if (suSueno && !suSueno.cumplido && estado.temporada >= 9) {
 		const quedan = Math.max(0, TEMPORADAS_MAXIMAS - estado.temporada);
@@ -147,7 +148,7 @@ export function alertaDe(estado: Estado, rol: Rol): Alerta | null {
 					`Con lo que viene haciendo por año no da: hace falta que cambie algo.`,
 				salida:
 					rol === 'futbolista'
-						? 'Elegí el objetivo del año que empuje para ese lado y buscá un club donde juegues todo. Los minutos son lo único que mueve todos los números a la vez.'
+						? 'Entrená a matar —empuja el sorteo del objetivo hacia el gol o los minutos— y buscá un club donde juegues todo. Los minutos son lo único que mueve todos los números a la vez.'
 						: 'Es el momento de mover el pase que le cambie el año, no de estirar el contrato que ya tiene.',
 				gravedad: 'amarilla'
 			};

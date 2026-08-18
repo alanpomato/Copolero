@@ -16,7 +16,7 @@ import { RENOVACION, aplicarMomento, momentosDelRepresentante, resolverMomento }
 import { aplicarPase, ofertasPara, resolverPase, valorDeMercado, type Oferta } from './pases';
 import { filtrar, type Filtrado } from './cartas';
 import { empujarElTecho, loQueEmpujaElTecho, loQueSeCuenta } from './techo';
-import { objetivo as objetivoPorId } from './objetivos';
+import { objetivoPorAzar } from './objetivos';
 import { elegirRasgo, loQueAporta, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
 import { loQueDejaLaCarteraAlAnio, loQueSumaLaCarteraAlAnio } from './cartera';
@@ -54,11 +54,6 @@ import {
 	type Rol,
 	type VisiblePara
 } from './tipos';
-
-/** El objetivo pedido, o el que el motor toma si mandaron cualquier cosa. */
-function objetivoValido(id: string | undefined): string {
-	return objetivoPorId(id).id;
-}
 
 /** Lo que se resigna del sueldo por llegar al mercado sin nada arreglado. */
 const DESCUENTO_POR_APURO = 0.75;
@@ -275,9 +270,26 @@ export function resolverFase(
 
 	if (estado.fase === 1) {
 		// --- Cómo va a jugar el año --------------------------------------------
-		// Se elige acá y se cobra en la fase 2. Un plan de juego se decide antes de
-		// que arranque el campeonato, no con el campeonato empezado.
-		siguiente.objetivoDelAnio = objetivoValido(delFutbolista.objetivo);
+		// Ya no se elige: sale solo, pesado por la intensidad, y se cobra en la
+		// fase 2. Se sortea acá, antes del entrenamiento, porque un plan de juego
+		// se decide antes de que arranque el campeonato, no con el campeonato
+		// empezado. Ver `objetivoPorAzar`.
+		const rngObjetivo = rngPara(semilla, {
+			temporada: siguiente.temporada,
+			fase: 1,
+			clave: 'objetivo'
+		});
+		const objetivoSorteado = objetivoPorAzar(
+			siguiente.futbolista.posicion,
+			delFutbolista.intensidad,
+			rngObjetivo
+		);
+		siguiente.objetivoDelAnio = objetivoSorteado.id;
+		log.push({
+			tipo: 'objetivo',
+			visiblePara: 'ambos',
+			texto: `Así te va a salir jugar este año: ${objetivoSorteado.nombre}. ${objetivoSorteado.sube}, ${objetivoSorteado.cuesta.toLowerCase()}.`
+		});
 
 		// --- Pretemporada ------------------------------------------------------
 		const resultado = entrenar(
