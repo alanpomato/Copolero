@@ -21,6 +21,7 @@ import {
 	type Objetivo
 } from './objetivos';
 import { rasgo, rasgosQueLeTocaron, tocaElegirRasgo, type Rasgo } from './rasgos';
+import { cuantoLlega, dondePuedeSondear, laDeCasa, type Destino } from './sondeo';
 import {
 	comoVaElSueno,
 	paraLaPantalla,
@@ -184,6 +185,13 @@ export type OpcionesDeFase = {
 	 * vive adentro de la vidriera. Esto es lo que se ve siempre.
 	 */
 	loQueTengo?: EnLaVidriera[];
+	/**
+	 * Representante, fase 1: en qué continente sale a buscar este año.
+	 *
+	 * Dos como mucho —el de casa y el que elija— y a Europa hay que llegar. Ver
+	 * `sondeo.ts`.
+	 */
+	sondeo?: { elegido: string; destinos: Destino[]; alcance: number };
 	/** En qué puede gastar la plata, qué ya tiene y cuánto se le va por año. */
 	inversiones?: {
 		puedeComprar: EnLaVidriera[];
@@ -321,6 +329,21 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 		 * `truthy`: la pantalla dibujaba el bloque "Qué hacés esta fase" sin nada
 		 * adentro. Lo que no hay no se manda.
 		 */
+		/*
+		 * Y dónde sale a buscar este año.
+		 *
+		 * Sólo en la pretemporada: se elige antes de que arranque el año y se
+		 * cobra recién en el mercado, que es lo que hace que sea una apuesta.
+		 * Ver `sondeo.ts`.
+		 */
+		if (estado.fase === 1) {
+			opciones.sondeo = {
+				elegido: estado.sondeo ?? laDeCasa(estado),
+				destinos: dondePuedeSondear(estado),
+				alcance: cuantoLlega(estado)
+			};
+		}
+
 		const suyas = accionesDe(estado.fase);
 		if (suyas.length > 0) {
 			opciones.gestiones = suyas.map((a) => ({

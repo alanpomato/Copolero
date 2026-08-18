@@ -96,7 +96,21 @@ describe('el que está en el banco de un grande', () => {
 		const ofertas = ofertasPara(e, 'banco');
 		const prestigios = ofertas.map((o) => contexto(o.clubId).club.prestigio);
 
-		// Todas por encima de la mitad de la tabla: no son clubes de relleno.
-		for (const p of prestigios) expect(p).toBeGreaterThan(50);
+		/*
+		 * De mitad de tabla para arriba dentro de lo que puede aspirar.
+		 *
+		 * El número bajó de 50 a 45 por un motivo que vale la pena anotar, porque
+		 * es un cambio de diseño y no un test que se aflojó. Antes el mercado era
+		 * el mundo entero, así que a un suplente del PSG lo llamaban Boca, River o
+		 * Flamengo: clubes enormes donde igual iba a ser titular. Desde que el
+		 * mercado se acota a dos continentes (ver `sondeo.ts`), un jugador de
+		 * Europa que no salió a sondear afuera recibe ofertas europeas, y los
+		 * clubes de Europa donde un media 68 es titular son los de mitad de tabla,
+		 * no los de arriba.
+		 *
+		 * Eso no es un empeoramiento: es lo que hace que el representante sirva.
+		 * Si quiere que a su jugador lo llame Boca, tiene que sondear Sudamérica.
+		 */
+		for (const p of prestigios) expect(p).toBeGreaterThanOrEqual(45);
 	});
 });

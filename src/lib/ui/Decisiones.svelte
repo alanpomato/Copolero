@@ -40,6 +40,14 @@
 	let plan = $state('fisico');
 	let intensidad = $state('firme');
 	let gestion = $state('acompanar');
+	/*
+	 * Dónde sale a buscar el representante. Ver `sondeo.ts`.
+	 *
+	 * Arranca vacío y lo completa el efecto de abajo con lo que ya tiene
+	 * guardado: leer `opciones` acá adentro capturaría el valor del primer
+	 * render y la elección del año pasado no se vería marcada al volver.
+	 */
+	let sondeo = $state('');
 	let destino = $state(QUEDARSE);
 	/** Representante, primer tiempo del mercado: las que deja pasar. Ver `cartas.ts`. */
 	let filtradas = $state<string[]>([]);
@@ -66,6 +74,11 @@
 	$effect(() => {
 		const posibles = opciones.suenos ?? [];
 		if (posibles.length > 0 && !posibles.some((s) => s.id === sueno)) sueno = posibles[0].id;
+	});
+	// Y el sondeo arranca en lo que ya tenía elegido, o en el de casa.
+	$effect(() => {
+		const donde = opciones.sondeo;
+		if (donde && !donde.destinos.some((d) => d.id === sondeo && d.alcanza)) sondeo = donde.elegido;
 	});
 	let ocasiones = $state<string[]>([]);
 
@@ -380,11 +393,13 @@
 					? 'mercado'
 					: opciones.objetivos
 						? 'objetivo'
-						: opciones.gestiones
-							? 'gestion'
-							: opciones.planes
-								? 'entrenamiento'
-								: ''
+						: opciones.sondeo
+							? 'sondeo'
+							: opciones.gestiones
+								? 'gestion'
+								: opciones.planes
+									? 'entrenamiento'
+									: ''
 	);
 
 	function comoJuega(brecha: number): string {
@@ -868,6 +883,61 @@
 {/if}
 
 <!-- ---------- Fases 1 y 2: la gestión del representante ---------- -->
+<!-- ---------- Fase 1, representante: dónde sale a buscar ---------- -->
+<!--
+	Dos continentes como mucho, y el segundo lo elige él.
+
+	"Que el repre tenga la posibilidad de sondear por continente según cantidad
+	de temporadas. O sea, no debería tener ofertas de todos los continentes sino
+	de 2 máximo." Va acá arriba, antes de la gestión, porque es la decisión de
+	pretemporada que más lejos llega: se elige en enero y recién se ve en el
+	mercado de fin de año.
+-->
+{#if opciones.sondeo}
+	{@const donde = opciones.sondeo}
+	{@const elegido = donde.destinos.find((d) => d.id === sondeo)}
+	<Paso
+		titulo="Dónde salís a buscar"
+		elegido={elegido?.nombre ?? ''}
+		tema="plata"
+		abierto={abierto === 'sondeo'}
+		nota="Uno por año. Donde ya trabajás lo tenés siempre; el segundo es éste, y de ahí van a salir la mitad de las ofertas del mercado."
+	>
+		<p class="sutil" style="margin:0 0 .9rem">
+			Tu agenda llega a <b>{donde.alcance}</b>. Sube con los contactos, con el prestigio y con los
+			años que llevás trabajando.
+		</p>
+		<div class="enFila">
+			{#each donde.destinos as d (d.id)}
+				<Opcion
+					grupo="sondeo"
+					valor={d.id}
+					titulo={d.nombre}
+					detalle={d.esLaDeCasa
+						? 'Donde ya trabajás. La tenés siempre, elijas lo que elijas.'
+						: d.alcanza
+							? 'Llegás. Este año los clubes de allá van a saber que existe.'
+							: `Todavía no llegás: te faltan ${d.falta} de alcance.`}
+					bind:elegido={sondeo}
+					deshabilitada={!d.alcanza}
+				>
+					{#snippet extra()}
+						<span class="sube">
+							{#if d.esLaDeCasa}
+								<span class="chip-sube gana">Siempre</span>
+							{:else if d.alcanza}
+								<span class="chip-sube gana">Se abre</span>
+							{:else}
+								<span class="chip-sube pierde">Faltan {d.falta}</span>
+							{/if}
+						</span>
+					{/snippet}
+				</Opcion>
+			{/each}
+		</div>
+	</Paso>
+{/if}
+
 {#if opciones.gestiones}
 	<Paso
 		titulo="Qué hacés esta fase"

@@ -1,3 +1,4 @@
+import { entraEnElMercado } from './sondeo';
 import { club, clubes, contexto, salarioTipico } from '../../../content/mundo';
 import { media } from './estado';
 import { primaDeFirmaLibre } from './renovacion';
@@ -138,10 +139,13 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 	 * es justamente lo que la rama del banco vino a evitar. Así que si con el
 	 * piso estricto no aparece nadie, se afloja, y recién al final se saca.
 	 */
-	function losQueLoLlaman(cuantoAfloja: number) {
+	function losQueLoLlaman(cuantoAfloja: number, todoElMundo = false) {
 		return clubes.filter((c) => {
 			if (c.id === f.contrato.clubId) return false;
 			if (c.prestigio > f.fama + 20) return false;
+			// Dos continentes como mucho, y cuál es el segundo lo eligió el
+			// representante en la pretemporada. Ver `sondeo.ts`.
+			if (!todoElMundo && !entraEnElMercado(estado, c.id)) return false;
 
 			const brechaAlla = brechaCon(f, c.id);
 			const sueldo = salarioTipico(c.id, suMedia);
@@ -170,9 +174,21 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 
 	// Con el piso puesto; si no aparece nadie, aflojándolo; y si aun así nadie,
 	// sin piso, que es como estaba antes: preferimos una oferta mala a ninguna.
+	/*
+	 * Con el piso puesto; si no aparece nadie, aflojándolo; y si aun así nadie,
+	 * abriendo el mapa entero.
+	 *
+	 * El último escalón saltea los dos continentes a propósito. Acotar dónde
+	 * busca el representante es una regla del juego, pero dejar a un jugador sin
+	 * una sola oferta no es una regla, es un pozo: el que no juega y encima no
+	 * recibe nada se queda quince años mirando desde afuera, que es justo lo que
+	 * toda esta escalera vino a evitar. Cuando no hay nada cerca, aparece algo
+	 * lejos, y el representante se entera de que su agenda no alcanzó.
+	 */
 	let interesados = losQueLoLlaman(1);
-	if (estaEnElBanco && interesados.length === 0) interesados = losQueLoLlaman(2.5);
-	if (estaEnElBanco && interesados.length === 0) interesados = losQueLoLlaman(1000);
+	if (interesados.length === 0) interesados = losQueLoLlaman(1, true);
+	if (estaEnElBanco && interesados.length === 0) interesados = losQueLoLlaman(2.5, true);
+	if (estaEnElBanco && interesados.length === 0) interesados = losQueLoLlaman(1000, true);
 
 	if (interesados.length === 0) return [];
 
@@ -195,7 +211,19 @@ export function ofertasPara(estado: Estado, semilla: string): Oferta[] {
 			? b.prestigio - a.prestigio
 			: salarioTipico(b.id, suMedia) - salarioTipico(a.id, suMedia)
 	);
-	const candidatos = ordenados.slice(0, Math.min(28, ordenados.length));
+	/*
+	 * De cuántos se sortea: la parte de arriba de la lista, no un número fijo.
+	 *
+	 * Eran veintiocho a secas, y funcionaba mientras la bolsa era el mundo
+	 * entero: veintiocho de ochenta es el tercio de arriba. Al acotar el mercado
+	 * a dos continentes (ver `sondeo.ts`) la bolsa se achicó a la mitad y esos
+	 * mismos veintiocho pasaron a ser casi toda la lista, así que a un suplente
+	 * del PSG le empezaron a llegar ofertas de clubes de mitad de tabla para
+	 * abajo. Proporcional dice lo que se quería decir desde el principio: entre
+	 * los mejores que lo llamarían.
+	 */
+	const cuantosEntran = Math.max(8, Math.min(28, Math.round(ordenados.length * 0.35)));
+	const candidatos = ordenados.slice(0, Math.min(cuantosEntran, ordenados.length));
 
 	const cuantas = OFERTAS_POR_MERCADO + (seQuiereIr ? OFERTAS_EXTRA : 0);
 	const elegidos: string[] = [];

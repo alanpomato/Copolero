@@ -282,6 +282,15 @@ export type Estado = {
 	pidioLaSalida: boolean;
 
 	/**
+	 * En qué continente eligió sondear el representante este año.
+	 *
+	 * Se elige en la pretemporada y se cobra en el mercado. Las partidas
+	 * empezadas antes de que existiera no lo tienen: sin él, sólo llaman clubes
+	 * de donde ya está. Ver `sondeo.ts`.
+	 */
+	sondeo?: string;
+
+	/**
 	 * El mercado en dos tiempos. Ver `cartas.ts`.
 	 *
 	 * La fase 3 dejó de ser simétrica: primero juega el representante solo —le
@@ -451,8 +460,15 @@ export type Decision = {
 	/** Futbolista, fase 2: qué eligió en cada ocasión marcada, en orden. */
 	ocasiones?: string[];
 
-	/** Representante, fases 1 y 2: qué gestión hace este tramo. */
+	/** Representante, fase 1: qué gestión hace este año. */
 	gestion?: string;
+
+	/**
+	 * Representante, fase 1: en qué continente sale a buscar este año.
+	 *
+	 * De acá salen la mitad de las ofertas del mercado. Ver `sondeo.ts`.
+	 */
+	sondeo?: string;
 
 	/**
 	 * Los dos, fase 1, cuando vence el contrato de representación.

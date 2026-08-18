@@ -20,6 +20,7 @@ import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
 import { loQueDejaLaCarteraAlAnio, loQueSumaLaCarteraAlAnio } from './cartera';
+import { dondePuedeSondear, laDeCasa } from './sondeo';
 import { anotarElTope, elegirSueno, revisarSuenos } from './suenos';
 import { correrleElAnio } from './rival';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
@@ -436,6 +437,24 @@ export function resolverFase(
 	if (estado.fase === 1) {
 		for (const linea of resolverGestion(siguiente, delRepresentante.gestion, semilla)) {
 			log.push({ tipo: 'gestion', visiblePara: linea.visiblePara, texto: linea.texto });
+		}
+
+		/*
+		 * Y dónde va a salir a buscar este año.
+		 *
+		 * Se anota en la pretemporada y se cobra en el mercado, siete meses
+		 * después: por eso es una apuesta y no un trámite. Sólo se guarda si de
+		 * verdad llega, para que la pantalla no pueda prometer lo que el motor
+		 * después no da. Ver `sondeo.ts`.
+		 */
+		const aDonde = dondePuedeSondear(siguiente).find((d) => d.id === delRepresentante.sondeo);
+		siguiente.sondeo = aDonde?.alcanza ? aDonde.id : laDeCasa(siguiente);
+		if (aDonde?.alcanza && !aDonde.esLaDeCasa) {
+			log.push({
+				tipo: 'gestion',
+				visiblePara: 'representante',
+				texto: `Vas a sondear en ${aDonde.nombre} este año. En el mercado van a llamar de allá.`
+			});
 		}
 	}
 

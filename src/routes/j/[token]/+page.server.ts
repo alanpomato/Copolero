@@ -95,6 +95,8 @@ export const actions: Actions = {
 			}
 		} else {
 			decision.gestion = campo(datos, 'gestion');
+			// Y en qué continente sale a buscar este año. Ver `sondeo.ts`.
+			decision.sondeo = campo(datos, 'sondeo');
 			// Los momentos del representante, en el mismo orden en que los vio. Igual
 			// que del otro lado, lo que manda de verdad es lo que ya está tirado.
 			// Los hay en la temporada y en el mercado.
