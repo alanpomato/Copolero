@@ -24,7 +24,13 @@ on:
       rama:
         description: 'Rama a desplegar'
         required: false
-        default: main
+        # Mientras el juego viva en la rama de trabajo y no en `main` —que hoy
+        # sólo tiene el README—, éste es el default seguro. Dispararlo a mano
+        # desde la web sin tocar este campo apuntaba a `main`, la compilación
+        # fallaba, y el script del servidor volvía solo a la última versión
+        # buena: no rompía nada, pero tampoco desplegaba lo que se quería.
+        # Cambiar a `main` el día que esto se mergee ahí.
+        default: claude/buenas-9b6dk2
 
 concurrency:
   group: desplegar
