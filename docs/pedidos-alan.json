@@ -1,0 +1,324 @@
+{
+  "filas": [
+    {
+      "numero": 1,
+      "area": "Diario",
+      "pedido": "Ficha del año en la tapa: partidos, goles, promedio de gol por partido, G+A, y si jugó en la selección",
+      "estado": "Implementado",
+      "observaciones": "PJ, goles, asistencias, G+A, gol/PJ y nota, al lado de la crónica y en la tipografía del diario. El promedio va con dos decimales a propósito: entre 0.42 y 0.58 hay un delantero distinto. La línea de selección aparece sólo si hubo algo que contar.",
+      "prioridad": null
+    },
+    {
+      "numero": 2,
+      "area": "Sincronización",
+      "pedido": "Bug: el futbolista todavía no eligió y al repre le aparece que YA se cerró el acuerdo del 5%",
+      "estado": "Implementado",
+      "observaciones": "No era la barrera. La pantalla sólo se refrescaba mientras esperabas al otro, así que si el otro usaba 'avanzar sin esperar' te quedabas con una pantalla vieja y tu elección se guardaba contra la fase equivocada. Ahora el formulario lleva sello de fase y temporada, el servidor lo rechaza si no coincide, y la pantalla se recarga en el acto.",
+      "prioridad": null
+    },
+    {
+      "numero": 3,
+      "area": "Momentos",
+      "pedido": "Hacer los momentos tipo popup, que es lo más importante: las decisiones del jugador y del repre en el camino del año",
+      "estado": "Implementado",
+      "observaciones": "El momento se abre a pantalla completa. Opciones lado a lado, cada una con su escena dibujada y con las cuentas a la vista: qué ganás si sale y qué perdés si no, con el porcentaje. Los números ya existían en el motor; lo que cambió es que ahora se ven.",
+      "prioridad": null
+    },
+    {
+      "numero": 4,
+      "area": "Momentos",
+      "pedido": "Que no se pierda de vista el OVR y otros datos clave de la tarjeta del jugador",
+      "estado": "Implementado",
+      "observaciones": "Cinta fija arriba del popup. El futbolista ve media, edad, moral, desgaste, técnico y gente; el repre ve prestigio, negociación, scouting, contactos y carisma. Cada uno lo que sus momentos mueven.",
+      "prioridad": null
+    },
+    {
+      "numero": 5,
+      "area": "Momentos",
+      "pedido": "Está bueno el resultado pero no se entiende cómo sigue: ¿cómo afecta al jugador que haya salido mal? ¿La moral?",
+      "estado": "Implementado",
+      "observaciones": "Abajo de la crónica quedan los chips de lo que de verdad se aplicó. Son los mismos que se vieron antes de elegir, y esa simetría es el punto: lo que decía la apuesta es lo que se cobró.",
+      "prioridad": null
+    },
+    {
+      "numero": 6,
+      "area": "Mercado",
+      "pedido": "En el mercado la 1era acción es del representante: le llegan 6 equipos, filtra 3, y las que pasan llegan al jugador",
+      "estado": "Implementado",
+      "observaciones": "Hecho de punta a punta. El repre ve las seis cartas con reloj y elige tres; el futbolista espera de verdad y después elige entre las que prosperaron. La chance sale del salto de categoría, la media del jugador, la negociación y los contactos del repre, y cuánto estira el sueldo la oferta. Medido en pantalla: 49, 54, 61, 63, 73 y 75 en un mercado real.",
+      "prioridad": null
+    },
+    {
+      "numero": 7,
+      "area": "Mercado",
+      "pedido": "Que el futbolista espere de verdad mientras el repre filtra",
+      "estado": "Implementado",
+      "observaciones": "La fase 3 dejó de ser simétrica. El servidor rechaza la decisión del que está esperando, y no sólo por prolijidad: los dos tiempos comparten la fase 3 en la base, así que una fila del que no juega contaría como 'ya cerré' cuando le toque de verdad.",
+      "prioridad": null
+    },
+    {
+      "numero": 8,
+      "area": "Mercado",
+      "pedido": "Bug: si los dos elegimos una opción diferente en el mercado, se avanza igual, lo cual es imposible",
+      "estado": "Implementado",
+      "observaciones": "Resuelto de raíz por el mercado en dos tiempos: ya no hay dos elecciones que puedan no coincidir. El repre filtra, el futbolista elige, y elige solo.",
+      "prioridad": null
+    },
+    {
+      "numero": 9,
+      "area": "Consumibles",
+      "pedido": "Desaparecieron los consumibles, no sé por qué",
+      "estado": "Implementado",
+      "observaciones": "No desaparecieron: estaban enterrados. La vidriera abría con diez tarjetas de 'para siempre' que en la primera pretemporada no se pueden pagar. Ahora los consumibles van primero, con su ×1 / ×2 / ×3 arriba a la derecha, y de lo más barato a lo más caro.",
+      "prioridad": null
+    },
+    {
+      "numero": 10,
+      "area": "Consumibles",
+      "pedido": "Que el futbolista arranque con USD 0 está bien",
+      "estado": "Confirmado · sin cambios",
+      "observaciones": "Confirmado por vos. En la primera pretemporada no puede comprar nada, y queda así.",
+      "prioridad": null
+    },
+    {
+      "numero": 11,
+      "area": "Mercado",
+      "pedido": "El popup del mercado de pases con las tarjetas de escudo",
+      "estado": "Implementado",
+      "observaciones": "Va adentro del mercado en dos tiempos. Del lado del jugador: escudo, sueldo, pase y temporadas, sin probabilidad. Del lado del repre, el reloj.",
+      "prioridad": null
+    },
+    {
+      "numero": 12,
+      "area": "Trayectoria",
+      "pedido": "Hacer algo similar a la tabla de trayectoria, desplegable",
+      "estado": "Pendiente",
+      "observaciones": "Una fila por edad: edad, club, OVR, PJ, goles, asistencias, iconos de títulos, y la fila de selección abajo de todo.",
+      "prioridad": 4
+    },
+    {
+      "numero": 13,
+      "area": "Trofeos",
+      "pedido": "Vitrina de trofeos que se pueda acceder y ver miniatura de trofeos",
+      "estado": "Pendiente",
+      "observaciones": "Los trofeos se dibujan (SVG propio), no se copian de ningún lado.",
+      "prioridad": 4
+    },
+    {
+      "numero": 14,
+      "area": "Creación",
+      "pedido": "¿Qué clase de jugador sos?: poner muchas opciones para que no se repitan fácilmente",
+      "estado": "Implementado",
+      "observaciones": "De 13 rasgos a 38: entre 17 y 23 por puesto, así que dos partidas del mismo puesto casi no repiten la tirada. Para que los nuevos no fueran los viejos con otro nombre se sumaron seis palancas —fama, hinchada, prensa, moral, confianza con el representante y valor de mercado—, que permiten escribir \"el que la gente quiere aunque juegue mal\" o \"el que vale más de lo que rinde\". Los que tienen una contra ahora la muestran en rojo. Y apareció un bug de fondo: tres rasgos prometían cosas que el motor no aplicaba nunca (el 30% menos de lesiones de \"De fierro\", el desgaste de \"Espalda ancha\"). Hay un test que corre dos carreras idénticas por cada rasgo y exige que se note la diferencia.",
+      "prioridad": null
+    },
+    {
+      "numero": 15,
+      "area": "Creación",
+      "pedido": "¿Para qué vas a jugar?: ver si lo dejamos",
+      "estado": "Pendiente de decisión",
+      "observaciones": "Lo dejo como está hasta que decidas. Es el sueño de carrera de cada rol.",
+      "prioridad": null
+    },
+    {
+      "numero": 16,
+      "area": "Pretemporada",
+      "pedido": "La parte de intensidad, poner un velocímetro",
+      "estado": "Implementado",
+      "observaciones": "Aguja sobre arco de tres tercios de color (verde/amarillo/rojo), arriba de las tres tarjetas de siempre. Verde = no cuesta nada, rojo = lo que el cuerpo cobra. Apareció un bug de geometría al escribirlo (la aguja de \"Firme\" apuntaba al verde) que quedó cubierto con un test aparte.",
+      "prioridad": null
+    },
+    {
+      "numero": 17,
+      "area": "Pretemporada",
+      "pedido": "La parte de CÓMO entrenar: poner SOLO 3 en horizontal",
+      "estado": "Implementado",
+      "observaciones": "Tres y no seis: los dos que ese puesto de verdad usa, más un tercero que rota temporada a temporada. En fila horizontal, y las intensidades también.",
+      "prioridad": null
+    },
+    {
+      "numero": 18,
+      "area": "Pretemporada",
+      "pedido": "Sacar 'cómo vas a jugar el año' y que una de las 3 decisiones de la temporada lo defina, según el azar",
+      "estado": "Pendiente",
+      "observaciones": "Deja de ser una decisión explícita y pasa a ser consecuencia de un momento.",
+      "prioridad": 2
+    },
+    {
+      "numero": 19,
+      "area": "Cartas",
+      "pedido": "De las 45 tarjetas, todas con rareza: 25 comunes, 10 bronce, 7 plateadas, 3 doradas",
+      "estado": "Implementado",
+      "observaciones": "Las 45, con la repartición exacta (25/10/7/3). La rareza decide cuántas veces se ofrece: cada pretemporada se sortean 8 por rol con peso por rareza. Medido en 15 temporadas, una dorada aparece una o dos veces en toda la carrera.",
+      "prioridad": null
+    },
+    {
+      "numero": 20,
+      "area": "Interfaz",
+      "pedido": "Destacar lo que hace el repre, o tirar notificación abajo a la derecha",
+      "estado": "Implementado",
+      "observaciones": "Avisos abajo a la derecha con lo que hizo el repre en las dos últimas fases.",
+      "prioridad": null
+    },
+    {
+      "numero": 21,
+      "area": "Interfaz",
+      "pedido": "Cuando uno terminó y el otro no, avisarle al que falta que lo están esperando, abajo a la derecha",
+      "estado": "Implementado",
+      "observaciones": "Mismo componente: al que falta le aparece \"te están esperando\".",
+      "prioridad": null
+    },
+    {
+      "numero": 22,
+      "area": "Momentos",
+      "pedido": "Los momentos tienen que ser obligatorios para avanzar: hoy se puede cerrar sin jugarlos",
+      "estado": "Implementado",
+      "observaciones": "El servidor rechaza cerrar la fase con momentos sin jugar, incluso por \"avanzar sin esperar\", que era por donde se colaba.",
+      "prioridad": null
+    },
+    {
+      "numero": 23,
+      "area": "Momentos",
+      "pedido": "30 momentos del futbolista (juega 3 por año), por familias y más icónicos",
+      "estado": "Implementado",
+      "observaciones": "Son 51 plantillas por rol de campo (33 por puesto): 6 de cancha por puesto, 22 fuera de la cancha en ocho familias y 5 del mercado. Las familias rotan: no toca el mismo palo dos años seguidos. Medido, una carrera de 18 temporadas pasó de 10 momentos distintos a 28.",
+      "prioridad": null
+    },
+    {
+      "numero": 24,
+      "area": "Momentos",
+      "pedido": "Ver si dejamos 1, 2 o 3 momentos por año",
+      "estado": "Pendiente de decisión",
+      "observaciones": "Hoy son 3 del futbolista y 2 del repre.",
+      "prioridad": null
+    },
+    {
+      "numero": 25,
+      "area": "Repre",
+      "pedido": "20 momentos del representante (juega 2 por año), por familias",
+      "estado": "Implementado",
+      "observaciones": "20 en la temporada, en ocho familias (cartera, club, colega, prensa, familiar, social, turbio y plata), más 5 en el mercado. Dos por año y nunca del mismo palo.",
+      "prioridad": null
+    },
+    {
+      "numero": 26,
+      "area": "Repre",
+      "pedido": "Sacar los momentos del repre de la pretemporada y ponerlos en temporada",
+      "estado": "Implementado",
+      "observaciones": "Sacados de la pretemporada. Se resolvían solos porque no eran obligatorios: ahora lo son.",
+      "prioridad": null
+    },
+    {
+      "numero": 27,
+      "area": "Repre",
+      "pedido": "Uno de los momentos: reclutar un jugador. Más media/fama del pibe, menor probabilidad",
+      "estado": "Implementado",
+      "observaciones": "\"El pibe\" y \"El que ya juega\": a este último la probabilidad le sale de la fama del jugador, así que al conocido casi no lo firmás. Y la cartera pasó a importar: cada representado deja plata todos los años, suma prestigio y se lleva un pedazo del día. La disponibilidad va de 100 a 25 y multiplica todo lo que el repre intenta.",
+      "prioridad": null
+    },
+    {
+      "numero": 28,
+      "area": "Repre",
+      "pedido": "Renegociar y tratar de renovar con el club como acción del repre en el mercado",
+      "estado": "Pendiente",
+      "observaciones": "La probabilidad tiene que salir de la media del jugador, de cuántas temporadas lleva en el club, de si rindió (no sólo la media) y de las stats del repre.",
+      "prioridad": 3
+    },
+    {
+      "numero": 29,
+      "area": "Repre",
+      "pedido": "Sacar el 'no hay nada que decidir acá' del aviso de contrato vencido",
+      "estado": "Implementado",
+      "observaciones": "Reemplazado por lo que de verdad pasa: el mercado, al final de la temporada, es donde se define.",
+      "prioridad": null
+    },
+    {
+      "numero": 30,
+      "area": "Repre",
+      "pedido": "Poner en cada tarjeta de gestión cuánto sube y cuánto baja",
+      "estado": "Implementado",
+      "observaciones": "Cada acción declara qué sube y qué baja, la pantalla lo dibuja como chips y hay una sola función que lo cobra: lo que promete la tarjeta es exactamente lo que pasa.",
+      "prioridad": null
+    },
+    {
+      "numero": 31,
+      "area": "Repre",
+      "pedido": "Dejar la gestión sólo en la pretemporada y que aplique a toda la temporada",
+      "estado": "Implementado",
+      "observaciones": "Una sola por año, en la pretemporada, y vale para todo el año.",
+      "prioridad": null
+    },
+    {
+      "numero": 32,
+      "area": "Mapa",
+      "pedido": "Un mapa de verdad: NO es Google Maps ni similar. Quiero uno bien como el de Google Maps, Open Maps o ArcGIS",
+      "estado": "Implementado",
+      "observaciones": "Los datos ahora son Natural Earth 1:50m, dominio público: la misma base que traen QGIS y ArcGIS. 133 países con sus fronteras, 33 lagos, y proyección Mercator, la de los mapas web. No se le pide nada a ningún servicio: no hay tiles, ni clave de API, ni licencia que arrastrar; las coordenadas están adentro del repo y el dibujo lo hace el navegador. El mapa va en su propio módulo y se baja recién cuando alguien lo abre.",
+      "prioridad": null
+    },
+    {
+      "numero": 33,
+      "area": "Contrato",
+      "pedido": "La mesa del contrato entre ustedes dos es medio aburrida",
+      "estado": "Pendiente de charla",
+      "observaciones": "Anotado como pendiente de conversación, no de código. Hoy es elegir un número de una lista: no hay tira y afloje, no hay minijuego, y no juegan las stats de ninguno de los dos.",
+      "prioridad": null
+    },
+    {
+      "numero": 34,
+      "area": "Backlog",
+      "pedido": "Modo SOLO: jugar sin representante, o sin futbolista",
+      "estado": "Backlog",
+      "observaciones": "Dijiste que es para el futuro. El motor cubriría al que falta.",
+      "prioridad": null
+    },
+    {
+      "numero": 35,
+      "area": "Backlog",
+      "pedido": "Salida a préstamo",
+      "estado": "Backlog",
+      "observaciones": "Dijiste 'dejar para adelante'. El club te manda a sumar minutos a otro equipo y elegís dónde.",
+      "prioridad": null
+    },
+    {
+      "numero": 36,
+      "area": "Progresión",
+      "pedido": "El jugador se estancó en 60-61-62 y jugué un mundial y no sube, está raro",
+      "estado": "Implementado",
+      "observaciones": "Era el peor defecto que tuvo el juego. El potencial se sorteaba a los 16 y no cambiaba nunca más, así que al tocarlo —cosa que pasa a los 22— no había nada que hacer con el resto de la carrera. Medí 25 carreras: una promedió 7,4 de nota quince temporadas seguidas y su media nunca pasó de 60. Ahora el techo se mueve con un Mundial, una temporada grande jugada entera y un título ganado jugando, y pesa mucho más a los 17 que a los 28. El piso del sorteo inicial subió de 58 a 66. Pico promedio de 71,4 a 74,6; peor racha de años planos de 12 a 5.",
+      "prioridad": null
+    },
+    {
+      "numero": "37",
+      "area": "Mercado",
+      "pedido": "Que el repre pueda sondear por continente según las temporadas: no ofertas de todos los continentes sino de 2 máximo",
+      "estado": "Implementado",
+      "observaciones": "El de casa lo tiene siempre; el segundo lo elige en la pretemporada, entre los que su agenda alcance. El alcance sale de contactos, prestigio y años trabajados: a Europa cuesta llegar. Se elige en enero y se cobra en el mercado.",
+      "prioridad": null
+    },
+    {
+      "numero": "38",
+      "area": "Consumibles",
+      "pedido": "Los consumibles se borran y no sabés qué tenés; comprás un centro de entrenamiento y debería aparecer en algún lado",
+      "estado": "Implementado",
+      "observaciones": "Panel propio \"Lo que tenés\" en la columna del costado, en todas las fases, ordenado por rareza, con lo que hace cada cosa y cuántas temporadas le quedan.",
+      "prioridad": null
+    },
+    {
+      "numero": "39",
+      "area": "Progresión",
+      "pedido": "Que la carrera tenga forma: que suba, haga pico y baje",
+      "estado": "Implementado",
+      "observaciones": "Apareció midiendo: una carrera llegaba a 81 a los 31 y terminaba en 81 a los 34. Después de los 30 ya no se crece jugando; entrenar sigue sirviendo. Ahora hace pico y baja.",
+      "prioridad": null
+    },
+    {
+      "numero": 40,
+      "area": "Pages",
+      "pedido": "En la página de GitHub Pages, incluir el Excel de seguimiento de pedidos (lo pendiente arriba, lo hecho abajo)",
+      "estado": "Implementado",
+      "observaciones": "El .xlsx no se puede mostrar directo en una página web (el navegador lo ofrece para descargar). Un script en Python (scripts/exportar-pedidos.py) lo convierte a JSON, que sí se puede leer y dibujar. El sitio ahora tiene una página propia con dos tablas: \"Abierto\" primero (ordenado por prioridad) y \"Resuelto\" después, con los mismos colores de estado que ya usa el resto del sitio.",
+      "prioridad": null
+    }
+  ]
+}

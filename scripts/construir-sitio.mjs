@@ -16,6 +16,7 @@ import { marked } from 'marked';
 const RAIZ = new URL('..', import.meta.url).pathname;
 const DIR_DOCS = join(RAIZ, 'docs');
 const DIR_SALIDA = join(RAIZ, 'sitio');
+const ARCHIVO_PEDIDOS = join(DIR_DOCS, 'pedidos-alan.json');
 
 /** Orden y presentación de los documentos en el índice. */
 const DOCUMENTOS = [
@@ -154,6 +155,10 @@ hr { border: 0; border-top: 1px solid var(--borde); margin: 2.5rem 0; }
 .pill-listo { background: rgba(74,222,128,.14); color: var(--acento); border: 1px solid rgba(74,222,128,.3); }
 .pill-pendiente { background: rgba(154,167,180,.1); color: var(--texto-tenue); border: 1px solid var(--borde); }
 .nota { color: var(--texto-tenue); font-size: .9rem; margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--borde); }
+.pill-backlog { background: rgba(154,167,180,.1); color: var(--texto-tenue); border: 1px solid var(--borde); }
+.fila-pedido td:first-child { font-variant-numeric: tabular-nums; color: var(--texto-tenue); }
+.fila-pedido .area { color: var(--texto-tenue); white-space: nowrap; }
+.fila-pedido .obs { color: var(--texto-tenue); font-size: .88rem; }
 `;
 
 function pagina({ titulo, cuerpo, descripcion = '' }) {
@@ -194,6 +199,21 @@ function claseDeEstado(estado) {
 }
 
 /**
+ * Si un pedido ya está resuelto, para el orden y el color del pill.
+ *
+ * Sólo estos dos estados cierran un pedido. Los otros cuatro —Pendiente,
+ * Pendiente de decisión, Pendiente de charla, Backlog— siguen abiertos aunque
+ * cada uno lo esté por un motivo distinto.
+ */
+const ESTADOS_CERRADOS = new Set(['Implementado', 'Confirmado · sin cambios']);
+
+function claseDelPedido(estado) {
+	if (ESTADOS_CERRADOS.has(estado)) return 'pill-listo';
+	if (estado === 'Backlog') return 'pill-backlog';
+	return 'pill-pendiente';
+}
+
+/**
  * Lo que anda hoy, sacado del README.
  *
  * Se lee de ahí a propósito: es el texto que se actualiza cuando se agrega algo
@@ -209,7 +229,81 @@ async function queAndaHoy() {
 	return envolverTablas(marked.parse(trozo));
 }
 
-async function construirIndice(docsPresentes) {
+/**
+ * La página del checklist: lo pendiente arriba, lo hecho abajo.
+ *
+ * Alan lo pidió así después de que le mandé el Excel un par de veces por
+ * chat: "quiero que en la pages de github incluyamos el excel de seguimiento
+ * de pendientes (lo pendiente arriba lo hecho abajo)". El Excel en sí no se
+ * lee en el navegador —GitHub Pages lo ofrece para descargar y ahí se
+ * queda—, así que esto lee el JSON que exporta `scripts/exportar-pedidos.py`
+ * y arma la tabla.
+ *
+ * Dentro de "pendiente" se ordena por prioridad (1 primero); los que no
+ * tienen —charla, decisión, backlog— quedan al final del grupo, en el orden
+ * en que se pidieron. Dentro de "hecho" no hay nada que ordenar más que
+ * cuándo se pidió, así que queda tal cual.
+ */
+async function construirPedidos() {
+	let datos;
+	try {
+		datos = JSON.parse(await readFile(ARCHIVO_PEDIDOS, 'utf8'));
+	} catch {
+		return null;
+	}
+
+	const filas = datos.filas ?? [];
+	const abiertas = filas.filter((f) => !ESTADOS_CERRADOS.has(f.estado));
+	const cerradas = filas.filter((f) => ESTADOS_CERRADOS.has(f.estado));
+
+	abiertas.sort((a, b) => (a.prioridad ?? 99) - (b.prioridad ?? 99));
+
+	const filaHtml = (f) => `  <tr class="fila-pedido">
+    <td>#${f.numero}</td>
+    <td class="area">${escapar(f.area)}</td>
+    <td>${escapar(f.pedido)}</td>
+    <td><span class="pill ${claseDelPedido(f.estado)}">${escapar(f.estado)}</span></td>
+    <td class="obs">${escapar(f.observaciones)}</td>
+  </tr>`;
+
+	const cuerpo = `<a class="volver" href="./index.html">← Volver al estado del proyecto</a>
+<h1>Los pedidos de Alan</h1>
+<p class="bajada">Todo lo que pidió, con su estado y qué se hizo. Lo que
+todavía está abierto va primero, ordenado por prioridad; lo ya resuelto queda
+al final.</p>
+
+<h2>Abierto — ${abiertas.length}</h2>
+<div class="tabla-scroll">
+<table>
+<thead><tr><th>#</th><th>Área</th><th>Pedido</th><th>Estado</th><th>Observaciones</th></tr></thead>
+<tbody>
+${abiertas.map(filaHtml).join('\n')}
+</tbody>
+</table>
+</div>
+
+<h2>Resuelto — ${cerradas.length}</h2>
+<div class="tabla-scroll">
+<table>
+<thead><tr><th>#</th><th>Área</th><th>Pedido</th><th>Estado</th><th>Observaciones</th></tr></thead>
+<tbody>
+${cerradas.map(filaHtml).join('\n')}
+</tbody>
+</table>
+</div>
+
+<p class="nota">Se genera desde <code>docs/pedidos-alan.xlsx</code> —donde de
+verdad se edita, con fórmulas y todo— vía
+<code>scripts/exportar-pedidos.py</code>. Esta página no se toca a mano.</p>`;
+
+	return pagina({
+		titulo: 'Los pedidos de Alan — Copolero',
+		descripcion: 'El checklist de pedidos: lo abierto primero, lo resuelto al final.',
+		cuerpo
+	});
+}
+
+async function construirIndice(docsPresentes, hayPedidos) {
 	const tarjetas = DOCUMENTOS.filter((d) => docsPresentes.has(d.archivo))
 		.map(
 			(d) => `  <li><a class="tarjeta" href="./${d.archivo.replace(/\.md$/, '.html')}">
@@ -237,6 +331,18 @@ ${await queAndaHoy()}
 <ul class="hitos">
 ${hitos}
 </ul>
+
+${
+	hayPedidos
+		? `<h2>Pedidos</h2>
+<ul class="tarjetas">
+  <li><a class="tarjeta" href="./pedidos-alan.html">
+    <strong>Los pedidos de Alan</strong>
+    <span>El checklist de seguimiento: lo abierto primero, lo resuelto al final.</span>
+  </a></li>
+</ul>`
+		: ''
+}
 
 <h2>Documentos</h2>
 <ul class="tarjetas">
@@ -276,7 +382,16 @@ ${envolverTablas(marked.parse(markdown))}`;
 		);
 	}
 
-	await writeFile(join(DIR_SALIDA, 'index.html'), await construirIndice(presentes), 'utf8');
+	const pedidosHtml = await construirPedidos();
+	if (pedidosHtml) {
+		await writeFile(join(DIR_SALIDA, 'pedidos-alan.html'), pedidosHtml, 'utf8');
+	}
+
+	await writeFile(
+		join(DIR_SALIDA, 'index.html'),
+		await construirIndice(presentes, pedidosHtml !== null),
+		'utf8'
+	);
 	// GitHub Pages usa Jekyll por defecto y se saltea lo que empieza con guion bajo.
 	await writeFile(join(DIR_SALIDA, '.nojekyll'), '', 'utf8');
 
