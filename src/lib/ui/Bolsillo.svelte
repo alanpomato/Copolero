@@ -2,7 +2,7 @@
 	import { contexto } from '../../../content/mundo';
 	import { LO_QUE_CUESTA_CON_EL_DT, LO_QUE_CUESTA_CON_LA_HINCHADA, PIDE } from '$lib/engine/salida';
 	import type { OpcionesDeFase } from '$lib/engine/pantalla';
-	import type { EnLaVidriera } from '$lib/engine/inversiones';
+	import { NOMBRE_RAREZA, type EnLaVidriera } from '$lib/engine/inversiones';
 	import type { Estado } from '$lib/engine/tipos';
 	import Opcion from './Opcion.svelte';
 
@@ -129,7 +129,7 @@
 			{#if inv.tiene.length > 0}
 				<ul class="tenes" style="margin-bottom:1rem">
 					{#each inv.tiene as i (i.id)}
-						<li>
+						<li data-rareza={i.rareza}>
 							<b>{i.nombre}</b> — {i.efecto}
 							{#if i.quedan}
 								<span class="restan">
@@ -185,6 +185,11 @@
 								>
 									{#snippet extra()}
 										<span class="sube">
+											<!-- La rareza primero: es lo que dice si esta carta se vuelve a
+											     ver el año que viene o si es ahora o nunca. -->
+											<span class="chip-sube rareza" data-rareza={i.rareza}>
+												{NOMBRE_RAREZA[i.rareza]}
+											</span>
 											<span class="chip-sube gana">
 												{i.modo === 'fijar' ? (i.fijo?.efecto ?? i.efecto) : i.efecto}
 											</span>
@@ -265,6 +270,41 @@
 {/if}
 
 <style>
+	/*
+	 * El filo de la rareza.
+	 *
+	 * Por el borde y no por el fondo: con cuatro fondos distintos la vidriera se
+	 * convierte en un semáforo y deja de leerse. Lo que la rareza tiene que
+	 * decir es una sola cosa —si esta carta vuelve el año que viene o si es
+	 * ahora o nunca— y para eso alcanza con un color al costado.
+	 */
+	.chip-sube.rareza {
+		color: var(--filo);
+		border-color: color-mix(in srgb, var(--filo) 45%, transparent);
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		font-size: 0.62rem;
+	}
+
+	.tenes li[data-rareza],
+	.chip-sube.rareza[data-rareza='comun'] {
+		--filo: #5b6478;
+	}
+	[data-rareza='bronce'] {
+		--filo: #b4763a;
+	}
+	[data-rareza='plata'] {
+		--filo: #b9c2d0;
+	}
+	[data-rareza='dorada'] {
+		--filo: #e3b23c;
+	}
+
+	.tenes li[data-rareza] {
+		border-left: 3px solid var(--filo);
+		padding-left: 0.55rem;
+	}
+
 	/* El botón que la abre: una línea, como el de pedir salir. */
 	.abrirla {
 		display: flex;

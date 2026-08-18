@@ -20,6 +20,7 @@
 	import Alerta from '$lib/ui/Alerta.svelte';
 	import Sueno from '$lib/ui/Sueno.svelte';
 	import Bolsillo from '$lib/ui/Bolsillo.svelte';
+	import LoQueTengo from '$lib/ui/LoQueTengo.svelte';
 	import Novedades from '$lib/ui/Novedades.svelte';
 	import Paso from '$lib/ui/Paso.svelte';
 	import Mundial from '$lib/ui/Mundial.svelte';
@@ -182,6 +183,19 @@
 				-->
 				{#if !vista.yaCerre && vista.elOtro && !vista.opciones.retiro}
 					<Bolsillo opciones={vista.opciones} {estado} />
+				{/if}
+
+				<!--
+					Y lo que ya compró, en todas las fases.
+
+					La lista vivía adentro de la vidriera, y la vidriera existe una fase
+					de cada tres. Alan lo reportó jugando: "después se borran y no sabés
+					qué tenés; además comprás un centro de entrenamiento y debería
+					aparecer en algún lado". Comprar algo y que la compra desaparezca de
+					la pantalla es comprar al vacío.
+				-->
+				{#if vista.opciones.loQueTengo}
+					<LoQueTengo cuales={vista.opciones.loQueTengo} />
 				{/if}
 
 				{#if vista.rol === 'futbolista'}

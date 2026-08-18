@@ -177,6 +177,13 @@ export type OpcionesDeFase = {
 	 * hay que mostrarlo: es la señal más clara de que hay que moverse.
 	 */
 	renovacion?: { oferta: OfertaDeRenovacion | null; libre: boolean };
+	/**
+	 * Lo que ya compró, en todas las fases.
+	 *
+	 * Aparte de `inversiones.tiene`, que sólo existe en la pretemporada porque
+	 * vive adentro de la vidriera. Esto es lo que se ve siempre.
+	 */
+	loQueTengo?: EnLaVidriera[];
 	/** En qué puede gastar la plata, qué ya tiene y cuánto se le va por año. */
 	inversiones?: {
 		puedeComprar: EnLaVidriera[];
@@ -328,12 +335,25 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 		}
 	}
 
+	/*
+	 * Lo que ya tiene comprado, en todas las fases.
+	 *
+	 * Alan lo encontró jugando: "los consumibles está bien que aparezcan solo en
+	 * pretemporada, pero después se borran y no sabés qué tenés. Además comprás
+	 * un centro de entrenamiento y debería aparecer en algún lado". Tenía razón
+	 * y era literal: la lista de lo comprado vivía adentro de la vidriera, y la
+	 * vidriera sólo existe en la pretemporada. Comprar y que la compra
+	 * desaparezca de la pantalla es comprar al vacío.
+	 */
+	const tiene = loQueTiene(estado, rol);
+	if (tiene.length > 0) opciones.loQueTengo = tiene;
+
 	// En qué gastar la plata, en pretemporada. Cada uno ve solo lo suyo: es la
 	// única decisión del juego que no necesita al otro.
 	if (estado.fase === 1) {
 		opciones.inversiones = {
-			puedeComprar: loQuePuedeComprar(estado, rol),
-			tiene: loQueTiene(estado, rol),
+			puedeComprar: loQuePuedeComprar(estado, rol, semilla),
+			tiene,
 			plataUsd: rol === 'futbolista' ? estado.futbolista.dineroUsd : estado.representante.dineroUsd,
 			gastoAnualUsd: gastoAnual(estado, rol)
 		};

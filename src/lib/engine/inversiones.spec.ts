@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
 import {
+	CUANTAS_EN_LA_VIDRIERA,
 	INVERSIONES,
 	NADA,
 	cobrarMantenimiento,
@@ -56,8 +57,9 @@ describe('el catálogo', () => {
 
 	it('cada uno ve solo lo suyo', () => {
 		const e = conPlata();
-		for (const i of loQuePuedeComprar(e, 'futbolista')) expect(i.de).toBe('futbolista');
-		for (const i of loQuePuedeComprar(e, 'representante')) expect(i.de).toBe('representante');
+		for (const i of loQuePuedeComprar(e, 'futbolista', 'inv')) expect(i.de).toBe('futbolista');
+		for (const i of loQuePuedeComprar(e, 'representante', 'inv'))
+			expect(i.de).toBe('representante');
 	});
 
 	it('el precio sale de lo que gana, no es un número fijo', () => {
@@ -76,14 +78,18 @@ describe('el catálogo', () => {
 describe('comprar', () => {
 	it('cobra el precio y aplica lo suyo', () => {
 		const e = conPlata();
-		const item = loQuePuedeComprar(e, 'representante').find((i) => i.id === 'abogado')!;
+		// El precio se pide directo y no a la vidriera: desde que la vidriera
+		// sortea qué se ofrece, que el abogado esté este año es cuestión de suerte
+		// y lo que se prueba acá no es la suerte.
+		const item = INVERSIONES.find((i) => i.id === 'abogado')!;
+		const precio = precioDe(e, item);
 		const antesPlata = e.representante.dineroUsd;
 		const antesNegociacion = e.representante.atributos.negociacion;
 
 		const linea = comprar(e, 'representante', 'abogado');
 
 		expect(linea).not.toBeNull();
-		expect(e.representante.dineroUsd).toBe(antesPlata - item.precioUsd);
+		expect(e.representante.dineroUsd).toBe(antesPlata - precio);
 		expect(e.representante.atributos.negociacion).toBeGreaterThan(antesNegociacion);
 		expect(loQueTiene(e, 'representante').map((i) => i.id)).toContain('abogado');
 	});
@@ -95,7 +101,7 @@ describe('comprar', () => {
 
 		expect(comprar(e, 'futbolista', 'psicologo')).toBeNull();
 		expect(e.futbolista.dineroUsd).toBe(plata);
-		expect(loQuePuedeComprar(e, 'futbolista').map((i) => i.id)).not.toContain('psicologo');
+		expect(loQuePuedeComprar(e, 'futbolista', 'inv').map((i) => i.id)).not.toContain('psicologo');
 	});
 
 	it('no se puede comprar lo del otro rol', () => {
@@ -186,11 +192,21 @@ describe('los consumibles', () => {
 		expect(loQueTiene(e, 'futbolista')).toHaveLength(0);
 	});
 
-	it('un consumible gastado se puede volver a comprar', () => {
+	it('un consumible gastado vuelve a la bolsa de la vidriera', () => {
+		// Vuelve a la bolsa, no a la vidriera: desde que se sortea qué se ofrece,
+		// el año que viene puede no salir. Lo que importa es que no quede
+		// descartado para siempre, y eso se ve mirando unas cuantas temporadas.
 		const e = conPlata();
 		comprar(e, 'futbolista', 'botines');
 		cobrarMantenimiento(e);
-		expect(loQuePuedeComprar(e, 'futbolista').map((i) => i.id)).toContain('botines');
+		expect(loQueTiene(e, 'futbolista').map((i) => i.id)).not.toContain('botines');
+
+		let volvio = false;
+		for (let t = 1; t <= 15 && !volvio; t++) {
+			e.temporada = t;
+			volvio = loQuePuedeComprar(e, 'futbolista', 'inv').some((i) => i.id === 'botines');
+		}
+		expect(volvio).toBe(true);
 	});
 
 	it('y sin plata no se pierde, porque no se paga', () => {
@@ -263,12 +279,14 @@ describe('en una partida de verdad', () => {
 					{
 						rol: 'futbolista',
 						nota: '',
-						inversion: enPretemporada ? loQuePuedeComprar(e, 'futbolista')[0]?.id : undefined
+						inversion: enPretemporada ? loQuePuedeComprar(e, 'futbolista', 'inv')[0]?.id : undefined
 					},
 					{
 						rol: 'representante',
 						nota: '',
-						inversion: enPretemporada ? loQuePuedeComprar(e, 'representante')[0]?.id : undefined
+						inversion: enPretemporada
+							? loQuePuedeComprar(e, 'representante', 'inv')[0]?.id
+							: undefined
 					}
 				],
 				'inv'
@@ -300,7 +318,7 @@ describe('comprar varias en el mismo año', () => {
 		// Dos artículos distintos: la vidriera trae varios renglones del mismo —
 		// comprarlo suelto y atarlo para siempre— y comprar el segundo del mismo
 		// no es comprar dos cosas.
-		const nuevas = loQuePuedeComprar(e, 'futbolista').filter((i) => i.modo === 'comprar');
+		const nuevas = loQuePuedeComprar(e, 'futbolista', 'inv').filter((i) => i.modo === 'comprar');
 		const a = nuevas[0];
 		const b = nuevas.find((i) => i.id !== a.id)!;
 
@@ -314,7 +332,7 @@ describe('comprar varias en el mismo año', () => {
 
 	it('y si alcanza para una sola, entra la primera y la segunda no', () => {
 		const e = conPlata(500_000);
-		const nuevas = loQuePuedeComprar(e, 'futbolista').filter((i) => i.modo === 'comprar');
+		const nuevas = loQuePuedeComprar(e, 'futbolista', 'inv').filter((i) => i.modo === 'comprar');
 		const cara = [...nuevas].sort((x, y) => y.precioUsd - x.precioUsd)[0];
 		const otra = [...nuevas]
 			.sort((x, y) => y.precioUsd - x.precioUsd)
@@ -333,7 +351,7 @@ describe('comprar varias en el mismo año', () => {
 		const e = conPlata(50_000_000);
 		e.futbolista.contrato.salarioMensual = 190_000;
 
-		for (const i of loQuePuedeComprar(e, 'futbolista').filter((x) => x.modo === 'comprar')) {
+		for (const i of loQuePuedeComprar(e, 'futbolista', 'inv').filter((x) => x.modo === 'comprar')) {
 			comprar(e, 'futbolista', i.pedido);
 		}
 
@@ -360,14 +378,14 @@ describe('renovar y atar los consumibles', () => {
 	}
 
 	const unConsumible = (e: Estado) =>
-		loQuePuedeComprar(e, 'futbolista').find((i) => i.modo === 'comprar' && i.dura)!;
+		loQuePuedeComprar(e, 'futbolista', 'inv').find((i) => i.modo === 'comprar' && i.dura)!;
 
 	it('el que ya tenés se puede renovar, y suma a lo que quedaba', () => {
 		const e = conPlata();
 		const cual = unConsumible(e);
 		comprar(e, 'futbolista', cual.pedido);
 
-		const paraRenovar = loQuePuedeComprar(e, 'futbolista').find(
+		const paraRenovar = loQuePuedeComprar(e, 'futbolista', 'inv').find(
 			(i) => i.id === cual.id && i.modo === 'renovar'
 		);
 		expect(paraRenovar, 'tiene que aparecer para renovar').toBeDefined();
@@ -385,7 +403,7 @@ describe('renovar y atar los consumibles', () => {
 		const cual = unConsumible(e);
 		comprar(e, 'futbolista', cual.pedido);
 
-		const paraFijar = loQuePuedeComprar(e, 'futbolista').find(
+		const paraFijar = loQuePuedeComprar(e, 'futbolista', 'inv').find(
 			(i) => i.id === cual.id && i.modo === 'fijar'
 		)!;
 		expect(paraFijar).toBeDefined();
@@ -405,7 +423,7 @@ describe('renovar y atar los consumibles', () => {
 	it('lo atado no se gasta nunca, aunque pasen los años', () => {
 		const e = conPlata();
 		const cual = unConsumible(e);
-		const fijar = loQuePuedeComprar(e, 'futbolista').find(
+		const fijar = loQuePuedeComprar(e, 'futbolista', 'inv').find(
 			(i) => i.id === cual.id && i.modo === 'fijar'
 		)!;
 		comprar(e, 'futbolista', fijar.pedido);
@@ -426,14 +444,16 @@ describe('renovar y atar los consumibles', () => {
 
 		expect((e.inversiones?.futbolista ?? []).some((c) => c.id === cual.id)).toBe(false);
 		expect(
-			loQuePuedeComprar(e, 'futbolista').some((i) => i.id === cual.id && i.modo === 'comprar')
+			loQuePuedeComprar(e, 'futbolista', 'inv').some(
+				(i) => i.id === cual.id && i.modo === 'comprar'
+			)
 		).toBe(true);
 	});
 
 	it('lo atado se pierde el año que no se puede pagar, como el staff', () => {
 		const e = conPlata();
 		const cual = unConsumible(e);
-		const fijar = loQuePuedeComprar(e, 'futbolista').find(
+		const fijar = loQuePuedeComprar(e, 'futbolista', 'inv').find(
 			(i) => i.id === cual.id && i.modo === 'fijar'
 		)!;
 		comprar(e, 'futbolista', fijar.pedido);
@@ -461,10 +481,107 @@ describe('renovar y atar los consumibles', () => {
 
 	it('el staff no se renueva ni se ata: ya es para siempre', () => {
 		const e = conPlata();
-		const staff = loQuePuedeComprar(e, 'futbolista').find((i) => !i.dura)!;
+		const staff = loQuePuedeComprar(e, 'futbolista', 'inv').find((i) => !i.dura)!;
 		comprar(e, 'futbolista', staff.pedido);
 
-		const otraVez = loQuePuedeComprar(e, 'futbolista').filter((i) => i.id === staff.id);
+		const otraVez = loQuePuedeComprar(e, 'futbolista', 'inv').filter((i) => i.id === staff.id);
 		expect(otraVez).toEqual([]);
+	});
+});
+
+/**
+ * Las cuarenta y cinco cartas.
+ *
+ * "45 cartas: 25 comunes, 10 de bronce, 7 de plata y 3 doradas." Los números
+ * son de Alan y están acá porque son la mitad del sistema: si mañana alguien
+ * agrega dos doradas más, dejan de ser doradas.
+ */
+describe('la rareza de las cartas', () => {
+	it('son cuarenta y cinco, repartidas como corresponde', () => {
+		const cuenta: Record<string, number> = {};
+		for (const i of INVERSIONES) cuenta[i.rareza] = (cuenta[i.rareza] ?? 0) + 1;
+
+		expect(INVERSIONES).toHaveLength(45);
+		expect(cuenta).toEqual({ comun: 25, bronce: 10, plata: 7, dorada: 3 });
+	});
+
+	it('los dos roles tienen de dónde elegir', () => {
+		for (const rol of ['futbolista', 'representante'] as const) {
+			const suyas = INVERSIONES.filter((i) => i.de === rol);
+			expect(suyas.length, rol).toBeGreaterThanOrEqual(15);
+			// Y de todas las rarezas: una vidriera sin doradas no tiene sorpresa.
+			expect(new Set(suyas.map((i) => i.rareza)).size, rol).toBe(4);
+		}
+	});
+
+	it('ninguna carta es puro texto: todas hacen algo', () => {
+		for (const i of INVERSIONES) {
+			const hace = i.alComprar || i.porTemporada || i.multiplica || i.pisoDeMoral !== undefined;
+			expect(hace, i.id).toBeTruthy();
+		}
+	});
+
+	it('los ids no se repiten', () => {
+		expect(new Set(INVERSIONES.map((i) => i.id)).size).toBe(INVERSIONES.length);
+	});
+});
+
+describe('la vidriera se sortea', () => {
+	it('no se ofrecen las cuarenta y cinco de una', () => {
+		// Media pantalla de tarjetas no es una decisión, es un catálogo.
+		const e = conPlata();
+		const nuevas = loQuePuedeComprar(e, 'futbolista', 'inv').filter((i) => i.modo === 'comprar');
+		expect(nuevas.length).toBeLessThanOrEqual(CUANTAS_EN_LA_VIDRIERA * 2);
+		expect(new Set(nuevas.map((i) => i.id)).size).toBeLessThanOrEqual(CUANTAS_EN_LA_VIDRIERA);
+	});
+
+	it('la misma temporada da siempre la misma vidriera', () => {
+		// Si recargar cambiara lo que se ofrece, la vidriera sería una tragamonedas.
+		const e = conPlata();
+		const una = loQuePuedeComprar(e, 'futbolista', 'inv').map((i) => i.pedido);
+		const otra = loQuePuedeComprar(e, 'futbolista', 'inv').map((i) => i.pedido);
+		expect(otra).toEqual(una);
+	});
+
+	it('y de una temporada a otra cambia', () => {
+		const e = conPlata();
+		e.temporada = 1;
+		const primera = new Set(loQuePuedeComprar(e, 'futbolista', 'inv').map((i) => i.id));
+		let cambio = false;
+		for (let t = 2; t <= 6 && !cambio; t++) {
+			e.temporada = t;
+			const otra = new Set(loQuePuedeComprar(e, 'futbolista', 'inv').map((i) => i.id));
+			cambio = [...otra].some((id) => !primera.has(id));
+		}
+		expect(cambio).toBe(true);
+	});
+
+	it('las comunes se ven muchas más veces que las doradas', () => {
+		/*
+		 * El corazón del sistema, medido: en veinte pretemporadas una común
+		 * aparece muchas veces y una dorada casi nunca. Sin esta diferencia, la
+		 * rareza sería un color y nada más.
+		 */
+		const e = conPlata();
+		const veces: Record<string, number> = { comun: 0, bronce: 0, plata: 0, dorada: 0 };
+		for (let t = 1; t <= 20; t++) {
+			e.temporada = t;
+			for (const i of loQuePuedeComprar(e, 'futbolista', 'inv')) veces[i.rareza]++;
+		}
+		expect(veces.comun).toBeGreaterThan(veces.bronce);
+		expect(veces.bronce).toBeGreaterThan(veces.dorada);
+	});
+
+	it('lo que ya compró se sigue viendo aunque no salga sorteado', () => {
+		// Lo que Alan pidió: "después se borran y no sabés qué tenés".
+		const e = conPlata();
+		comprar(e, 'futbolista', 'psicologo');
+		for (let t = 1; t <= 10; t++) {
+			e.temporada = t;
+			expect(
+				loQueTiene(e, 'futbolista').map((i) => i.id),
+				`T${t}`
+			).toContain('psicologo');
+		}
 	});
 });

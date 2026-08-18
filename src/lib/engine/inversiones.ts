@@ -1,4 +1,5 @@
 import { atributosQueUsa } from './puestos';
+import { rngPara } from './rng';
 import type { Estado, InversionComprada, Rol } from './tipos';
 
 /**
@@ -20,9 +21,58 @@ import type { Estado, InversionComprada, Rol } from './tipos';
  * no los resultados.
  */
 
+/**
+ * Qué tan difícil es que aparezca, y qué tan gorda es cuando aparece.
+ *
+ * Alan lo pidió con los números adentro: cuarenta y cinco cartas, veinticinco
+ * comunes, diez de bronce, siete de plata y tres doradas. La rareza no es una
+ * etiqueta de color: es lo que decide cuántas veces vas a ver esa carta en la
+ * vidriera a lo largo de una carrera. Las comunes están casi siempre; una
+ * dorada puede no aparecer nunca, y ésa es la que se recuerda.
+ */
+export type Rareza = 'comun' | 'bronce' | 'plata' | 'dorada';
+
+/** Cómo se lee cada rareza en la pantalla. */
+export const NOMBRE_RAREZA: Record<Rareza, string> = {
+	comun: 'Común',
+	bronce: 'Bronce',
+	plata: 'Plata',
+	dorada: 'Dorada'
+};
+
+/**
+ * Lo que una inversión mueve, declarado en vez de programado.
+ *
+ * Antes cada efecto era un `if (item.id === 'preparador')` adentro de la
+ * función que los aplica, y eso servía con diecisiete cartas. Con cuarenta y
+ * cinco no: cada carta nueva era código nuevo en tres lugares distintos y la
+ * tarjeta podía decir una cosa mientras el motor hacía otra. Declarándolo, la
+ * carta es un dato y no hay dónde equivocarse.
+ */
+export type LoQueDa = {
+	/** Del futbolista. */
+	desgaste?: number;
+	forma?: number;
+	moral?: number;
+	fama?: number;
+	prensa?: number;
+	hinchada?: number;
+	dt?: number;
+	confianza?: number;
+	/** El atributo que más usa su puesto: distinto para un nueve y para un cinco. */
+	loQueMasUsa?: number;
+	/** Del representante. */
+	negociacion?: number;
+	scouting?: number;
+	contactos?: number;
+	carisma?: number;
+	prestigio?: number;
+};
+
 export type Inversion = {
 	id: string;
 	de: Rol;
+	rareza: Rareza;
 	nombre: string;
 	detalle: string;
 	/** Lo que hace, en una línea, para la tarjeta. */
@@ -58,59 +108,86 @@ export type Inversion = {
 	 * o atarse.
 	 */
 	fijo?: { nombre: string; detalle: string; efecto: string };
+	/** El empujón único del día que se compra. */
+	alComprar?: LoQueDa;
+	/** Y lo que da todos los años que la tenga. */
+	porTemporada?: LoQueDa;
+	/**
+	 * Lo que multiplica, que no se suma a un número sino a una cuenta.
+	 *
+	 * `crecimiento` es cuánto más rinde una temporada jugada; `produccion`,
+	 * cuánto más produce en la cancha; `lesion`, cuánto le baja el riesgo de
+	 * romperse. Se multiplican entre sí cuando tiene varias.
+	 */
+	multiplica?: { crecimiento?: number; produccion?: number; lesion?: number };
+	/** El piso al que no puede bajar la moral mientras la tenga. */
+	pisoDeMoral?: number;
 };
 
 export const INVERSIONES: Inversion[] = [
 	// --- Del futbolista ------------------------------------------------------
 	{
 		id: 'preparador',
+		rareza: 'bronce',
 		de: 'futbolista',
 		nombre: 'Preparador físico propio',
 		detalle: 'Uno que te conoce el cuerpo y te arma el año a vos, no al plantel.',
 		efecto: 'El cuerpo aguanta más: −2 de desgaste por temporada',
-		peso: 3
+		peso: 3,
+		porTemporada: { desgaste: -2 }
 	},
 	{
 		id: 'nutricionista',
+		rareza: 'comun',
 		de: 'futbolista',
 		nombre: 'Nutricionista y cocinero',
 		detalle: 'Comer como se debe todo el año, no solo en pretemporada.',
 		efecto: 'Llegás mejor a cada temporada: +7 de forma',
-		peso: 2
+		peso: 2,
+		porTemporada: { forma: 7 }
 	},
 	{
 		id: 'psicologo',
+		rareza: 'comun',
 		de: 'futbolista',
 		nombre: 'Psicólogo deportivo',
 		detalle: 'Alguien con quien hablar cuando el año viene mal. Sirve justo ahí.',
 		efecto: 'La moral no se te cae abajo de 40',
-		peso: 2
+		peso: 2,
+		pisoDeMoral: 40
 	},
 	{
 		id: 'analista',
+		rareza: 'plata',
 		de: 'futbolista',
 		nombre: 'Analista de video propio',
 		detalle: 'Ver tus propios partidos con alguien que sepa qué mirar.',
 		efecto: 'Aprovechás más cada temporada: crecés un 18% más rápido',
-		peso: 4
+		peso: 4,
+		multiplica: { crecimiento: 1.18 }
 	},
 	{
 		id: 'casa',
+		rareza: 'plata',
 		de: 'futbolista',
 		nombre: 'La casa de la familia',
 		detalle: 'Sacarlos del barrio. Es lo primero que compra casi todo el mundo.',
 		efecto: 'Se te va un peso de encima: +15 de moral y +2 todos los años',
-		peso: 5
+		peso: 5,
+		alComprar: { moral: 15 },
+		porTemporada: { moral: 2 }
 	},
 
 	// --- Consumibles del futbolista ------------------------------------------
 	{
 		id: 'botines',
+		rareza: 'comun',
 		de: 'futbolista',
 		nombre: 'Botines nuevos',
 		detalle: 'Un par hecho a tu pie para el año que viene. Se gastan y listo.',
 		efecto: 'Una temporada: goles y asistencias +12%',
 		peso: 2,
+		multiplica: { produccion: 1.12 },
 		dura: 1,
 		fijo: {
 			nombre: 'Contrato con la marca',
@@ -120,11 +197,13 @@ export const INVERSIONES: Inversion[] = [
 	},
 	{
 		id: 'fisio',
+		rareza: 'bronce',
 		de: 'futbolista',
 		nombre: 'Fisio para toda la temporada',
 		detalle: 'Uno solo para vos durante el año. Después vuelve al plantel.',
 		efecto: 'Dos temporadas: mitad de riesgo de lesión',
 		peso: 3,
+		multiplica: { lesion: 0.5 },
 		dura: 2,
 		fijo: {
 			nombre: 'Tu fisio, para siempre',
@@ -134,11 +213,13 @@ export const INVERSIONES: Inversion[] = [
 	},
 	{
 		id: 'concentracion',
+		rareza: 'plata',
 		de: 'futbolista',
 		nombre: 'Irte a entrenar afuera',
 		detalle: 'Un verano entero en un centro de alto rendimiento, lejos de todo.',
 		efecto: 'Una temporada: crecés un 30% más rápido',
 		peso: 4,
+		multiplica: { crecimiento: 1.3 },
 		dura: 1,
 		fijo: {
 			nombre: 'Tu propio centro de entrenamiento',
@@ -149,12 +230,14 @@ export const INVERSIONES: Inversion[] = [
 
 	{
 		id: 'mudanza',
+		rareza: 'bronce',
 		de: 'futbolista',
 		nombre: 'Mudarte al lado del predio',
 		detalle:
 			'Dejar de perder dos horas por día en el auto. Se nota en el cuerpo antes que en la cabeza.',
 		efecto: 'Tres temporadas: −3 de desgaste y +4 de moral por año',
 		peso: 3,
+		porTemporada: { desgaste: -3, moral: 4 },
 		dura: 3,
 		fijo: {
 			nombre: 'La casa al lado del predio',
@@ -164,11 +247,13 @@ export const INVERSIONES: Inversion[] = [
 	},
 	{
 		id: 'especialista',
+		rareza: 'plata',
 		de: 'futbolista',
 		nombre: 'Un profe solo para vos',
 		detalle: 'Media hora más, todos los días, sobre lo único que de verdad te hace falta.',
 		efecto: 'Tres temporadas: +2 por año en lo que más usás de tu puesto',
 		peso: 4,
+		porTemporada: { loQueMasUsa: 2 },
 		dura: 3,
 		fijo: {
 			nombre: 'Tu entrenador personal',
@@ -180,35 +265,45 @@ export const INVERSIONES: Inversion[] = [
 	// --- Del representante ---------------------------------------------------
 	{
 		id: 'oficina',
+		rareza: 'bronce',
 		de: 'representante',
 		nombre: 'Una oficina de verdad',
 		detalle: 'Dejar de atender del celular en un bar. Cambia con quién te sentás.',
 		efecto: '+8 de contactos, y +1 todas las temporadas',
-		peso: 2
+		peso: 2,
+		alComprar: { contactos: 8 },
+		porTemporada: { contactos: 1 }
 	},
 	{
 		id: 'abogado',
+		rareza: 'bronce',
 		de: 'representante',
 		nombre: 'Un abogado propio',
 		detalle: 'Los contratos los mira alguien que sabe, no vos a las tres de la mañana.',
 		efecto: '+10 de negociación',
-		peso: 3
+		peso: 3,
+		alComprar: { negociacion: 10 }
 	},
 	{
 		id: 'ojeadores',
+		rareza: 'bronce',
 		de: 'representante',
 		nombre: 'Dos ojeadores',
 		detalle: 'Gente tuya mirando inferiores mientras vos estás en otra cosa.',
 		efecto: '+10 de scouting, y +1 todas las temporadas',
-		peso: 3
+		peso: 3,
+		alComprar: { scouting: 10 },
+		porTemporada: { scouting: 1 }
 	},
 	{
 		id: 'prensa-propia',
+		rareza: 'comun',
 		de: 'representante',
 		nombre: 'Alguien que le maneje la prensa',
 		detalle: 'Que las notas salgan como tienen que salir.',
 		efecto: 'La prensa del futbolista sube sola: +3 por temporada',
-		peso: 2
+		peso: 2,
+		porTemporada: { prensa: 3 }
 	},
 
 	// --- Consumibles del representante ---------------------------------------
@@ -216,11 +311,13 @@ export const INVERSIONES: Inversion[] = [
 	// así que después de la cuarta temporada no le quedaba nada para comprar.
 	{
 		id: 'socio-europa',
+		rareza: 'plata',
 		de: 'representante',
 		nombre: 'Un socio en Europa',
 		detalle: 'Alguien que atienda del otro lado del charco mientras vos dormís.',
 		efecto: 'Tres temporadas: +3 de contactos por año',
 		peso: 3,
+		porTemporada: { contactos: 3 },
 		dura: 3,
 		fijo: {
 			nombre: 'Oficina en Europa',
@@ -230,11 +327,13 @@ export const INVERSIONES: Inversion[] = [
 	},
 	{
 		id: 'campana',
+		rareza: 'bronce',
 		de: 'representante',
 		nombre: 'Una campaña para instalarlo',
 		detalle: 'Que aparezca donde tiene que aparecer hasta que el nombre suene solo.',
 		efecto: 'Tres temporadas: +4 de fama por año',
 		peso: 2,
+		porTemporada: { fama: 4 },
 		dura: 3,
 		fijo: {
 			nombre: 'Una agencia de imagen',
@@ -244,17 +343,335 @@ export const INVERSIONES: Inversion[] = [
 	},
 	{
 		id: 'viajes',
+		rareza: 'comun',
 		de: 'representante',
 		nombre: 'Viajar a verlos jugar',
 		detalle: 'Estar en la cancha y no mirar el video. Se ve otra cosa y te ven a vos.',
 		efecto: 'Dos temporadas: +3 de scouting por año',
 		peso: 2,
+		porTemporada: { scouting: 3 },
 		dura: 2,
 		fijo: {
 			nombre: 'Viajar siempre',
 			detalle: 'Que ir a verlos deje de ser una excepción.',
 			efecto: 'Siempre: +3 de scouting por año'
 		}
+	},
+	// --- Comunes del futbolista ----------------------------------------------
+	// Chicas, baratas y de todos los días. Son las que se compran a los 17 con
+	// el primer sueldo, y las que hacen que la vidriera tenga algo cada año.
+	{
+		id: 'masajista',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Masajista una vez por semana',
+		detalle: 'Los martes, dos horas. No es lujo: es que el jueves llegás entero.',
+		efecto: 'El cuerpo descansa: −2 de desgaste por temporada',
+		peso: 2,
+		porTemporada: { desgaste: -2 }
+	},
+	{
+		id: 'gimnasio-en-casa',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Un gimnasio en tu casa',
+		detalle: 'Para no depender del horario del club ni del tránsito.',
+		efecto: 'Llegás mejor: −1 de desgaste y +3 de forma por temporada',
+		peso: 2,
+		porTemporada: { desgaste: -1, forma: 3 }
+	},
+	{
+		id: 'chofer',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Alguien que te maneje',
+		detalle: 'Dos horas por día que dejás de manejar y pasás durmiendo.',
+		efecto: '−1 de desgaste y +2 de moral por temporada',
+		peso: 2,
+		porTemporada: { desgaste: -1, moral: 2 }
+	},
+	{
+		id: 'dormir',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'El cuarto para dormir bien',
+		detalle: 'Cortinas negras, colchón como corresponde, el teléfono afuera.',
+		efecto: '−1 de desgaste y +2 de forma por temporada',
+		peso: 1,
+		porTemporada: { desgaste: -1, forma: 2 }
+	},
+	{
+		id: 'camara',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Cámara hiperbárica alquilada',
+		detalle: 'Dos temporadas de recuperación acelerada. Después se devuelve.',
+		efecto: 'Dos temporadas: 15% menos de riesgo de lesión',
+		peso: 3,
+		dura: 2,
+		multiplica: { lesion: 0.85 }
+	},
+	{
+		id: 'idioma',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Un profesor de idiomas',
+		detalle: 'Para el día que te toque un vestuario donde no entendés nada.',
+		efecto: '+2 con el técnico y +2 de moral por temporada',
+		peso: 1,
+		porTemporada: { dt: 2, moral: 2 }
+	},
+	{
+		id: 'redes',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Alguien que te maneje las redes',
+		detalle: 'Que suba lo que hay que subir y no conteste a las dos de la mañana.',
+		efecto: '+3 de fama por temporada',
+		peso: 2,
+		porTemporada: { fama: 3 }
+	},
+	{
+		id: 'palco',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Un palco para la familia',
+		detalle: 'Que los tuyos te vean jugar sentados y sin que los apuren.',
+		efecto: 'Te sacás un peso de encima: +8 de moral al comprarlo',
+		peso: 2,
+		// Un pago y listo: lo que deja, deja para siempre, pero no es
+		// alguien a quien haya que seguir pagándole todos los años.
+		dura: 1,
+		alComprar: { moral: 8 }
+	},
+	{
+		id: 'secundario',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'Terminar el secundario',
+		detalle: 'De noche, con un profesor particular. Por si esto se termina antes.',
+		efecto: '+5 de moral al empezar y +3 por temporada',
+		peso: 1,
+		alComprar: { moral: 5 },
+		porTemporada: { moral: 3 }
+	},
+	{
+		id: 'auto',
+		de: 'futbolista',
+		rareza: 'comun',
+		nombre: 'El auto que querías',
+		detalle: 'El que mirabas de pibe. Sostenerlo cuesta más que comprarlo.',
+		efecto: '+10 de moral al comprarlo, y −1 por temporada de tenerlo',
+		peso: 3,
+		alComprar: { moral: 10 },
+		porTemporada: { moral: -1 }
+	},
+
+	// --- Comunes del representante -------------------------------------------
+	{
+		id: 'segundo-telefono',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Un segundo teléfono',
+		detalle: 'Uno para los clubes y otro para tu casa. Es más de lo que parece.',
+		efecto: '+2 de contactos por temporada',
+		peso: 1,
+		porTemporada: { contactos: 2 }
+	},
+	{
+		id: 'abono',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Abono para ver partidos',
+		detalle: 'Entrar a cualquier cancha del país sin pedirle permiso a nadie.',
+		efecto: '+2 de scouting por temporada',
+		peso: 1,
+		porTemporada: { scouting: 2 }
+	},
+	{
+		id: 'contador',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Un contador',
+		detalle: 'Que los números de tus contratos los mire alguien que sabe.',
+		efecto: '+4 de negociación al empezar y +1 por temporada',
+		peso: 2,
+		alComprar: { negociacion: 4 },
+		porTemporada: { negociacion: 1 }
+	},
+	{
+		id: 'traductor',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Un traductor para las mesas de afuera',
+		detalle: 'Firmar en un idioma que no hablás es firmar a ciegas.',
+		efecto: '+2 de contactos por temporada',
+		peso: 2,
+		porTemporada: { contactos: 2 }
+	},
+	{
+		id: 'curso',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Un curso de negociación',
+		detalle: 'Cuatro meses, dos veces por semana. Sirve más de lo que suena.',
+		efecto: '+6 de negociación al terminarlo',
+		peso: 2,
+		// Un pago y listo: lo que deja, deja para siempre, pero no es
+		// alguien a quien haya que seguir pagándole todos los años.
+		dura: 1,
+		alComprar: { negociacion: 6 }
+	},
+	{
+		id: 'ropa',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Ropa para las mesas',
+		detalle: 'A los dirigentes les importa, aunque digan que no.',
+		efecto: '+5 de carisma al comprarla y +1 por temporada',
+		peso: 1,
+		alComprar: { carisma: 5 },
+		porTemporada: { carisma: 1 }
+	},
+	{
+		id: 'base-de-datos',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'La base de datos de scouting',
+		detalle: 'Todos los partidos de todas las inferiores, en una pantalla.',
+		efecto: '+3 de scouting por temporada',
+		peso: 2,
+		porTemporada: { scouting: 3 }
+	},
+	{
+		id: 'becario',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Un pibe que te ayude',
+		detalle: 'Que atienda cuando estás manejando y anote lo que no te acordás.',
+		efecto: '+1 de contactos y +1 de scouting por temporada',
+		peso: 1,
+		porTemporada: { contactos: 1, scouting: 1 }
+	},
+	{
+		id: 'almuerzos',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Almorzar con dirigentes',
+		detalle: 'Dos temporadas de invitar vos. Se devuelve solo, y tarde.',
+		efecto: 'Dos temporadas: +3 de contactos por año',
+		peso: 2,
+		dura: 2,
+		porTemporada: { contactos: 3 }
+	},
+	{
+		id: 'sala',
+		de: 'representante',
+		rareza: 'comun',
+		nombre: 'Una sala para reunirte',
+		detalle: 'Dejar de arreglar contratos en la mesa de un bar.',
+		efecto: '+4 de prestigio al alquilarla',
+		peso: 2,
+		// Un pago y listo: lo que deja, deja para siempre, pero no es
+		// alguien a quien haya que seguir pagándole todos los años.
+		dura: 1,
+		alComprar: { prestigio: 4 }
+	},
+
+	// --- Bronce --------------------------------------------------------------
+	{
+		id: 'kinesiologo',
+		de: 'futbolista',
+		rareza: 'bronce',
+		nombre: 'Kinesiólogo propio',
+		detalle: 'El que te trata siempre y sabe cómo se te rompe el cuerpo a vos.',
+		efecto: '25% menos de riesgo de lesión y −1 de desgaste por temporada',
+		peso: 3,
+		multiplica: { lesion: 0.75 },
+		porTemporada: { desgaste: -1 }
+	},
+	{
+		id: 'sparring',
+		de: 'futbolista',
+		rareza: 'bronce',
+		nombre: 'Un sparring para después del entrenamiento',
+		detalle: 'Alguien pago para que te haga repetir lo mismo mil veces.',
+		efecto: '+1 por temporada en lo que más usás de tu puesto',
+		peso: 3,
+		porTemporada: { loQueMasUsa: 1 }
+	},
+	{
+		id: 'cazatalentos',
+		de: 'representante',
+		rareza: 'bronce',
+		nombre: 'Un cazatalentos con nombre',
+		detalle: 'Uno de los que trabajaron en clubes grandes, ahora para vos.',
+		efecto: '+2 de scouting y +2 de contactos por temporada',
+		peso: 3,
+		porTemporada: { scouting: 2, contactos: 2 }
+	},
+
+	// --- Plata ---------------------------------------------------------------
+	{
+		id: 'clinica',
+		de: 'futbolista',
+		rareza: 'plata',
+		nombre: 'La clínica de Europa',
+		detalle: 'La que usan los que se rompen en serio. Un chequeo por año, allá.',
+		efecto: '40% menos de riesgo de lesión y −2 de desgaste por temporada',
+		peso: 4,
+		multiplica: { lesion: 0.6 },
+		porTemporada: { desgaste: -2 }
+	},
+	{
+		id: 'agencia-de-datos',
+		de: 'representante',
+		rareza: 'plata',
+		nombre: 'Un equipo de datos',
+		detalle: 'Dos analistas que te dicen quién va a valer antes de que valga.',
+		efecto: '+4 de scouting y +2 de negociación por temporada',
+		peso: 4,
+		porTemporada: { scouting: 4, negociacion: 2 }
+	},
+
+	// --- Doradas -------------------------------------------------------------
+	// Tres en cuarenta y cinco, y así tiene que ser: son las que se ven una vez
+	// en una carrera y se cuentan después.
+	{
+		id: 'cuerpo-tecnico',
+		de: 'futbolista',
+		rareza: 'dorada',
+		nombre: 'Tu propio cuerpo técnico',
+		detalle:
+			'Preparador, kinesiólogo, analista y cocinero, todos tuyos, viajando con vos. ' +
+			'Lo tienen tres jugadores en el mundo.',
+		efecto:
+			'−4 de desgaste, +6 de forma y +1 en lo tuyo por temporada; crecés un 20% más rápido y te rompés un 30% menos',
+		peso: 5,
+		porTemporada: { desgaste: -4, forma: 6, loQueMasUsa: 1 },
+		multiplica: { crecimiento: 1.2, lesion: 0.7 }
+	},
+	{
+		id: 'documental',
+		de: 'futbolista',
+		rareza: 'dorada',
+		nombre: 'Un documental sobre vos',
+		detalle: 'Un año de cámaras adentro de tu casa y del vestuario. Se estrena en todo el mundo.',
+		efecto: '+20 de fama y +8 con la gente al estrenarse, y +5 de fama por temporada',
+		peso: 5,
+		alComprar: { fama: 20, hinchada: 8 },
+		porTemporada: { fama: 5, prensa: 3 }
+	},
+	{
+		id: 'agencia-global',
+		de: 'representante',
+		rareza: 'dorada',
+		nombre: 'Oficinas en tres países',
+		detalle: 'Dejar de ser un representante y pasar a ser una empresa. No se vuelve de ahí.',
+		efecto: '+12 de prestigio y +10 de contactos al abrirlas, y +4, +2 y +2 por temporada',
+		peso: 5,
+		alComprar: { prestigio: 12, contactos: 10 },
+		porTemporada: { contactos: 4, prestigio: 2, scouting: 2 }
 	}
 ];
 
@@ -387,13 +804,76 @@ function partirPedido(pedido: string): { id: string; modo: ModoDeCompra } {
 }
 
 /** Lo que este rol puede comprar, renovar o atar hoy. */
-export function loQuePuedeComprar(estado: Estado, rol: Rol): EnLaVidriera[] {
+export const CUANTAS_EN_LA_VIDRIERA = 8;
+
+/**
+ * Cuánto pesa cada rareza en el sorteo de la vidriera.
+ *
+ * Una común aparece casi todos los años; una dorada, con suerte una vez en una
+ * carrera. Ése es todo el sistema: no hay cartas que no se puedan comprar, hay
+ * cartas que no se ofrecen casi nunca, y la diferencia entre las dos cosas es
+ * lo que hace que abrir la pretemporada valga la pena.
+ */
+const CUANTO_APARECE: Record<Rareza, number> = {
+	comun: 1,
+	bronce: 0.75,
+	plata: 0.4,
+	dorada: 0.12
+};
+
+/**
+ * Las que se ofrecen este año, sorteadas y sin repetir.
+ *
+ * Determinista con la semilla y la temporada: la vidriera de la pretemporada 4
+ * es siempre la misma, así que recargar la página no la cambia. Y lo que ya
+ * tiene comprado no pasa por acá —eso se muestra siempre, que es lo que Alan
+ * pidió: "los consumibles está bien que aparezcan solo en pretemporada, pero
+ * después se borran y no sabés qué tenés"—.
+ */
+function lasQueSeOfrecen(estado: Estado, rol: Rol, semilla: string): Set<string> {
+	const compradas = new Set((estado.inversiones?.[rol] ?? []).map((c) => c.id));
+	const candidatas = INVERSIONES.filter(
+		(i) => i.de === rol && !compradas.has(i.id) && (i.sirveAun?.(estado) ?? true)
+	);
+
+	const rng = rngPara(semilla, {
+		temporada: estado.temporada,
+		fase: 1,
+		clave: `vidriera-${rol}`
+	});
+
+	// Sorteo con pesos, sacando de la bolsa lo que ya salió.
+	const bolsa = [...candidatas];
+	const salieron = new Set<string>();
+	while (salieron.size < CUANTAS_EN_LA_VIDRIERA && bolsa.length > 0) {
+		const total = bolsa.reduce((suma, i) => suma + CUANTO_APARECE[i.rareza], 0);
+		let corte = rng.siguiente() * total;
+		let elegida = bolsa[bolsa.length - 1];
+		for (const i of bolsa) {
+			corte -= CUANTO_APARECE[i.rareza];
+			if (corte <= 0) {
+				elegida = i;
+				break;
+			}
+		}
+		salieron.add(elegida.id);
+		bolsa.splice(bolsa.indexOf(elegida), 1);
+	}
+
+	return salieron;
+}
+
+export function loQuePuedeComprar(estado: Estado, rol: Rol, semilla: string): EnLaVidriera[] {
 	const compradas = new Map((estado.inversiones?.[rol] ?? []).map((c) => [c.id, c]));
+	const enVidriera = lasQueSeOfrecen(estado, rol, semilla);
 	const vidriera: EnLaVidriera[] = [];
 
 	for (const item of INVERSIONES) {
 		if (item.de !== rol) continue;
 		if (!(item.sirveAun?.(estado) ?? true)) continue;
+		// Lo que ya tiene sigue apareciendo para renovarlo o atarlo; lo que no
+		// tiene, sólo si salió sorteado este año.
+		if (!compradas.has(item.id) && !enVidriera.has(item.id)) continue;
 
 		const ya = compradas.get(item.id);
 
@@ -578,16 +1058,41 @@ export function comprar(estado: Estado, rol: Rol, pedido: string | undefined): s
 	return `${item.nombre}: ${cuanto}, y ${porAnio} de acá en adelante. ${item.efecto}.`;
 }
 
-/** El empujón único del momento de comprarla. */
-function aplicarDeUnaVez(estado: Estado, item: Inversion): void {
+/**
+ * Aplica un `LoQueDa`. Es lo único que sabe cómo se cobra una carta.
+ *
+ * Un solo lugar, y a propósito: mientras estuvo repartido en `if (item.id ===
+ * ...)` había tres funciones que podían discrepar entre sí y con el texto de
+ * la tarjeta.
+ */
+function cobrar(estado: Estado, da: LoQueDa | undefined): void {
+	if (!da) return;
 	const f = estado.futbolista;
 	const r = estado.representante;
 	const acotar = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
 
-	if (item.id === 'casa') f.moral = acotar(f.moral + 15);
-	if (item.id === 'oficina') r.atributos.contactos = acotar(r.atributos.contactos + 8);
-	if (item.id === 'abogado') r.atributos.negociacion = acotar(r.atributos.negociacion + 10);
-	if (item.id === 'ojeadores') r.atributos.scouting = acotar(r.atributos.scouting + 10);
+	if (da.desgaste) f.desgaste = acotar(f.desgaste + da.desgaste);
+	if (da.forma) f.forma = acotar(f.forma + da.forma);
+	if (da.moral) f.moral = acotar(f.moral + da.moral);
+	if (da.fama) f.fama = acotar(f.fama + da.fama);
+	if (da.prensa) f.prensa = acotar(f.prensa + da.prensa, -100, 100);
+	if (da.hinchada) f.hinchada = acotar(f.hinchada + da.hinchada);
+	if (da.dt) f.dt = acotar(f.dt + da.dt, -100, 100);
+	if (da.confianza) estado.confianza = acotar(estado.confianza + da.confianza);
+	if (da.loQueMasUsa) {
+		const cual = atributosQueUsa(f.posicion)[0];
+		f.atributos[cual] = acotar(f.atributos[cual] + da.loQueMasUsa);
+	}
+	if (da.negociacion) r.atributos.negociacion = acotar(r.atributos.negociacion + da.negociacion);
+	if (da.scouting) r.atributos.scouting = acotar(r.atributos.scouting + da.scouting);
+	if (da.contactos) r.atributos.contactos = acotar(r.atributos.contactos + da.contactos);
+	if (da.carisma) r.atributos.carisma = acotar((r.atributos.carisma ?? 32) + da.carisma);
+	if (da.prestigio) r.prestigio = acotar(r.prestigio + da.prestigio);
+}
+
+/** El empujón único del momento de comprarla. */
+function aplicarDeUnaVez(estado: Estado, item: Inversion): void {
+	cobrar(estado, item.alComprar);
 }
 
 export type Mantenimiento = { texto: string; visiblePara: Rol }[];
@@ -658,35 +1163,26 @@ export function cobrarMantenimiento(estado: Estado): Mantenimiento {
 
 /** Lo que cada inversión hace todas las temporadas. */
 function aplicarPorTemporada(estado: Estado, item: Inversion): void {
-	const f = estado.futbolista;
-	const r = estado.representante;
-	const acotar = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
+	cobrar(estado, item.porTemporada);
+}
 
-	if (item.id === 'preparador') f.desgaste = acotar(f.desgaste - 2);
-	if (item.id === 'nutricionista') f.forma = acotar(f.forma + 7);
-	if (item.id === 'casa') f.moral = acotar(f.moral + 2);
-	if (item.id === 'oficina') r.atributos.contactos = acotar(r.atributos.contactos + 1);
-	if (item.id === 'ojeadores') r.atributos.scouting = acotar(r.atributos.scouting + 1);
-	if (item.id === 'prensa-propia') f.prensa = acotar(f.prensa + 3, -100, 100);
+/** Las que tiene puestas hoy, con su ficha completa. */
+function lasQueTiene(estado: Estado, rol: Rol): Inversion[] {
+	return (estado.inversiones?.[rol] ?? [])
+		.map((c) => inversion(c.id))
+		.filter((i): i is Inversion => i !== undefined);
+}
 
-	// Los de tres temporadas, que rinden mientras duran.
-	if (item.id === 'mudanza') {
-		f.desgaste = acotar(f.desgaste - 3);
-		f.moral = acotar(f.moral + 4);
-	}
-	if (item.id === 'especialista') {
-		// Lo que más usa su puesto, que es distinto para un nueve y para un cinco.
-		const cual = atributosQueUsa(f.posicion)[0];
-		f.atributos[cual] = acotar(f.atributos[cual] + 2);
-	}
-	if (item.id === 'socio-europa') r.atributos.contactos = acotar(r.atributos.contactos + 3);
-	if (item.id === 'campana') f.fama = acotar(f.fama + 4);
-	if (item.id === 'viajes') r.atributos.scouting = acotar(r.atributos.scouting + 3);
+/** Cuánto multiplican entre todas una de las tres cuentas. */
+function multiplicador(estado: Estado, cual: 'crecimiento' | 'produccion' | 'lesion'): number {
+	let total = 1;
+	for (const item of lasQueTiene(estado, 'futbolista')) total *= item.multiplica?.[cual] ?? 1;
+	return total;
 }
 
 /** El piso de moral que da el psicólogo, para que lo use la temporada. */
 export function pisoDeMoral(estado: Estado): number {
-	return tiene(estado, 'psicologo') ? 40 : 0;
+	return Math.max(0, ...lasQueTiene(estado, 'futbolista').map((i) => i.pisoDeMoral ?? 0));
 }
 
 function tiene(estado: Estado, id: string): boolean {
@@ -695,15 +1191,15 @@ function tiene(estado: Estado, id: string): boolean {
 
 /** Cuánto más se aprovecha una temporada con analista propio. */
 export function aprovechaExtra(estado: Estado): number {
-	return (tiene(estado, 'analista') ? 1.18 : 1) * (tiene(estado, 'concentracion') ? 1.3 : 1);
+	return multiplicador(estado, 'crecimiento');
 }
 
 /** Cuánto multiplican los botines lo que produce en la cancha. */
 export function empujeDeLosBotines(estado: Estado): number {
-	return tiene(estado, 'botines') ? 1.12 : 1;
+	return multiplicador(estado, 'produccion');
 }
 
 /** Y cuánto le baja el fisio el riesgo de romperse. */
 export function riesgoDeLesionExtra(estado: Estado): number {
-	return tiene(estado, 'fisio') ? 0.5 : 1;
+	return multiplicador(estado, 'lesion');
 }
