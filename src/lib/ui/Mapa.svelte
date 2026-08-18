@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { contexto } from '../../../content/mundo';
-	import { TIERRAS, contornoDe, dondeJuega, proyectar } from './planisferio';
+	import { dondeJuega } from './ciudades';
+	import type * as Planisferio from './planisferio';
 	import Escudo from './Escudo.svelte';
 	import type { HitoTemporada } from '$lib/engine/tipos';
 
@@ -18,13 +19,44 @@
 	 * grande, el segundo es un puñado de puntos chicos. Eso no se puede leer en
 	 * una lista.
 	 *
-	 * El mapa es un mapa: costas de verdad y cada club en la longitud y la
-	 * latitud de su ciudad. La primera versión eran cuatro óvalos grises y no se
-	 * leían como continentes porque no lo eran —Alan lo dijo mirándolo: "¿y esto
-	 * qué sería?"—. Con la costa dibujada, Sudamérica se reconoce sin que nadie
-	 * la señale, y recién ahí el mapa empieza a decir algo. Ver `planisferio.ts`.
+	 * El mapa es un mapa de verdad. Pasó por tres versiones y las dos primeras
+	 * las volteó Alan mirándolas: cuatro óvalos grises ("¿y esto qué sería?") y
+	 * después contornos de treinta puntos por continente, que ya se leían pero
+	 * no llegaban ("quiero un mapa bien como el de Google Maps u Open Maps o
+	 * ArcGIS"). Tenía razón las dos veces: a treinta puntos Italia no tiene bota
+	 * y el golfo de México no existe.
+	 *
+	 * Ahora los datos son Natural Earth 1:50m —dominio público, la misma base
+	 * que traen QGIS y ArcGIS— con fronteras, lagos y proyección Mercator, la de
+	 * los mapas web. Sigue sin pedirle nada a internet: las coordenadas están
+	 * adentro del repo y el dibujo lo hace el navegador. Ver `planisferio.ts` y
+	 * el script que lo genera.
 	 */
 	let { historial }: { historial: HitoTemporada[] } = $props();
+
+	/*
+	 * El mundo se baja cuando se abre el mapa, no antes.
+	 *
+	 * Natural Earth en 1:50m son unos treinta kilobytes comprimidos, y hasta
+	 * acá viajaban en cada carga de la pantalla de juego aunque nadie tocara el
+	 * desplegable. Es la pantalla que más se abre del juego y la mitad de las
+	 * veces se abre desde el teléfono: treinta kilobytes por vista, para un
+	 * panel que se mira dos veces por carrera, es un peaje que no vale.
+	 *
+	 * Con `import()` dinámico el mapa queda en su propio archivo y se pide la
+	 * primera vez que alguien lo abre. Mientras tanto, el resumen del
+	 * desplegable —cuántos clubes, cuántas temporadas, dónde más se quedó— se
+	 * calcula sin geografía y está desde el primer momento.
+	 */
+	let mundo = $state<typeof Planisferio | null>(null);
+	let bajando = $state(false);
+
+	async function traerElMundo() {
+		if (mundo || bajando) return;
+		bajando = true;
+		mundo = await import('./planisferio');
+		bajando = false;
+	}
 
 	type Parada = {
 		clubId: string;
@@ -50,10 +82,13 @@
 	 */
 	const paradas = $derived.by<Parada[]>(() => {
 		const porClub = new Map<string, Parada>();
+		const proyectar = mundo?.proyectar;
 
 		for (const hito of historial) {
 			const { club, pais } = contexto(hito.clubId);
-			const donde = proyectar(dondeJuega(club.ciudad, pais.id));
+			// Sin el mundo bajado todavía no hay dónde ponerlos, pero sí se pueden
+			// contar: el resumen del desplegable no necesita coordenadas.
+			const donde = proyectar ? proyectar(dondeJuega(club.ciudad, pais.id)) : { x: 0, y: 0 };
 			const ya = porClub.get(hito.clubId);
 			if (ya) {
 				ya.temporadas += 1;
@@ -71,11 +106,18 @@
 				temporadas: 1,
 				desde: hito.temporada,
 				titulos: hito.titulo ? 1 : 0,
-				// Un desvío chico para que dos clubes del mismo país no se pisen. Sale
-				// del id, así que es el mismo siempre: al azar, el mapa se
-				// reacomodaría solo en cada render.
-				x: donde.x + ((semilla % 7) - 3) * 1.1,
-				y: donde.y + ((Math.floor(semilla / 7) % 5) - 2) * 1.3
+				/*
+				 * Un desvío mínimo, para que dos clubes de la misma ciudad no se
+				 * pisen del todo.
+				 *
+				 * Era diez veces más grande, y con el mapa viejo no molestaba porque
+				 * los contornos eran manchas. Con coordenadas de verdad, tres
+				 * unidades son quinientos kilómetros: La Serena aparecía adentro del
+				 * Pacífico. Lo justo para que se distingan dos círculos y ni un poco
+				 * más.
+				 */
+				x: donde.x + ((semilla % 5) - 2) * 0.28,
+				y: donde.y + ((Math.floor(semilla / 5) % 5) - 2) * 0.28
 			});
 		}
 
@@ -84,9 +126,17 @@
 
 	const masLargo = $derived(Math.max(1, ...paradas.map((p) => p.temporadas)));
 
-	/** El radio crece con las temporadas, pero con raíz: si no, quince años tapan el mapa. */
+	/**
+	 * El radio crece con las temporadas, pero con raíz: si no, quince años tapan
+	 * el mapa.
+	 *
+	 * Y más chico que antes. El mapa pasó de contornos dibujados a mano a
+	 * Natural Earth: ahora el punto cae en la ciudad exacta, y un círculo de
+	 * cuatro unidades sobre un país que mide seis tapaba justamente el dato que
+	 * el mapa vino a mostrar.
+	 */
 	function radio(temporadas: number): number {
-		return 1.6 + Math.sqrt(temporadas / masLargo) * 2.6;
+		return 0.65 + Math.sqrt(temporadas / masLargo) * 1.15;
 	}
 
 	const total = $derived(paradas.reduce((suma, p) => suma + p.temporadas, 0));
@@ -95,7 +145,7 @@
 </script>
 
 {#if paradas.length > 0}
-	<details class="mapa">
+	<details class="mapa" ontoggle={(e) => e.currentTarget.open && traerElMundo()}>
 		<summary>
 			<span class="que">
 				<b>Por dónde pasó</b>
@@ -112,27 +162,48 @@
 		</summary>
 
 		<div class="adentro">
-			<svg viewBox="0 0 100 100" role="img" aria-label="Mapa de la carrera">
-				<!-- Las costas, de verdad. Ver `planisferio.ts`. -->
-				<g class="tierra">
-					{#each TIERRAS as tierra (tierra.nombre)}
-						<path d={contornoDe(tierra.puntos)} />
+			{#if mundo}
+				{@const { ANCHO, ALTO, PAISES, LAGOS } = mundo}
+				<svg viewBox="0 0 {ANCHO} {ALTO}" role="img" aria-label="Mapa de la carrera">
+					<!--
+					Los países, con sus fronteras. Ver `planisferio.ts`.
+
+					Cada país es su propio `<path>` y no hay un contorno de "tierra"
+					aparte: el relleno de todos juntos da la masa continental y el trazo
+					de cada uno da la frontera. Un solo dato dibuja las dos cosas.
+				-->
+					<g class="tierra">
+						{#each PAISES as pais (pais.nombre)}
+							<path d={pais.d} />
+						{/each}
+					</g>
+
+					<!-- Y los lagos, del color del agua: el Michigan y el Caspio son lo
+				     que termina de que un mapa se lea como un mapa. -->
+					<g class="agua">
+						{#each LAGOS as lago, i (i)}
+							<path d={lago} />
+						{/each}
+					</g>
+
+					<!-- El recorrido, en orden. Es la carrera dibujada como viaje. -->
+					{#each paradas.slice(1) as p, i (p.clubId)}
+						{@const antes = paradas[i]}
+						<line class="camino" x1={antes.x} y1={antes.y} x2={p.x} y2={p.y} />
 					{/each}
-				</g>
 
-				<!-- El recorrido, en orden. Es la carrera dibujada como viaje. -->
-				{#each paradas.slice(1) as p, i (p.clubId)}
-					{@const antes = paradas[i]}
-					<line class="camino" x1={antes.x} y1={antes.y} x2={p.x} y2={p.y} />
-				{/each}
-
-				{#each paradas as p (p.clubId)}
-					<circle class="parada" cx={p.x} cy={p.y} r={radio(p.temporadas)} />
-					{#if p.titulos > 0}
-						<circle class="conTitulo" cx={p.x} cy={p.y} r={radio(p.temporadas) + 1.4} />
-					{/if}
-				{/each}
-			</svg>
+					{#each paradas as p (p.clubId)}
+						<circle class="parada" cx={p.x} cy={p.y} r={radio(p.temporadas)} />
+						{#if p.titulos > 0}
+							<circle class="conTitulo" cx={p.x} cy={p.y} r={radio(p.temporadas) + 0.6} />
+						{/if}
+					{/each}
+				</svg>
+			{:else}
+				<!-- Un hueco de la misma altura que el mapa, para que al terminar de
+				     bajar no salte todo lo que está abajo. -->
+				<div class="cargando" aria-hidden="true"></div>
+			{/if}
 
 			<ul class="lista">
 				{#each [...paradas].sort((a, b) => b.temporadas - a.temporadas) as p (p.clubId)}
@@ -215,32 +286,47 @@
 		display: block;
 		width: 100%;
 		height: auto;
-		background: rgba(255, 255, 255, 0.02);
+		/* El agua. Que el fondo sea el mar y no el fondo de la página es lo que
+		   hace que se lea como un mapa y no como un dibujo recortado. */
+		background: #0a1420;
 		border-radius: 10px;
 	}
 	.tierra path {
-		fill: rgba(255, 255, 255, 0.055);
-		stroke: rgba(255, 255, 255, 0.12);
-		stroke-width: 0.25;
+		fill: #1c2532;
+		stroke: #2f3b4d;
+		stroke-width: 0.12;
 		stroke-linejoin: round;
+		/* Los países comparten frontera, así que cada línea se dibuja dos veces.
+		   Sin esto, las fronteras quedan del doble de grosor que las costas. */
+		vector-effect: non-scaling-stroke;
+	}
+	.agua path {
+		fill: #0a1420;
+		stroke: none;
+	}
+	.cargando {
+		aspect-ratio: 100 / 91.58;
+		background: #0a1420;
+		border-radius: 10px;
 	}
 	/* El camino: se ve el orden en que pasó por cada lugar. */
 	.camino {
-		stroke: var(--borde);
-		stroke-width: 0.5;
-		stroke-dasharray: 1.4 1.4;
+		stroke: #7c8798;
+		stroke-opacity: 0.55;
+		stroke-width: 0.28;
+		stroke-dasharray: 0.9 0.8;
 	}
 	.parada {
 		fill: var(--acento);
-		fill-opacity: 0.75;
-		stroke: var(--fondo);
-		stroke-width: 0.6;
+		fill-opacity: 0.85;
+		stroke: #0a1420;
+		stroke-width: 0.3;
 	}
 	/* Donde salió campeón, un anillo. */
 	.conTitulo {
 		fill: none;
 		stroke: var(--espera);
-		stroke-width: 0.7;
+		stroke-width: 0.4;
 	}
 
 	.lista {

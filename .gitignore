@@ -38,3 +38,4 @@ static/escudos/*
 
 # Carpeta temporal de scripts/escudos.mjs --urls
 /.escudos-bajados
+.cache/

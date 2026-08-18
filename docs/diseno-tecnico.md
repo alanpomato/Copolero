@@ -563,6 +563,45 @@ temporada 2— cierra en **M4**.
 
 ---
 
+## 12.1 De dónde sale el contenido
+
+Vale la pena dejarlo escrito, porque hay una regla de Bebo que lo atraviesa
+todo: **no copiar exactamente logos, textos, imágenes o elementos protegidos de
+otros juegos; crear una identidad visual propia.**
+
+| Qué                                   | De dónde sale                                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Clubes, ligas y países                | Escritos a mano en `content/mundo`. Nombres reales, números de prestigio nuestros.                 |
+| Técnicos y jugadores conocidos        | Nombres reales, en `content/mundo/personas.ts`. Sin fotos.                                         |
+| Escudos, banderas, camisetas, escenas | **Dibujados**: SVG generado por código, con la paleta de cada club. No se descarga ninguna imagen. |
+| Árbitros y periodistas                | Inventados. Un árbitro real al que el juego le hace cobrar mal es otra cosa.                       |
+| El planisferio                        | **Natural Earth 1:50m**, dominio público. Ver abajo.                                               |
+
+### El mapa
+
+Las costas, las fronteras y los lagos salen de
+[Natural Earth](https://www.naturalearthdata.com/), escala 1:50m. Es la base
+cartográfica que traen QGIS y los tutoriales de ArcGIS, y está liberada al
+dominio público: se puede usar, modificar y redistribuir sin atribución ni
+licencia que arrastrar.
+
+Lo importante es qué **no** se hace:
+
+- No se piden _tiles_ a Google, OpenStreetMap ni ningún servicio. No hay clave
+  de API, no hay cuota, no hay término de servicio que cumplir.
+- No se copia el estilo de nadie: se usan las coordenadas y se dibuja con
+  nuestros colores y nuestro recorte.
+- El mapa anda sin conexión, igual que el resto del juego.
+
+`scripts/planisferio.mjs` baja los datos una vez, los recorta al área donde
+están las ligas, los simplifica y escribe `src/lib/ui/planisferio.ts`. Ese
+archivo queda commiteado y es lo único que viaja al navegador —y sólo cuando
+alguien abre el mapa, porque va en su propio módulo—. Las ciudades de los
+clubes son aparte, en `src/lib/ui/ciudades.ts`, escritas a mano: en Natural
+Earth están los países, no las canchas.
+
+---
+
 ## 13. Lo que queda abierto
 
 Cosas que **no** se pueden decidir en un documento y se resuelven jugando o
