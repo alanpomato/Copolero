@@ -1,6 +1,7 @@
 import { media } from './estado';
 import { rngPara } from './rng';
-import type { Atributos, Estado } from './tipos';
+import { atributosQueUsa } from './puestos';
+import type { Atributos, Estado, Posicion } from './tipos';
 
 /**
  * La pretemporada.
@@ -59,6 +60,39 @@ export const PLANES: PlanDeEntrenamiento[] = [
 		atributos: ['liderazgo']
 	}
 ];
+
+/**
+ * Los tres que se ofrecen esta pretemporada.
+ *
+ * Eran los seis, uno abajo del otro, y Alan lo cortó de raíz: "qué entrenás:
+ * solo 3 opciones en horizontal". Tenía razón por dos motivos. Seis tarjetas
+ * en columna son media pantalla de scroll antes de llegar a la intensidad; y
+ * de las seis, tres nunca eran una opción real —un arquero no elige velocidad,
+ * un nueve no elige marca—, así que la lista larga no daba más decisión, daba
+ * más lectura.
+ *
+ * Los dos primeros salen del puesto: son los que de verdad mueven su media.
+ * El tercero rota temporada a temporada entre los que quedan, y ése es el que
+ * hace que la elección no sea la misma quince años seguidos —el año que
+ * aparece "cabeza" hay que decidir si vale la pena resignar definición—.
+ */
+export const PLANES_QUE_SE_OFRECEN = 3;
+
+export function planesPara(posicion: Posicion, temporada: number): PlanDeEntrenamiento[] {
+	const usa = atributosQueUsa(posicion);
+	/** Cuánto le sirve un plan a este puesto: cuanto más arriba están sus atributos, más. */
+	const sirve = (plan: PlanDeEntrenamiento) =>
+		Math.min(...plan.atributos.map((a) => (usa.indexOf(a) === -1 ? 99 : usa.indexOf(a))));
+
+	const ordenados = [...PLANES].sort((a, b) => sirve(a) - sirve(b));
+	const propios = ordenados.slice(0, PLANES_QUE_SE_OFRECEN - 1);
+	const resto = ordenados.slice(PLANES_QUE_SE_OFRECEN - 1);
+	const rota = resto[(temporada - 1) % resto.length];
+
+	// En el orden del catálogo, para que la fila no se reordene sola de un año
+	// al otro y haya que volver a leerla entera.
+	return PLANES.filter((p) => propios.includes(p) || p === rota);
+}
 
 export type Intensidad = 'suave' | 'firme' | 'a-matar';
 

@@ -1,7 +1,7 @@
 import { alertaDe, type Alerta } from './alertas';
 import {
 	INTENSIDADES,
-	PLANES,
+	planesPara,
 	type PerfilDeIntensidad,
 	type PlanDeEntrenamiento
 } from './entrenamiento';
@@ -284,7 +284,8 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 			opciones.rasgos = rasgosQueLeTocaron(estado, semilla);
 		}
 		if (estado.fase === 1) {
-			opciones.planes = PLANES;
+			// Tres y no seis: ver `planesPara`.
+			opciones.planes = planesPara(estado.futbolista.posicion, estado.temporada);
 			opciones.intensidades = INTENSIDADES;
 			// El plan de juego se decide antes de que arranque el campeonato, no con
 			// el campeonato empezado.

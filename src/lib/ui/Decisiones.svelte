@@ -644,48 +644,62 @@
 		</p>
 
 		<p class="subtitulo">Qué entrenás</p>
-		{#each opciones.planes as p (p.id)}
-			<Opcion
-				grupo="entrenamiento"
-				valor={p.id}
-				titulo={p.nombre}
-				detalle={p.detalle}
-				bind:elegido={plan}
-			>
-				{#snippet extra()}
-					<span class="sube">
-						{#each p.atributos as a (a)}
-							<span class="chip-sube">
-								{NOMBRE_ATRIBUTO[a]}
-								<b>{estado.futbolista.atributos[a]}</b>
-							</span>
-						{/each}
-					</span>
-				{/snippet}
-			</Opcion>
-		{/each}
+		<!--
+			Tres, y en fila.
+
+			"Qué entrenás: solo 3 opciones en horizontal", dijo Alan, y las dos
+			mitades del pedido son la misma: seis tarjetas apiladas eran media
+			pantalla de scroll para llegar a la intensidad, que es la decisión que
+			de verdad importa. Cuáles tres las decide el puesto; ver `planesPara`.
+		-->
+		<div class="enFila">
+			{#each opciones.planes as p (p.id)}
+				<Opcion
+					grupo="entrenamiento"
+					valor={p.id}
+					titulo={p.nombre}
+					detalle={p.detalle}
+					bind:elegido={plan}
+				>
+					{#snippet extra()}
+						<span class="sube">
+							{#each p.atributos as a (a)}
+								<span class="chip-sube">
+									{NOMBRE_ATRIBUTO[a]}
+									<b>{estado.futbolista.atributos[a]}</b>
+								</span>
+							{/each}
+						</span>
+					{/snippet}
+				</Opcion>
+			{/each}
+		</div>
 
 		<p class="subtitulo">
 			Con cuánta intensidad · {estado.futbolista.edad} años, {estado.futbolista.desgaste} de desgaste
 		</p>
-		{#each opciones.intensidades ?? [] as i (i.id)}
-			<Opcion
-				grupo="intensidad"
-				valor={i.id}
-				titulo={i.nombre}
-				detalle={i.detalle}
-				bind:elegido={intensidad}
-			>
-				{#snippet extra()}
-					<span class="sube">
-						{#each loQuePromete(estado, plan, i.id) as p (p.atributo)}
-							<span class="chip-sube gana">{p.nombre} hasta +{p.hasta}</span>
-						{/each}
-						<span class="chip-sube pierde">Desgaste +{i.desgaste}</span>
-					</span>
-				{/snippet}
-			</Opcion>
-		{/each}
+		<!-- También tres, y también en fila: apiladas quedaban dos arriba y una
+		     colgando sola, que es peor que las tres juntas. -->
+		<div class="enFila">
+			{#each opciones.intensidades ?? [] as i (i.id)}
+				<Opcion
+					grupo="intensidad"
+					valor={i.id}
+					titulo={i.nombre}
+					detalle={i.detalle}
+					bind:elegido={intensidad}
+				>
+					{#snippet extra()}
+						<span class="sube">
+							{#each loQuePromete(estado, plan, i.id) as p (p.atributo)}
+								<span class="chip-sube gana">{p.nombre} hasta +{p.hasta}</span>
+							{/each}
+							<span class="chip-sube pierde">Desgaste +{i.desgaste}</span>
+						</span>
+					{/snippet}
+				</Opcion>
+			{/each}
+		</div>
 	</Paso>
 {/if}
 
@@ -925,6 +939,20 @@
 <Mercado {opciones} {estado} {rol} bind:filtradas bind:destino />
 
 <style>
+	/*
+	 * Los tres planes de pretemporada, uno al lado del otro.
+	 *
+	 * Con `auto-fit` y no con una consulta de ancho: este bloque vive adentro de
+	 * una columna que cambia de ancho según la pantalla, y `minmax` resuelve solo
+	 * lo mismo —tres en fila donde entran, apilados donde no— sin tener que saber
+	 * de antemano cuánto mide el contenedor.
+	 */
+	.enFila {
+		display: grid;
+		gap: 0.5rem;
+		grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+	}
+
 	/* Lo que mueve una gestión: los mismos chips que ya tienen los momentos. */
 	.mueve {
 		display: flex;
