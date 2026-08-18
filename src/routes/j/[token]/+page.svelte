@@ -2,6 +2,11 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import {
+		comoEstaLaAgenda,
+		disponibilidadDe,
+		loQueDejaLaCarteraAlAnio
+	} from '$lib/engine/cartera';
 	import { media } from '$lib/engine/estado';
 	import { NOMBRE_FASE } from '$lib/engine/tipos';
 	import { puesto as puestoPorId } from '$lib/engine/puestos';
@@ -262,7 +267,26 @@
 								<span class="valor">{representante.representadosExtra + 1}</span>
 								<span class="etiqueta">Representados</span>
 							</div>
+							<!--
+								La otra cara de la cartera.
+
+								Los representados extra eran un número que sólo servía para un
+								sueño. Ahora dejan plata todos los años y se llevan el día, y
+								esto es lo que hace que la cuenta se pueda mirar antes de
+								firmar al siguiente. Ver `cartera.ts`.
+							-->
+							<div class="cifra">
+								<span class="valor">{disponibilidadDe(estado)}</span>
+								<span class="etiqueta">Disponibilidad</span>
+							</div>
 						</div>
+						<p class="sutil" style="margin:.7rem 0 0">
+							{comoEstaLaAgenda(estado)}
+							{#if representante.representadosExtra > 0}
+								Los otros {representante.representadosExtra} te dejan
+								<b>{plata(loQueDejaLaCarteraAlAnio(estado))}</b> por temporada.
+							{/if}
+						</p>
 					</div>
 
 					<TarjetaJugador {estado} opciones={vista.opciones} />

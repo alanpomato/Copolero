@@ -1,5 +1,6 @@
 import { club, contexto, clubesDe } from '../../../content/mundo';
 import { jugadoresActualesDe } from './mercado';
+import { factorDeTiempo } from './cartera';
 import { rngPara } from './rng';
 import { tocaRenovar } from './renovacion';
 import { brechaCon } from './temporada';
@@ -1153,6 +1154,71 @@ const EN_LA_TEMPORADA: Plantilla[] = [
 				}
 			]
 		};
+	},
+	// --- Fichar a uno que ya juega ------------------------------------------
+	/*
+	 * Lo que pidió Alan, con el freno adentro: "uno de los momentos del repre
+	 * que sea la posibilidad de reclutar un jugador, cuanto más fama o lo que
+	 * carajo sea (media) del jugador, menor probabilidad".
+	 *
+	 * Y es la mitad interesante del rol: al desconocido lo firmás casi siempre y
+	 * no te deja nada; al conocido casi nunca, y si sale te cambia la agencia.
+	 */
+	(estado, e) => {
+		const a = estado.representante.atributos;
+		const plantel = jugadoresActualesDe(e.otroClub, estado.cambiosMundo).sort(
+			(x, y) => y.fama - x.fama
+		);
+		const suelto = plantel[0];
+		const quien = suelto?.nombre ?? `el nueve de ${club(e.otroClub).nombre}`;
+		const fama = suelto?.fama ?? 55;
+
+		// Cuanto más conocido, más difícil. Un fenómeno con fama 90 arranca en 30
+		// y hay que empujarlo con atributos; uno de fama 50 arranca en 62.
+		const cuestaMas = Math.round(62 - (fama - 50) * 0.8);
+
+		return {
+			id: 'el-que-ya-juega',
+			familia: 'cartera',
+			titulo: 'El que ya juega',
+			contexto:
+				`${quien}, de ${club(e.otroClub).nombre}, se peleó con su representante y está escuchando. ` +
+				`No es un pibe de inferiores: es un jugador hecho, con nombre, y todos los que hacen esto ` +
+				`están llamando al mismo teléfono que vos.`,
+			juego: 'quiz',
+			opciones: [
+				{
+					id: 'llevarle-un-club',
+					etiqueta: 'Llegar con un club ya hablado',
+					detalle: 'No prometerle nada: mostrarle una puerta abierta. Cuesta contactos.',
+					probabilidad: chance(cuestaMas, a.contactos, 0.5),
+					siSale: `Le llevaste algo concreto y firmó con vos. ${quien} es tu representado.`,
+					siFalla: 'El club se echó atrás a último momento y quedaste como el que promete de más.',
+					premio: { representadosExtra: 1, prestigio: 9, contactos: 3 },
+					castigo: { prestigio: -4, contactos: -3 }
+				},
+				{
+					id: 'bajarle-la-comision',
+					etiqueta: 'Ofrecerle cobrarle menos que nadie',
+					detalle: 'Comprás el pase de la firma. Te lo llevás más barato de lo que vale.',
+					probabilidad: chance(cuestaMas + 12, a.negociacion, 0.45),
+					siSale: `Firmó por el número. ${quien} es tuyo, y te va a dejar menos de lo que podría.`,
+					siFalla: 'Igualaron tu oferta y se quedó donde estaba. Perdiste la mesa y el número.',
+					premio: { representadosExtra: 1, prestigio: 5, dineroUsd: -10_000 },
+					castigo: { prestigio: -2, dineroUsd: -2_000 }
+				},
+				{
+					id: 'hablarle-de-frente',
+					etiqueta: 'Sentarte y hablarle de vos',
+					detalle: 'Sin club y sin descuento. Sólo vos, y cómo trabajás.',
+					probabilidad: chance(cuestaMas - 6, a.carisma ?? CARISMA_POR_DEFECTO, 0.7),
+					siSale: `Le cerró cómo trabajás. ${quien} firma con vos sin pedir nada a cambio.`,
+					siFalla: 'Te escuchó, te agradeció, y firmó con una agencia el doble de grande.',
+					premio: { representadosExtra: 1, prestigio: 12, carisma: 3, contactos: 2 },
+					castigo: { carisma: -1 }
+				}
+			]
+		};
 	}
 ];
 
@@ -1484,6 +1550,30 @@ function laMesaFinal(estado: Estado): MomentoDelRepresentante {
 }
 
 /**
+ * Le descuenta el tiempo que no tiene.
+ *
+ * El representante con la agenda llena llega tarde, prepara menos y improvisa
+ * más, y eso se ve en la probabilidad de cada opción antes de tirar. Las que
+ * salen siempre siguen saliendo siempre: son la salida conservadora, y esa no
+ * depende de tener tiempo sino de no hacer nada. Ver `cartera.ts`.
+ */
+function conElTiempoQueTiene(
+	momento: MomentoDelRepresentante,
+	estado: Estado
+): MomentoDelRepresentante {
+	const factor = factorDeTiempo(estado);
+	if (factor >= 1) return momento;
+	return {
+		...momento,
+		opciones: momento.opciones.map((o) =>
+			o.probabilidad >= 100
+				? o
+				: { ...o, probabilidad: Math.max(5, Math.round(o.probabilidad * factor)) }
+		)
+	};
+}
+
+/**
  * Si este momento puede tocar hoy.
  *
  * Casi todos pueden siempre; los dos que no, no pueden por motivos distintos.
@@ -1526,7 +1616,8 @@ export function momentosDelRepresentante(
 	});
 
 	// Con el contrato terminándose, el mercado tiene un solo tema y es ése.
-	if (estado.fase === 3 && tocaRenovar(estado)) return [laMesaFinal(estado)];
+	if (estado.fase === 3 && tocaRenovar(estado))
+		return [conElTiempoQueTiene(laMesaFinal(estado), estado)];
 
 	if (estado.fase === 3) {
 		const elegidas: Plantilla[] = [];
@@ -1536,7 +1627,9 @@ export function momentosDelRepresentante(
 			elegidas.push(cual);
 			restantes.splice(restantes.indexOf(cual), 1);
 		}
-		return elegidas.map((plantilla, i) => plantilla(estado, escenario(estado, i, semilla)));
+		return elegidas.map((plantilla, i) =>
+			conElTiempoQueTiene(plantilla(estado, escenario(estado, i, semilla)), estado)
+		);
 	}
 
 	/*
@@ -1570,7 +1663,9 @@ export function momentosDelRepresentante(
 		elegidas.push(dentro[Math.floor(paso / FAMILIAS_DEL_REPRE.length) % dentro.length].plantilla);
 	}
 
-	return elegidas.map((plantilla, i) => plantilla(estado, escenario(estado, i, semilla)));
+	return elegidas.map((plantilla, i) =>
+		conElTiempoQueTiene(plantilla(estado, escenario(estado, i, semilla)), estado)
+	);
 }
 
 /**

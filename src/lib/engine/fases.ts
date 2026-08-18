@@ -19,6 +19,7 @@ import { empujarElTecho, loQueEmpujaElTecho, loQueSeCuenta } from './techo';
 import { objetivo as objetivoPorId } from './objetivos';
 import { elegirRasgo, tocaElegirRasgo } from './rasgos';
 import { pedirLaSalida } from './salida';
+import { loQueDejaLaCarteraAlAnio, loQueSumaLaCarteraAlAnio } from './cartera';
 import { anotarElTope, elegirSueno, revisarSuenos } from './suenos';
 import { correrleElAnio } from './rival';
 import { resolverNegociacion, tocaRenegociar } from './representacion';
@@ -597,7 +598,15 @@ function cerrarTemporada(
 	const comisionSalario = Math.round(
 		(salarioAnual * estado.contratoRepresentacion.pctSalario) / 100
 	);
-	representante.dineroUsd += fijoAnual + comisionSalario;
+	// Y lo que deja la cartera: cada representado extra factura todos los años.
+	// Ver `cartera.ts`, que es donde vive la otra mitad —lo que cuesta en tiempo—.
+	const deLaCartera = loQueDejaLaCarteraAlAnio(estado);
+	representante.dineroUsd += fijoAnual + comisionSalario + deLaCartera;
+
+	const subeElPrestigio = loQueSumaLaCarteraAlAnio(estado);
+	if (subeElPrestigio > 0) {
+		representante.prestigio = Math.max(0, Math.min(100, representante.prestigio + subeElPrestigio));
+	}
 
 	log.push({
 		tipo: 'ingresos',
@@ -609,7 +618,10 @@ function cerrarTemporada(
 		visiblePara: 'representante',
 		texto:
 			`Ingresos de la temporada: USD ${fijoAnual.toLocaleString('es-AR')} de fijo ` +
-			`y USD ${comisionSalario.toLocaleString('es-AR')} de comisión sobre el salario.`
+			`y USD ${comisionSalario.toLocaleString('es-AR')} de comisión sobre el salario.` +
+			(deLaCartera > 0
+				? ` Y USD ${deLaCartera.toLocaleString('es-AR')} de los otros ${representante.representadosExtra} que representás.`
+				: '')
 	});
 
 	// --- La selección --------------------------------------------------------

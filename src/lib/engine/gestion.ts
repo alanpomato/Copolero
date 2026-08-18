@@ -1,3 +1,4 @@
+import { factorDeTiempo } from './cartera';
 import { club, contexto, salarioTipico } from '../../../content/mundo';
 import { media } from './estado';
 import { rngPara } from './rng';
@@ -85,6 +86,21 @@ export type LineaDeGestion = { visiblePara: VisiblePara; texto: string };
 
 function chance(base: number, atributo: number, peso = 0.6): number {
 	return Math.round(Math.max(10, Math.min(94, base + (atributo - 40) * peso)));
+}
+
+/**
+ * La probabilidad que se muestra y la que se tira: la misma, y con el tiempo
+ * ya descontado.
+ *
+ * Va por acá y no adentro de cada acción para que no se pueda separar. Si la
+ * pantalla mostrara `accion.probabilidad(estado)` y el motor tirara con el
+ * factor aplicado, el número de la tarjeta sería mentira, que es exactamente
+ * lo que este juego no hace. Ver `cartera.ts`.
+ */
+export function probabilidadDe(accion: AccionDeGestion, estado: Estado): number {
+	const cruda = accion.probabilidad(estado);
+	if (cruda >= 100) return 100;
+	return Math.max(5, Math.round(cruda * factorDeTiempo(estado)));
 }
 
 function acotar(v: number, min: number, max: number): number {
@@ -391,7 +407,7 @@ export function resolverGestion(
 		clave: `gestion-${accion.id}`
 	});
 
-	const probabilidad = accion.probabilidad(estado);
+	const probabilidad = probabilidadDe(accion, estado);
 	const salio = probabilidad >= 100 || rng.ocurre(probabilidad / 100);
 
 	// Primero lo declarado —lo mismo que la tarjeta prometía— y después lo que

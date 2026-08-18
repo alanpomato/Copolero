@@ -5,7 +5,7 @@ import {
 	type PerfilDeIntensidad,
 	type PlanDeEntrenamiento
 } from './entrenamiento';
-import { accionesDe, type LoQueMueve } from './gestion';
+import { accionesDe, probabilidadDe, type LoQueMueve } from './gestion';
 import { ocasionesDe, type Ocasion } from './ocasiones';
 import {
 	carismaDe,
@@ -320,7 +320,7 @@ export function opcionesDeFase(estado: Estado, rol: Rol, semilla: string): Opcio
 				id: a.id,
 				nombre: a.nombre,
 				detalle: a.detalle,
-				probabilidad: a.probabilidad(estado),
+				probabilidad: probabilidadDe(a, estado),
 				siSale: a.siSale,
 				siFalla: a.siFalla,
 				ademas: a.ademas
