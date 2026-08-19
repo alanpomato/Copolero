@@ -125,7 +125,7 @@
       "area": "Pretemporada",
       "pedido": "La parte de intensidad, poner un velocímetro",
       "estado": "Implementado",
-      "observaciones": "Aguja sobre arco de tres tercios de color (verde/amarillo/rojo), arriba de las tres tarjetas de siempre. Verde = no cuesta nada, rojo = lo que el cuerpo cobra. Apareció un bug de geometría al escribirlo (la aguja de \"Firme\" apuntaba al verde) que quedó cubierto con un test aparte.",
+      "observaciones": "Aguja sobre arco de tres tercios de color (verde/amarillo/rojo), arriba de las tres tarjetas de siempre. Al principio era decoración; ahora se toca: clickear o arrastrar el arco elige la intensidad tan bien como tocar la tarjeta de abajo, y las dos formas quedan sincronizadas. La geometría (índice→ángulo y la vuelta, ángulo→índice) vive aparte en un módulo con sus propios tests, incluida la esquina del hueco de abajo —tocar ahí se pega al borde más cercano en vez de quedar en tierra de nadie.",
       "prioridad": null
     },
     {
@@ -318,6 +318,14 @@
       "pedido": "En la página de GitHub Pages, incluir el Excel de seguimiento de pedidos (lo pendiente arriba, lo hecho abajo)",
       "estado": "Implementado",
       "observaciones": "El .xlsx no se puede mostrar directo en una página web (el navegador lo ofrece para descargar). Un script en Python (scripts/exportar-pedidos.py) lo convierte a JSON, que sí se puede leer y dibujar. El sitio ahora tiene una página propia con dos tablas: \"Abierto\" primero (ordenado por prioridad) y \"Resuelto\" después, con los mismos colores de estado que ya usa el resto del sitio.",
+      "prioridad": null
+    },
+    {
+      "numero": 41,
+      "area": "Pretemporada",
+      "pedido": "Que las tres primeras preguntas de la carrera vayan una por vez: primero clase de jugador, recién contestada esa se abre para qué vas a jugar, y recién contestada esa se abre cómo entrenás",
+      "estado": "Implementado",
+      "observaciones": "Las tres se plegaron al mismo patrón que ya usaba el resto de la fase (un Paso a la vez, con la elegida arriba). Rasgo y sueño ya arrancaban con un valor por defecto para que cerrar sin tocar nada tuviera un resultado sensato, así que \"contestada\" no podía salir de ese valor: sale de tocar la tarjeta —cualquiera, hasta la que ya estaba marcada—, que es lo único que distingue \"decidí esto\" de \"no lo miré todavía\".",
       "prioridad": null
     }
   ]

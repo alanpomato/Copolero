@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * La intensidad de la pretemporada, como velocímetro.
+	 * La intensidad de la pretemporada, como velocímetro. Y se toca.
 	 *
 	 * Alan lo pidió con una imagen de referencia: "la parte de intensidad,
 	 * poner un velocímetro, aguja sobre arco de colores, como el que mandaste".
@@ -8,35 +8,41 @@
 	 * hace cada una; esto es lo que falta arriba: verlo de un vistazo, como se
 	 * mira la aguja de un auto y no la ficha técnica del motor.
 	 *
-	 * La geometría es la misma que la del `Reloj` de las cartas del mercado —el
-	 * arco abierto, la aguja desde el centro— pero con tres tercios de color fijo
-	 * en vez de un relleno proporcional: acá no hay un porcentaje, hay tres
-	 * casilleros, y la aguja siempre descansa en el medio del que está elegido,
-	 * nunca en el borde entre dos.
+	 * Después lo jugó y pidió la otra mitad: "que uno mueva la aguja y según
+	 * adonde mueva le diga suave/firme/a matar". Antes era decoración —dibujaba
+	 * lo que ya se había elegido en las tarjetas de abajo— y ahora es un input
+	 * más: tocarlo o arrastrarlo elige la intensidad tan bien como tocar la
+	 * tarjeta, y las dos formas se mantienen sincronizadas porque las dos
+	 * escriben la misma variable.
 	 *
-	 * El orden de colores no es el mismo sentido que en el reloj de probabilidad
-	 * —ahí verde es "va a salir bien"— pero el significado es el que corresponde
-	 * acá: verde es lo que no te cuesta nada, rojo es lo que el cuerpo cobra.
+	 * La geometría —ida (índice → ángulo) y vuelta (ángulo → índice)— vive en
+	 * `velocimetro-geometria.ts`, sin Svelte de por medio: son las dos mitades
+	 * de la misma cuenta y tienen que usar exactamente la misma escala, así que
+	 * conviene que estén juntas y sean fáciles de probar solas.
 	 */
 	import type { PerfilDeIntensidad } from '$lib/engine/entrenamiento';
+	import {
+		ABIERTO,
+		CENTRO,
+		R,
+		anguloDe,
+		anguloDelPuntero,
+		puntaDe,
+		zonaDesdeAngulo
+	} from './velocimetro-geometria';
 
 	let {
 		intensidades,
-		elegido,
+		elegido = $bindable(),
 		tamano = 168
 	}: {
 		/** Las tres, en el orden en que se dibujan: de la más floja a la más dura. */
 		intensidades: PerfilDeIntensidad[];
-		/** El id elegido. Si no hay ninguno todavía, apunta al del medio. */
+		/** El id elegido. Si no hay ninguno todavía, apunta al del medio. Se puede tocar para cambiarlo. */
 		elegido?: string;
 		tamano?: number;
 	} = $props();
 
-	const R = 42;
-	const CENTRO = 50;
-	/** Cuánto queda abierto abajo. Más que el reloj: acá se busca la forma de
-	    tablero de auto, no la de un reloj de pared. */
-	const ABIERTO = 108;
 	const LARGO = 2 * Math.PI * R;
 	const ARCO = (LARGO * (360 - ABIERTO)) / 360;
 	const TERCIO = ARCO / 3;
@@ -48,36 +54,82 @@
 		return i === -1 ? Math.floor(intensidades.length / 2) : i;
 	});
 
-	/** El medio del tercio elegido, no el borde: 16.7 / 50 / 83.3 sobre 100. */
-	const valor = $derived(((indice + 0.5) / Math.max(1, intensidades.length)) * 100);
-
-	/*
-	 * El ángulo, en el mismo sistema que usa la rotación del arco.
-	 *
-	 * `<g transform="rotate(90 + ABIERTO/2)">` gira el círculo entero ese tanto
-	 * en el sentido normal de SVG (0° = las 3, creciendo en sentido horario). La
-	 * aguja tiene que usar exactamente esa misma cuenta para el ángulo, sin
-	 * restarle nada: hacerlo —que es lo que hacía la primera versión, copiada
-	 * del `Reloj`— corría la aguja 90° de más, y con un relleno continuo casi no
-	 * se nota; con tres tercios de color fijo, "Firme" señalaba al verde en vez
-	 * de al amarillo, y se veía a la primera.
-	 */
-	const angulo = $derived(90 + ABIERTO / 2 + ((360 - ABIERTO) * valor) / 100);
-	const punta = $derived.by(() => {
-		const rad = (angulo * Math.PI) / 180;
-		return { x: CENTRO + Math.cos(rad) * (R - 10), y: CENTRO + Math.sin(rad) * (R - 10) };
-	});
+	const angulo = $derived(anguloDe(indice, intensidades.length));
+	const punta = $derived(puntaDe(angulo));
 
 	const actual = $derived(intensidades[indice]);
+
+	// ---------------------------------------------------------------------
+	// Tocar o arrastrar la aguja
+	// ---------------------------------------------------------------------
+
+	let svg: SVGSVGElement | undefined = $state();
+	let arrastrando = $state(false);
+
+	/** Alto real del viewBox: ancho 100, alto 78 —ver el `viewBox` del `<svg>`. */
+	const ALTO_VIEWBOX = 78;
+
+	function elegirDesde(clientX: number, clientY: number) {
+		if (!svg || intensidades.length === 0) return;
+		const rect = svg.getBoundingClientRect();
+		if (rect.width === 0 || rect.height === 0) return;
+		const x = ((clientX - rect.left) / rect.width) * 100;
+		const y = ((clientY - rect.top) / rect.height) * ALTO_VIEWBOX;
+		const ang = anguloDelPuntero(x, y, CENTRO);
+		const zona = zonaDesdeAngulo(ang, intensidades.length);
+		const nuevo = intensidades[zona]?.id;
+		if (nuevo) elegido = nuevo;
+	}
+
+	function onPointerDown(e: PointerEvent) {
+		arrastrando = true;
+		svg?.setPointerCapture(e.pointerId);
+		elegirDesde(e.clientX, e.clientY);
+	}
+	function onPointerMove(e: PointerEvent) {
+		if (!arrastrando) return;
+		elegirDesde(e.clientX, e.clientY);
+	}
+	function onPointerUp() {
+		arrastrando = false;
+	}
+
+	function onKeydown(e: KeyboardEvent) {
+		if (intensidades.length === 0) return;
+		if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+			e.preventDefault();
+			elegido = intensidades[Math.max(0, indice - 1)].id;
+		} else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+			e.preventDefault();
+			elegido = intensidades[Math.min(intensidades.length - 1, indice + 1)].id;
+		} else if (e.key === 'Home') {
+			e.preventDefault();
+			elegido = intensidades[0].id;
+		} else if (e.key === 'End') {
+			e.preventDefault();
+			elegido = intensidades[intensidades.length - 1].id;
+		}
+	}
 </script>
 
 <svg
+	bind:this={svg}
 	class="velocimetro tono-{TONOS[indice] ?? 'amarillo'}"
-	viewBox="0 0 100 78"
+	viewBox="0 0 100 {ALTO_VIEWBOX}"
 	width={tamano}
-	height={(tamano * 78) / 100}
-	role="img"
-	aria-label="Intensidad: {actual?.nombre ?? ''}"
+	height={(tamano * ALTO_VIEWBOX) / 100}
+	role="slider"
+	tabindex="0"
+	aria-label="Intensidad de la pretemporada"
+	aria-valuemin={0}
+	aria-valuemax={Math.max(0, intensidades.length - 1)}
+	aria-valuenow={indice}
+	aria-valuetext={actual?.nombre ?? ''}
+	onpointerdown={onPointerDown}
+	onpointermove={onPointerMove}
+	onpointerup={onPointerUp}
+	onpointercancel={onPointerUp}
+	onkeydown={onKeydown}
 >
 	<g transform="rotate({90 + ABIERTO / 2} {CENTRO} {CENTRO})">
 		<circle
@@ -120,6 +172,16 @@
 		display: block;
 		overflow: visible;
 		margin: 0 auto;
+		touch-action: none;
+		cursor: grab;
+	}
+	.velocimetro:active {
+		cursor: grabbing;
+	}
+	.velocimetro:focus-visible {
+		outline: 2px solid var(--acento);
+		outline-offset: 4px;
+		border-radius: 8px;
 	}
 	.zona {
 		fill: none;

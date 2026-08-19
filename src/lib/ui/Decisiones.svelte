@@ -60,6 +60,33 @@
 	let sueno = $state('');
 	let salida = $state('');
 
+	/*
+	 * El orden de las tres primeras decisiones de la carrera: una y después la
+	 * otra, no las tres juntas.
+	 *
+	 * "Que aparezca 1ro la de clase, una vez contestada se abre la 2da, y una
+	 * vez contestada se abre la de cómo vas a entrenar", pidió Alan. `rasgo` y
+	 * `sueno` arrancan con un valor por defecto —el efecto de acá abajo se lo
+	 * pone sin que el jugador toque nada, para que cerrar la fase sin decidir
+	 * nada tenga un resultado sensato— así que ese valor por sí solo no sirve
+	 * para saber si la pregunta ya se "contestó" de verdad, y tampoco alcanza
+	 * con escuchar el evento `change` del radio: si lo que se toca es la
+	 * primera tarjeta —la que ya viene marcada por defecto— el valor no
+	 * cambia y el navegador no dispara `change`. Lo que marca la respuesta es
+	 * el `click`, en el bloque `.respuestas` entero: pasa siempre que se toca
+	 * una tarjeta, cambie o no cambie el valor, y nunca con la asignación del
+	 * efecto.
+	 */
+	let rasgoElegido = $state(false);
+	let suenoElegido = $state(false);
+
+	const suenoVisible = $derived(!(opciones.rasgos && opciones.rasgos.length > 0) || rasgoElegido);
+	const entrenamientoVisible = $derived(
+		suenoVisible && (!(opciones.suenos && opciones.suenos.length > 0) || suenoElegido)
+	);
+	const queRasgo = $derived(opciones.rasgos?.find((r) => r.id === rasgo)?.nombre ?? '');
+	const queSueno = $derived(opciones.suenos?.find((s) => s.id === sueno)?.nombre ?? '');
+
 	$effect(() => {
 		const tres = opciones.rasgos ?? [];
 		if (tres.length > 0 && !tres.some((r) => r.id === rasgo)) rasgo = tres[0].id;
@@ -383,21 +410,29 @@
 	 * decide más: una mesa de contrato aparece cada tres o cuatro temporadas y te
 	 * cambia la carrera; el plan de entrenamiento está siempre y casi nunca se
 	 * toca.
+	 *
+	 * Rasgo y sueño van primero y aparte del resto: solo existen en la
+	 * temporada 1 —se eligen una sola vez en toda la carrera— y ahí sí van
+	 * antes que cualquier otra cosa, uno por vez, hasta contestarlos.
 	 */
 	const abierto = $derived(
-		opciones.renovacion?.oferta
-			? 'renovacion'
-			: opciones.tratos
-				? 'mesa'
-				: opciones.ofertas
-					? 'mercado'
-					: opciones.sondeo
-						? 'sondeo'
-						: opciones.gestiones
-							? 'gestion'
-							: opciones.planes
-								? 'entrenamiento'
-								: ''
+		opciones.rasgos && opciones.rasgos.length > 0 && !rasgoElegido
+			? 'rasgo'
+			: opciones.suenos && opciones.suenos.length > 0 && !suenoElegido
+				? 'sueno'
+				: opciones.renovacion?.oferta
+					? 'renovacion'
+					: opciones.tratos
+						? 'mesa'
+						: opciones.ofertas
+							? 'mercado'
+							: opciones.sondeo
+								? 'sondeo'
+								: opciones.gestiones
+									? 'gestion'
+									: opciones.planes
+										? 'entrenamiento'
+										: ''
 	);
 
 	function comoJuega(brecha: number): string {
@@ -408,31 +443,38 @@
 	}
 </script>
 
+<!--
+	Rasgo, sueño y entrenamiento van de a uno: recién se contesta la de "qué
+	clase de jugador sos" se ve la de "para qué vas a jugar", y recién
+	contestada ésa aparece la de entrenamiento. Ver `abierto`, `suenoVisible`
+	y `entrenamientoVisible` más arriba.
+-->
+
 <!-- ---------- Qué clase de jugador sos ---------- -->
 {#if opciones.rasgos && opciones.rasgos.length > 0}
-	<!--
-		La pregunta y sus respuestas, en un solo bloque.
+	<Paso
+		titulo="¿Qué clase de jugador sos?"
+		elegido={rasgoElegido ? queRasgo : ''}
+		tema="cancha"
+		abierto={abierto === 'rasgo'}
+	>
+		<p style="margin:0 0 .4rem">
+			El azar te trajo tres. Elegí uno: <strong>te define para toda la carrera</strong> y no se cambia
+			nunca más.
+		</p>
+		<p class="sutil" style="margin:0 0 .75rem">
+			Ninguno es mejor que otro. El olfato de gol hace goleadores y el pulmón hace jugadores que
+			llegan a los 36.
+		</p>
 
-		Estaban sueltas: el encabezado era una tarjeta y cada opción era otra
-		tarjeta igual, así que la primera pantalla del juego era una fila de ocho
-		cajas del mismo color y no se veía dónde terminaba una decisión y empezaba
-		la otra. Adentro de un bloque con el título arriba, se lee que las tres de
-		abajo son las respuestas a esta pregunta y no otra cosa más.
-	-->
-	<div class="decision" data-tema="cancha">
-		<div class="pregunta">
-			<h3>¿Qué clase de jugador sos?</h3>
-			<p style="margin:0 0 .4rem">
-				El azar te trajo tres. Elegí uno: <strong>te define para toda la carrera</strong> y no se cambia
-				nunca más.
-			</p>
-			<p class="sutil" style="margin:0">
-				Ninguno es mejor que otro. El olfato de gol hace goleadores y el pulmón hace jugadores que
-				llegan a los 36.
-			</p>
-		</div>
-
-		<div class="respuestas">
+		<div
+			class="respuestas"
+			role="radiogroup"
+			aria-label="¿Qué clase de jugador sos?"
+			tabindex="-1"
+			onclick={() => (rasgoElegido = true)}
+			onkeydown={() => (rasgoElegido = true)}
+		>
 			{#each opciones.rasgos as r (r.id)}
 				<Opcion
 					grupo="rasgo"
@@ -453,25 +495,34 @@
 				</Opcion>
 			{/each}
 		</div>
-	</div>
+	</Paso>
 {/if}
 
 <!-- ---------- Para qué vas a jugar ---------- -->
-{#if opciones.suenos && opciones.suenos.length > 0}
-	<div class="decision" data-tema="oro">
-		<div class="pregunta">
-			<h3>¿Para qué vas a jugar?</h3>
-			<p style="margin:0 0 .4rem">
-				Elegí una sola cosa. No se cambia, no se puede apurar y no se cumple en una temporada:
-				<strong>es adónde va a haber llegado esta carrera cuando termine</strong>.
-			</p>
-			<p class="sutil" style="margin:0">
-				{estado.futbolista.nombre} tiene {estado.futbolista.edad} años. Lo que elijas acá se va a ver
-				en todas las pantallas hasta el último día.
-			</p>
-		</div>
+{#if opciones.suenos && opciones.suenos.length > 0 && suenoVisible}
+	<Paso
+		titulo="¿Para qué vas a jugar?"
+		elegido={suenoElegido ? queSueno : ''}
+		tema="oro"
+		abierto={abierto === 'sueno'}
+	>
+		<p style="margin:0 0 .4rem">
+			Elegí una sola cosa. No se cambia, no se puede apurar y no se cumple en una temporada:
+			<strong>es adónde va a haber llegado esta carrera cuando termine</strong>.
+		</p>
+		<p class="sutil" style="margin:0 0 .75rem">
+			{estado.futbolista.nombre} tiene {estado.futbolista.edad} años. Lo que elijas acá se va a ver
+			en todas las pantallas hasta el último día.
+		</p>
 
-		<div class="respuestas">
+		<div
+			class="respuestas"
+			role="radiogroup"
+			aria-label="¿Para qué vas a jugar?"
+			tabindex="-1"
+			onclick={() => (suenoElegido = true)}
+			onkeydown={() => (suenoElegido = true)}
+		>
 			{#each opciones.suenos as s (s.id)}
 				<Opcion
 					grupo="sueno"
@@ -488,7 +539,7 @@
 				</Opcion>
 			{/each}
 		</div>
-	</div>
+	</Paso>
 {/if}
 
 <!-- ---------- En qué gastar la plata ---------- -->
@@ -646,7 +697,7 @@
 	comparar. Los atributos de hoy van adentro, que es donde se miran: al lado de
 	lo que se está por entrenar.
 -->
-{#if opciones.planes}
+{#if opciones.planes && entrenamientoVisible}
 	<Paso
 		titulo="Cómo entrenás la pretemporada"
 		elegido={comoEntrena}
@@ -706,7 +757,7 @@
 			de leer nada.
 		-->
 		{#if opciones.intensidades}
-			<Velocimetro intensidades={opciones.intensidades} elegido={intensidad} />
+			<Velocimetro intensidades={opciones.intensidades} bind:elegido={intensidad} />
 		{/if}
 		<!-- También tres, y también en fila: apiladas quedaban dos arriba y una
 		     colgando sola, que es peor que las tres juntas. -->
@@ -1040,48 +1091,15 @@
 	}
 
 	/*
-	 * Una pregunta con sus respuestas adentro.
+	 * Las respuestas de una pregunta, adentro de su `Paso`.
 	 *
-	 * La primera pantalla del juego eran ocho tarjetas iguales en fila: el
-	 * encabezado de una decisión tenía exactamente el mismo peso visual que las
-	 * opciones de la decisión anterior, así que no se veía dónde terminaba una y
-	 * empezaba la otra. Alan lo dijo mirándola: "las opciones tienen casi el
-	 * mismo formato que el título, no sabés qué estás eligiendo".
-	 *
-	 * El bloque hace lo mínimo que hace falta: una caja, el enunciado arriba con
-	 * su color, y las respuestas hundidas adentro. Es el mismo patrón que ya
-	 * usaba "cómo vas a jugar el año", que era el único que se leía bien.
+	 * Rasgo y sueño usaban antes una caja propia ("una pregunta con sus
+	 * respuestas adentro"); ahora que las dos son un `Paso` como el resto de
+	 * la fase —para poder plegarse y abrirse una por vez— solo hace falta el
+	 * espacio entre el texto de arriba y las tarjetas.
 	 */
-	.decision {
-		margin: 0 0 1.1rem;
-		background: var(--tarjeta);
-		border: 1px solid var(--borde);
-		border-left: 3px solid var(--tema, var(--acento));
-		border-radius: var(--radio);
-		overflow: hidden;
-	}
-	.decision[data-tema='cancha'] {
-		--tema: var(--acento);
-	}
-	.decision[data-tema='oro'] {
-		--tema: var(--espera);
-	}
-	.pregunta {
-		padding: 1rem 1.1rem 0.9rem;
-		border-bottom: 1px solid var(--borde);
-		background: var(--tarjeta-alta);
-	}
-	.pregunta h3 {
-		margin: 0 0 0.45rem;
-		font-size: 0.72rem;
-		font-weight: 800;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--tema, var(--acento));
-	}
-	/* Las respuestas, hundidas: se ve que están adentro de la pregunta. */
 	.respuestas {
-		padding: 0.9rem 1.1rem 0.4rem;
+		padding-top: 0.15rem;
 	}
 	.respuestas :global(.opcion:last-child) {
 		margin-bottom: 0.5rem;
