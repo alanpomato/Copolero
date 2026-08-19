@@ -44,7 +44,7 @@ export type {
  * en `ocasiones-vida.ts`, que es la mitad que más creció.
  */
 
-export const OCASIONES_POR_TEMPORADA = 3;
+export const OCASIONES_POR_TEMPORADA = 2;
 
 /**
  * Y una en el mercado.
@@ -1319,14 +1319,17 @@ export function ocasionesDe(estado: Estado, semilla: string): Ocasion[] {
 	});
 
 	/*
-	 * Dos de puesto y una de la vida: que la temporada no sea siempre pelota.
+	 * Una de puesto y una de la vida: que la temporada no sea siempre pelota.
 	 *
-	 * Las dos de puesto salen sorteadas y sin repetirse. Antes se copiaba la
-	 * lista a un array llamado `mezcla` y se le hacía `slice(0, 2)` sin mezclar
-	 * nada: salían siempre las dos primeras de la lista, las mismas dieciocho
-	 * temporadas seguidas. Medido, un delantero veía siete momentos distintos en
-	 * toda su carrera y dos de ellos eran el 50% del total. Era exactamente eso
-	 * lo que se sentía repetitivo, y no la falta de contenido.
+	 * Eran dos de puesto y una de la vida. Alan pidió bajar a dos ocasiones por
+	 * temporada en total —"2 para el jugador, 2 para el repre"—, así que ahora
+	 * queda una de cada. La de puesto sale sorteada contra las que no salieron
+	 * la vez anterior: antes se copiaba la lista a un array llamado `mezcla` y
+	 * se le hacía `slice(0, 2)` sin mezclar nada, así que salían siempre las
+	 * mismas dieciocho temporadas seguidas. Medido, un delantero veía siete
+	 * momentos distintos en toda su carrera y dos de ellos eran el 50% del
+	 * total. Era exactamente eso lo que se sentía repetitivo, y no la falta de
+	 * contenido.
 	 */
 	const elegidas: Plantilla[] = [];
 	const disponibles = [...propias];

@@ -116,8 +116,8 @@
       "numero": 15,
       "area": "Creación",
       "pedido": "¿Para qué vas a jugar?: ver si lo dejamos",
-      "estado": "Pendiente de decisión",
-      "observaciones": "Lo dejo como está hasta que decidas. Es el sueño de carrera de cada rol.",
+      "estado": "Confirmado · sin cambios",
+      "observaciones": "Alan decidió dejarlo como está: sigue siendo la decisión de la primera pretemporada.",
       "prioridad": null
     },
     {
@@ -188,8 +188,8 @@
       "numero": 24,
       "area": "Momentos",
       "pedido": "Ver si dejamos 1, 2 o 3 momentos por año",
-      "estado": "Pendiente de decisión",
-      "observaciones": "Hoy son 3 del futbolista y 2 del repre.",
+      "estado": "Implementado",
+      "observaciones": "Quedaron en 2 por temporada para cada rol: el futbolista bajó de 3 a 2 (1 de puesto + 1 de la vida, siempre), el representante ya estaba en 2 (rotando familia). No se tocó lo del mercado, que sigue en 1 para cada uno.",
       "prioridad": null
     },
     {

@@ -76,11 +76,12 @@ describe('tirar la rueda', () => {
 		expect(segunda).toEqual(primera);
 	});
 
-	it('se juegan en orden: no se puede saltar al tercero', () => {
+	it('no se puede tirar un índice que no existe', () => {
 		const { futbolista } = enLaTemporada();
-		const cuales = vistaPara(db, futbolista)!.opciones.ocasiones!;
 
-		expect(() => tirarOcasion(db, futbolista, 2, cuales[2].opciones[0].id)).toThrow(ErrorDePartida);
+		// Con dos ocasiones por temporada los índices válidos son 0 y 1: el 2 no
+		// existe, y el punto es que salte igual, no que haya una tercera de verdad.
+		expect(() => tirarOcasion(db, futbolista, 2, 'cualquier-cosa')).toThrow(ErrorDePartida);
 	});
 
 	it('la tira el que juega, no el representante', () => {
