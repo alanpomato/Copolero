@@ -55,22 +55,18 @@ function loQueLePasa(e: Estado, deQuien: 'futbolista' | 'representante'): Record
 const PUESTOS = ['centrodelantero', 'cinco', 'central', 'arquero'];
 
 describe('la variedad de una carrera', () => {
-	it('a un futbolista le pasan al menos dieciséis cosas distintas', () => {
+	it('a un futbolista le pasan al menos veinticuatro cosas distintas', () => {
 		/*
 		 * Eran diez. Alan pidió la batería —"hay que empezar a poner momentos más
 		 * icónicos", "deberíamos tener 30 momentos y alternar"— y con treinta y
-		 * tres plantillas por puesto una carrera de dieciocho temporadas veía
-		 * veintiocho con tres ocasiones por temporada.
-		 *
-		 * Después Alan pidió bajar a dos momentos por año en total —uno en la
-		 * temporada, uno en el mercado, en vez de tres y uno— para que cada uno
-		 * pese más. Con menos tiradas por año la variedad absoluta baja con ellas
-		 * —medido, 17 de 36—, así que el piso baja también, pero se mantiene bien
-		 * por encima de "las mismas dos siempre", que es lo que este test canta.
+		 * tres plantillas por puesto una carrera de dieciocho temporadas ve
+		 * veintiocho. El piso queda en veinticuatro para que haya aire, pero
+		 * bien por encima de lo que había: si alguien vuelve a poner un `slice`
+		 * sin mezclar, esto lo canta.
 		 */
 		for (const puesto of PUESTOS) {
 			const cuenta = loQueLePasa(unaCarrera(puesto), 'futbolista');
-			expect(Object.keys(cuenta).length, puesto).toBeGreaterThanOrEqual(16);
+			expect(Object.keys(cuenta).length, puesto).toBeGreaterThanOrEqual(24);
 		}
 	});
 
@@ -101,12 +97,7 @@ describe('la variedad de una carrera', () => {
 		 * Eran cinco momentos en la temporada y tres en el mercado, y Alan lo
 		 * midió jugando: "repre → tiene 2 momentos, deberíamos tener 20 momentos
 		 * y alternar". Ahora son veinte en la temporada, repartidos en ocho
-		 * familias.
-		 *
-		 * Después Alan pidió bajar a dos momentos por año en total —uno en la
-		 * temporada, uno en el mercado—, así que hay menos tiradas por carrera y
-		 * el que más se repite pesa más del total: medido, 0.139. El piso de
-		 * variedad —al menos catorce cosas distintas— no se movió.
+		 * familias, y una carrera de dieciocho temporadas ve más de la mitad.
 		 */
 		const e = unaCarrera('centrodelantero');
 		e.representante.atributos.scouting = 60;
@@ -116,37 +107,31 @@ describe('la variedad de una carrera', () => {
 		expect(Object.keys(cuenta).length).toBeGreaterThanOrEqual(14);
 		const total = Object.values(cuenta).reduce((a, b) => a + b, 0);
 		const veces = Object.values(cuenta).sort((a, b) => b - a)[0];
-		expect(veces / total).toBeLessThan(0.16);
+		expect(veces / total).toBeLessThan(0.12);
 	});
 
-	it('al representante no le toca la misma familia dos años seguidos', () => {
-		/*
-		 * La otra mitad de lo que pidió Alan: "agregar de sociales, familiares,
-		 * turbios, etc.". Tener veinte no sirve si te llaman de lo mismo todos
-		 * los años.
-		 *
-		 * Con dos momentos por año en la temporada esto comparaba que los dos del
-		 * mismo año fueran de familias distintas. Bajado a uno solo por año —Alan
-		 * pidió dos por año en total, uno acá y uno en el mercado— ya no hay dos
-		 * en el mismo año para comparar entre sí: lo que queda, y sigue siendo lo
-		 * que importa, es que la familia rote de un año al siguiente.
-		 */
+	it('al representante no le tocan dos momentos del mismo palo el mismo año', () => {
+		// La otra mitad de lo que pidió Alan: "agregar de sociales, familiares,
+		// turbios, etc.". Tener veinte no sirve si los dos del año son turbios.
 		const e = unaCarrera('centrodelantero');
 		e.representante.atributos.scouting = 60;
 		e.representante.representadosExtra = 3;
 		e.fase = 2;
 
-		const vistas: string[] = [];
+		const vistas: string[][] = [];
 		for (let t = 1; t <= 18; t++) {
 			e.temporada = t;
 			const familias = momentosDelRepresentante(e, 'var').map((m) => m.familia!);
-			expect(familias.length, `temporada ${t}`).toBe(1);
-			vistas.push(familias[0]);
+			expect(familias.length, `temporada ${t}`).toBe(2);
+			expect(new Set(familias).size, `temporada ${t}: ${familias.join(' y ')}`).toBe(2);
+			vistas.push(familias);
 		}
 
-		// Y de un año al otro no se repite: la rotación avanza.
+		// Y de un año al otro tampoco se repiten: la rotación avanza de a dos.
 		for (let i = 1; i < vistas.length; i++) {
-			expect(vistas[i], `temporada ${i + 1}`).not.toBe(vistas[i - 1]);
+			for (const f of vistas[i]) {
+				expect(vistas[i - 1], `temporada ${i + 1}: ${f}`).not.toContain(f);
+			}
 		}
 	});
 
@@ -160,30 +145,19 @@ describe('la variedad de una carrera', () => {
 		 * Tener veintidós momentos fuera de la cancha no sirve de nada si el
 		 * sorteo te da prensa tres años seguidos. Por eso la familia rota y lo
 		 * único que se sortea es cuál de esa familia.
-		 *
-		 * Con un solo momento por temporada (Alan pidió bajar a dos por año en
-		 * total) ya no toca "de la vida" todos los años: le toca a uno de cada
-		 * tres, igual que antes de este cambio, solo que repartido entre
-		 * temporadas en vez de siempre presente. Por eso acá se simula el triple
-		 * de años —para juntar tantas veces "de la vida" como antes— y se
-		 * compara solo entre esas apariciones, no entre temporadas consecutivas
-		 * a secas.
 		 */
 		const e = unaCarrera('centrodelantero');
 		const familias: string[] = [];
-		for (let t = 1; t <= 54; t++) {
+		for (let t = 1; t <= 18; t++) {
 			e.temporada = t;
 			e.fase = 2;
 			const deLaVida = ocasionesDe(e, 'var').find((o) => o.familia !== undefined);
-			if (deLaVida) familias.push(deLaVida.familia!);
+			expect(deLaVida, `temporada ${t}`).toBeDefined();
+			familias.push(deLaVida!.familia!);
 		}
 
-		// Dieciocho apariciones de "de la vida" en cincuenta y cuatro años, la
-		// misma proporción de siempre.
-		expect(familias.length).toBeGreaterThanOrEqual(15);
-
 		for (let i = 1; i < familias.length; i++) {
-			expect(familias[i], `aparición ${i + 1}`).not.toBe(familias[i - 1]);
+			expect(familias[i], `temporada ${i + 1}`).not.toBe(familias[i - 1]);
 		}
 		// Y las ocho familias aparecen: ninguna quedó escrita y sin usar.
 		expect(new Set(familias).size).toBeGreaterThanOrEqual(8);

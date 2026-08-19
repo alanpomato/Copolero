@@ -44,7 +44,7 @@ export type {
  * en `ocasiones-vida.ts`, que es la mitad que más creció.
  */
 
-export const OCASIONES_POR_TEMPORADA = 1;
+export const OCASIONES_POR_TEMPORADA = 3;
 
 /**
  * Y una en el mercado.
@@ -1327,26 +1327,7 @@ export function ocasionesDe(estado: Estado, semilla: string): Ocasion[] {
 	 * temporadas seguidas. Medido, un delantero veía siete momentos distintos en
 	 * toda su carrera y dos de ellos eran el 50% del total. Era exactamente eso
 	 * lo que se sentía repetitivo, y no la falta de contenido.
-	 *
-	 * Alan pidió bajar a dos momentos por año en total (uno acá, uno en el
-	 * mercado): con uno solo no entran las dos cosas en la misma temporada, así
-	 * que se turnan. La proporción es la misma de siempre —dos de cada tres años
-	 * es pelota, uno de cada tres es la vida— solo que ahora repartida entre
-	 * temporadas en vez de adentro de una sola.
 	 */
-	if (OCASIONES_POR_TEMPORADA === 1) {
-		const corrimiento = rngPara(semilla, {
-			temporada: 0,
-			fase: 0,
-			clave: 'ocasion-tipo'
-		}).entero(0, 2);
-		const tocaDeLaVida = (estado.temporada - 1 + corrimiento) % 3 === 0;
-		const unica = tocaDeLaVida
-			? elDeLaVida(estado, semilla, escenario(estado, 0, semilla))
-			: rng.elegir(propias);
-		return [unica].map((plantilla) => plantilla(futbolista.atributos, escenario(estado, 0, semilla)));
-	}
-
 	const elegidas: Plantilla[] = [];
 	const disponibles = [...propias];
 	while (elegidas.length < OCASIONES_POR_TEMPORADA - 1 && disponibles.length > 0) {
