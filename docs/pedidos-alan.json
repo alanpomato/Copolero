@@ -325,7 +325,7 @@
       "area": "Pretemporada",
       "pedido": "Que las tres primeras preguntas de la carrera vayan una por vez: primero clase de jugador, recién contestada esa se abre para qué vas a jugar, y recién contestada esa se abre cómo entrenás",
       "estado": "Implementado",
-      "observaciones": "Las tres se plegaron al mismo patrón que ya usaba el resto de la fase (un Paso a la vez, con la elegida arriba). Rasgo y sueño ya arrancaban con un valor por defecto para que cerrar sin tocar nada tuviera un resultado sensato, así que \"contestada\" no podía salir de ese valor: sale de tocar la tarjeta —cualquiera, hasta la que ya estaba marcada—, que es lo único que distingue \"decidí esto\" de \"no lo miré todavía\".",
+      "observaciones": "Las tres se plegaron al mismo patrón que ya usaba el resto de la fase (un Paso a la vez, con la elegida arriba). La primera versión abría la siguiente en cuanto se tocaba cualquier tarjeta, y no le gustó cómo se sentía de interactivo; ahora cada pregunta tiene su propio botón \"Continuar\" al pie: se puede cambiar de tarjeta las veces que haga falta, y recién al apretarlo se abre la siguiente.",
       "prioridad": null
     }
   ]

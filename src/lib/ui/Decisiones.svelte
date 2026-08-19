@@ -65,17 +65,14 @@
 	 * otra, no las tres juntas.
 	 *
 	 * "Que aparezca 1ro la de clase, una vez contestada se abre la 2da, y una
-	 * vez contestada se abre la de cómo vas a entrenar", pidió Alan. `rasgo` y
-	 * `sueno` arrancan con un valor por defecto —el efecto de acá abajo se lo
-	 * pone sin que el jugador toque nada, para que cerrar la fase sin decidir
-	 * nada tenga un resultado sensato— así que ese valor por sí solo no sirve
-	 * para saber si la pregunta ya se "contestó" de verdad, y tampoco alcanza
-	 * con escuchar el evento `change` del radio: si lo que se toca es la
-	 * primera tarjeta —la que ya viene marcada por defecto— el valor no
-	 * cambia y el navegador no dispara `change`. Lo que marca la respuesta es
-	 * el `click`, en el bloque `.respuestas` entero: pasa siempre que se toca
-	 * una tarjeta, cambie o no cambie el valor, y nunca con la asignación del
-	 * efecto.
+	 * vez contestada se abre la de cómo vas a entrenar", pidió Alan. La primera
+	 * versión abría la siguiente en cuanto se tocaba cualquier tarjeta —hasta
+	 * la que ya venía marcada por defecto—, y no le gustó cómo se sentía: "no
+	 * me gusta como es de interactivo, me gustaría un botón para cada sección,
+	 * y ahí abre la siguiente". Ahora `rasgoElegido`/`suenoElegido` los pone un
+	 * botón "Continuar" adentro de cada `Paso`, no el elegir en sí: se puede
+	 * cambiar de tarjeta todas las veces que haga falta y la siguiente sección
+	 * no aparece hasta apretarlo.
 	 */
 	let rasgoElegido = $state(false);
 	let suenoElegido = $state(false);
@@ -467,14 +464,7 @@
 			llegan a los 36.
 		</p>
 
-		<div
-			class="respuestas"
-			role="radiogroup"
-			aria-label="¿Qué clase de jugador sos?"
-			tabindex="-1"
-			onclick={() => (rasgoElegido = true)}
-			onkeydown={() => (rasgoElegido = true)}
-		>
+		<div class="respuestas">
 			{#each opciones.rasgos as r (r.id)}
 				<Opcion
 					grupo="rasgo"
@@ -495,6 +485,12 @@
 				</Opcion>
 			{/each}
 		</div>
+
+		{#if !rasgoElegido}
+			<button type="button" class="secundario continuar" onclick={() => (rasgoElegido = true)}>
+				Continuar
+			</button>
+		{/if}
 	</Paso>
 {/if}
 
@@ -515,14 +511,7 @@
 			en todas las pantallas hasta el último día.
 		</p>
 
-		<div
-			class="respuestas"
-			role="radiogroup"
-			aria-label="¿Para qué vas a jugar?"
-			tabindex="-1"
-			onclick={() => (suenoElegido = true)}
-			onkeydown={() => (suenoElegido = true)}
-		>
+		<div class="respuestas">
 			{#each opciones.suenos as s (s.id)}
 				<Opcion
 					grupo="sueno"
@@ -539,6 +528,12 @@
 				</Opcion>
 			{/each}
 		</div>
+
+		{#if !suenoElegido}
+			<button type="button" class="secundario continuar" onclick={() => (suenoElegido = true)}>
+				Continuar
+			</button>
+		{/if}
 	</Paso>
 {/if}
 
@@ -1110,6 +1105,10 @@
 			grid-template-columns: 1fr 1fr;
 			gap: 0 0.8rem;
 		}
+	}
+	/* El botón que confirma rasgo o sueño y abre la siguiente pregunta. */
+	.continuar {
+		margin-top: 0.3rem;
 	}
 	/*
 	 * La línea del año: qué pasó, qué toca y qué falta.
