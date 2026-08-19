@@ -103,7 +103,7 @@ export type ResultadoDelMomento = {
 	efecto: EfectoDelRepresentante;
 };
 
-export const MOMENTOS_POR_TEMPORADA = 2;
+export const MOMENTOS_POR_TEMPORADA = 1;
 
 /**
  * Y uno en el mercado.
@@ -1633,14 +1633,16 @@ export function momentosDelRepresentante(
 	}
 
 	/*
-	 * En la temporada, dos y de familias distintas.
+	 * En la temporada, uno, rotando de familia.
 	 *
 	 * Eran cinco momentos sorteados de una bolsa y se notaba: dos años seguidos
 	 * te llamaba el mismo dirigente, o te llegaba dos veces la misma foto del
 	 * boliche. Ahora son veinte repartidos en ocho familias —cartera, club,
 	 * colega, prensa, familiar, social, turbio y plata— y lo que rota es la
-	 * familia: dos por año, distintas entre sí, y avanzando de a dos para que el
-	 * año que viene tampoco toquen las mismas.
+	 * familia: una por año, avanzando de a una para que las ocho se turnen
+	 * antes de repetir. Alan pidió bajar a dos momentos por año en total —uno
+	 * acá, uno en el mercado— para que cada uno pese más y no se sienta a
+	 * "elegir de una lista con probabilidad" tres veces seguidas.
 	 */
 	const e0 = escenario(estado, 0, semilla);
 	const fichas = EN_LA_TEMPORADA.map((plantilla) => {

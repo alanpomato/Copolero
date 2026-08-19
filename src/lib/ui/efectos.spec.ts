@@ -189,7 +189,10 @@ describe('repartir las escenas de un momento', () => {
 		);
 
 		let mirados = 0;
-		for (let i = 0; i < 30 && !e.carreraTerminada; i++) {
+		// Con un solo momento por temporada (Alan pidió bajar a dos por año en
+		// total), cada visita a la fase 2 deja uno solo en vez de tres: hace
+		// falta recorrer más años para juntar la misma muestra de siempre.
+		for (let i = 0; i < 90 && !e.carreraTerminada; i++) {
 			e = resolverFase(e, NADA, 'escenas').estado;
 			if (e.fase !== 2) continue;
 			for (const ocasion of ocasionesDe(e, 'escenas')) {
@@ -200,6 +203,6 @@ describe('repartir las escenas de un momento', () => {
 				);
 			}
 		}
-		expect(mirados).toBeGreaterThan(10);
+		expect(mirados).toBeGreaterThan(15);
 	});
 });

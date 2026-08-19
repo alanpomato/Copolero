@@ -78,9 +78,10 @@ describe('tirar la rueda', () => {
 
 	it('se juegan en orden: no se puede saltar al tercero', () => {
 		const { futbolista } = enLaTemporada();
-		const cuales = vistaPara(db, futbolista)!.opciones.ocasiones!;
 
-		expect(() => tirarOcasion(db, futbolista, 2, cuales[2].opciones[0].id)).toThrow(ErrorDePartida);
+		// El índice ya no existe con un solo momento por temporada: el punto es
+		// que salte por índice fuera de rango, no que haya un tercero de verdad.
+		expect(() => tirarOcasion(db, futbolista, 2, 'cualquier-cosa')).toThrow(ErrorDePartida);
 	});
 
 	it('la tira el que juega, no el representante', () => {
@@ -113,17 +114,18 @@ describe('tirar la rueda', () => {
 		expect(vistaPara(db, futbolista)!.tiradas.length).toBe(antes);
 	});
 
-	it('la vista las devuelve en orden, para poder dibujarlas al recargar', () => {
+	it('la vista la devuelve con su índice, para poder dibujarla al recargar', () => {
+		// Con un solo momento por fase (Alan pidió bajar a dos por año) no hay
+		// dos índices para ordenar: lo que queda por probar es que el índice se
+		// escriba bien y que aparezca.
 		const { futbolista } = enLaTemporada();
 		const cuales = vistaPara(db, futbolista)!.opciones.ocasiones!;
 
 		tirarOcasion(db, futbolista, 0, cuales[0].opciones[0].id);
-		tirarOcasion(db, futbolista, 1, cuales[1].opciones[0].id);
 
 		const vistas = vistaPara(db, futbolista)!.tiradas;
-		expect(vistas.map((t) => t.indice)).toEqual([0, 1]);
-		// Y al otro no le aparecen como suyas: la rueda no es de él.
-		expect(vistaPara(db, futbolista)!.tiradas.length).toBe(2);
+		expect(vistas.map((t) => t.indice)).toEqual([0]);
+		expect(vistaPara(db, futbolista)!.tiradas.length).toBe(1);
 	});
 });
 
