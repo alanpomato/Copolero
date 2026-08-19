@@ -325,6 +325,24 @@ export function tocaOfrecerRenegociarTemprano(estado: Estado): boolean {
 }
 
 /**
+ * El historial, con la temporada que acaba de cerrar si todavía no está.
+ *
+ * `anotarEnElHistorial` recién escribe la fila del año en la fase 3, cuando
+ * resuelve el futbolista —el segundo tiempo del mercado—. El representante
+ * filtra antes, en el primer tiempo, así que si esta cuenta mirara solo
+ * `estado.historial` le faltaría siempre el año que se acaba de jugar: un
+ * jugador con tres temporadas de verdad en el club aparecía con dos. Acá se
+ * suma `ultimaTemporada` a mano, y solo si el historial todavía no la tiene.
+ */
+function historialConLaUltima(estado: Estado): { clubId: string; nota: number }[] {
+	const base = estado.historial;
+	const ultima = estado.ultimaTemporada;
+	if (!ultima) return base;
+	const yaEsta = base.length > 0 && base[base.length - 1].temporada === ultima.temporada;
+	return yaEsta ? base : [...base, { clubId: ultima.clubId, nota: ultima.nota }];
+}
+
+/**
  * Cuántas temporadas seguidas lleva jugando en el club de hoy.
  *
  * Se cuenta desde el final del historial hacia atrás, mientras el club siga
@@ -333,9 +351,10 @@ export function tocaOfrecerRenegociarTemprano(estado: Estado): boolean {
  */
 export function anosEnElClub(estado: Estado): number {
 	const clubId = estado.futbolista.contrato.clubId;
+	const historial = historialConLaUltima(estado);
 	let anos = 0;
-	for (let i = estado.historial.length - 1; i >= 0; i--) {
-		if (estado.historial[i].clubId !== clubId) break;
+	for (let i = historial.length - 1; i >= 0; i--) {
+		if (historial[i].clubId !== clubId) break;
 		anos++;
 	}
 	return anos;
@@ -352,7 +371,7 @@ const TEMPORADAS_DE_RENDIMIENTO_RECIENTE = 3;
 
 export function rendimientoRecienteEnElClub(estado: Estado): number {
 	const clubId = estado.futbolista.contrato.clubId;
-	const propias = estado.historial.filter((h) => h.clubId === clubId);
+	const propias = historialConLaUltima(estado).filter((h) => h.clubId === clubId);
 	const recientes = propias.slice(-TEMPORADAS_DE_RENDIMIENTO_RECIENTE);
 	if (recientes.length === 0) return 6;
 	return recientes.reduce((suma, h) => suma + h.nota, 0) / recientes.length;

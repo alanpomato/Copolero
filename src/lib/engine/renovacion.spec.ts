@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { estadoInicial } from './estado';
 import { resolverFase } from './fases';
-import { enLaEleccion, unaTemporada } from './probar';
+import { enLaEleccion, hastaLaFase, unaTemporada } from './probar';
 import { ofertasPara } from './pases';
 import { opcionesDeFase } from './pantalla';
 import {
@@ -348,6 +348,49 @@ describe('renegociar antes de tiempo, como acción del repre en el mercado', () 
 		expect(anosEnElClub(e)).toBe(0);
 	});
 
+	/*
+	 * El bug que encontré jugando: el representante filtra las cartas del
+	 * mercado ANTES de que `anotarEnElHistorial` escriba la fila del año que
+	 * se acaba de jugar —eso pasa recién en el segundo tiempo, cuando el
+	 * futbolista resuelve el pase—. Contra `estado.historial` a secas, un
+	 * jugador con una temporada de verdad en el club aparecía en la tarjeta de
+	 * "Renegociar" con 0 años ahí. `ultimaTemporada` es la fila que todavía no
+	 * se escribió, y hay que sumarla a mano.
+	 */
+	function unResumen(clubId: string, nota: number, temporada = 1) {
+		return {
+			temporada,
+			clubId,
+			partidos: 30,
+			goles: 5,
+			asistencias: 5,
+			minutos: 2500,
+			puesto: 5,
+			equipos: 20,
+			nota,
+			lesionado: false,
+			campeon: false
+		};
+	}
+
+	it('en el primer tiempo del mercado, cuenta la temporada que se acaba de jugar aunque el historial no la tenga todavía', () => {
+		const e = unJugador('ar-huracan');
+		e.historial = [unaFila('ar-huracan', 7)];
+		e.ultimaTemporada = unResumen('ar-huracan', 8, 2);
+		e.futbolista.contrato.temporadasRestantes = 3;
+
+		// Sin la fix, esto daba 1 (solo lo que ya estaba escrito en el historial).
+		expect(anosEnElClub(e)).toBe(2);
+	});
+
+	it('no la cuenta dos veces si el historial ya la tiene escrita', () => {
+		const e = unJugador('ar-huracan');
+		e.historial = [unaFila('ar-huracan', 7), { ...unaFila('ar-huracan', 8), temporada: 2 }];
+		e.ultimaTemporada = unResumen('ar-huracan', 8, 2);
+
+		expect(anosEnElClub(e)).toBe(2);
+	});
+
 	it('el rendimiento reciente mira la nota de verdad, no la media de hoy', () => {
 		const e = unJugador('ar-huracan');
 		e.historial = [
@@ -491,5 +534,25 @@ describe('renegociar antes de tiempo, como acción del repre en el mercado', () 
 		// No hace falta que salga bien para que el mercado siga funcionando.
 		expect(despues.fase).toBe(3);
 		expect(despues.futbolista.contrato.salarioMensual).toBeGreaterThanOrEqual(antes);
+	});
+
+	/*
+	 * El mismo bug de arriba, pero jugado de verdad en vez de armado a mano:
+	 * una temporada entera, con `unaTemporada`, hasta llegar al primer tiempo
+	 * del mercado —donde el representante ve la tarjeta de "Renegociar"—. Si
+	 * `anosEnElClub` mirara solo `estado.historial`, acá daría 0 después de
+	 * jugar una temporada entera en el club, que es exactamente lo que se vio
+	 * jugando.
+	 */
+	it('la tarjeta del mercado ya cuenta la temporada recién jugada, no la anterior', () => {
+		let e = unJugador();
+		e.futbolista.contrato.temporadasRestantes = 5;
+		e = hastaLaFase(e, 3); // fase 1 y fase 2, con las decisiones por defecto.
+
+		expect(e.fase).toBe(3);
+		expect(e.historial).toEqual([]); // Todavía no se escribió: recién en el segundo tiempo.
+
+		const suyas = opcionesDeFase(e, 'representante', 'test');
+		expect(suyas.renegociarTemprano?.anosEnElClub).toBe(1);
 	});
 });
