@@ -5,6 +5,7 @@ import { temporadas, unaTemporada } from './probar';
 import {
 	SIN_TRATO,
 	TRATOS,
+	chanceDeCerrarLaBrecha,
 	resolverNegociacion,
 	tocaRenegociar,
 	tratosQuePuedePedir
@@ -48,7 +49,7 @@ describe('el contrato entre los dos', () => {
 
 	it('hay trato si el representante pide dentro del techo', () => {
 		const estado = unaPartida();
-		const r = resolverNegociacion(estado, 'fuerte', 'estandar');
+		const r = resolverNegociacion(estado, 'mesa', 'fuerte', 'estandar');
 
 		expect(r.hubo).toBe(true);
 		// Firman al número que pidió el representante, no al techo.
@@ -56,20 +57,65 @@ describe('el contrato entre los dos', () => {
 		expect(r.contrato.pctTransferencia).toBe(6);
 	});
 
-	it('no hay trato si se pasa del techo', () => {
-		const estado = unaPartida();
-		const r = resolverNegociacion(estado, 'minimo', 'socios');
+	/*
+	 * El tira y afloje: Alan lo pidió mirando la mesa vieja —"la mesa del
+	 * contrato entre ustedes dos es medio aburrida"— porque pedido y techo eran
+	 * el mismo número de la misma lista, y si no coincidían no había nada que
+	 * hacer. Ahora pasarse del techo no corta la charla: hay una chance de
+	 * cerrar en el medio.
+	 */
+	describe('el tira y afloje, cuando el pedido se pasa del techo', () => {
+		it('puede cerrar en un escalón intermedio y no en lo que pidió ni en lo que ofrecía', () => {
+			const estado = unaPartida();
+			estado.representante.atributos.negociacion = 70;
+			estado.representante.prestigio = 60;
+			estado.confianza = 90;
 
-		expect(r.hubo).toBe(false);
-		// El contrato viejo se estira una temporada.
-		expect(r.contrato.pctSalario).toBe(estado.contratoRepresentacion.pctSalario);
-		expect(r.contrato.duracionTemporadas).toBe(1);
-		expect(r.lineas[0].texto).toContain('No se pusieron de acuerdo');
+			// Con estas condiciones, esta semilla cierra: pidió "socios" (el más
+			// caro), ofrecía "mínimo" (el más barato), y el acuerdo queda en
+			// "estándar" —un escalón arriba del techo, no el número de ninguno de
+			// los dos—.
+			const r = resolverNegociacion(estado, 's2', 'minimo', 'socios');
+
+			expect(r.hubo).toBe(true);
+			expect(r.contrato.pctSalario).toBe(5); // "estándar"
+			expect(r.lineas[0].texto).toContain('Tira y afloje');
+		});
+
+		it('si ni así alcanza, no hay trato y el contrato se estira', () => {
+			const estado = unaPartida();
+			const r = resolverNegociacion(estado, 's1', 'minimo', 'fuerte');
+
+			expect(r.hubo).toBe(false);
+			expect(r.contrato.pctSalario).toBe(estado.contratoRepresentacion.pctSalario);
+			expect(r.contrato.duracionTemporadas).toBe(1);
+			expect(r.lineas[0].texto).toContain('No se pusieron de acuerdo');
+		});
+
+		it('cuanto más lejos pide, más difícil cerrar la brecha', () => {
+			const estado = unaPartida();
+			const uno = chanceDeCerrarLaBrecha(estado, 1);
+			const dos = chanceDeCerrarLaBrecha(estado, 2);
+			const tres = chanceDeCerrarLaBrecha(estado, 3);
+
+			expect(uno).toBeGreaterThan(dos);
+			expect(dos).toBeGreaterThan(tres);
+		});
+
+		it('un representante que negocia mejor cierra brechas más grandes', () => {
+			const flojo = unaPartida();
+			const capo = unaPartida();
+			capo.representante.atributos.negociacion = 90;
+			capo.representante.prestigio = 90;
+			capo.confianza = 95;
+
+			expect(chanceDeCerrarLaBrecha(capo, 2)).toBeGreaterThan(chanceDeCerrarLaBrecha(flojo, 2));
+		});
 	});
 
 	it('el futbolista puede negarse a firmar', () => {
 		const estado = unaPartida();
-		const r = resolverNegociacion(estado, SIN_TRATO, 'estandar');
+		const r = resolverNegociacion(estado, 'mesa', SIN_TRATO, 'estandar');
 
 		expect(r.hubo).toBe(false);
 		expect(r.lineas[0].texto).toContain('no quiso firmar');

@@ -195,11 +195,13 @@ export function resolverFase(
 	// hablar. Se resuelve antes que nada porque cambia lo que el representante
 	// cobra el resto del año.
 	if (estado.fase === 1 && tocaRenegociar(estado)) {
-		const negociacion = resolverNegociacion(siguiente, delFutbolista.trato, delRepresentante.trato);
+		const negociacion = resolverNegociacion(
+			siguiente,
+			semilla,
+			delFutbolista.trato,
+			delRepresentante.trato
+		);
 		siguiente.contratoRepresentacion = negociacion.contrato;
-		if (!negociacion.hubo) {
-			siguiente.confianza = acotar(siguiente.confianza - 6, 0, 100);
-		}
 		for (const linea of negociacion.lineas) {
 			log.push({ tipo: 'representacion', visiblePara: linea.visiblePara, texto: linea.texto });
 		}

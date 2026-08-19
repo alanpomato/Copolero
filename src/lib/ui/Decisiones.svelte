@@ -579,11 +579,14 @@
 		<p class="sutil" style="margin:0 0 1rem">
 			{#if rol === 'futbolista'}
 				Elegí <strong>hasta dónde estás dispuesto a llegar</strong>. Si él pide menos o lo mismo,
-				hay trato al número que pidió. Si pide más, no hay acuerdo y siguen con lo de antes un año
-				más, con la relación golpeada.
+				hay trato al número que pidió. Si pide más, no se corta ahí solo: es un tira y afloje, y
+				puede cerrar un escalón arriba de lo que ofreciste. Si ni así, siguen con lo de antes un
+				año más, con la relación golpeada.
 			{:else}
 				Elegí <strong>cuánto pedís</strong>. Si él llega hasta ahí o más, firman a tu número. Si te
-				pasás, no hay acuerdo. Lo que podés pedir depende de tu prestigio y tu negociación.
+				pasás, hay una chance de cerrar en un escalón intermedio —cuanto más lejos pidas, más
+				difícil— antes de que se corte del todo. Lo que podés pedir depende de tu prestigio y tu
+				negociación.
 			{/if}
 		</p>
 

@@ -260,8 +260,8 @@
       "numero": 33,
       "area": "Contrato",
       "pedido": "La mesa del contrato entre ustedes dos es medio aburrida",
-      "estado": "Pendiente de charla",
-      "observaciones": "Anotado como pendiente de conversación, no de código. Hoy es elegir un número de una lista: no hay tira y afloje, no hay minijuego, y no juegan las stats de ninguno de los dos.",
+      "estado": "Implementado",
+      "observaciones": "Ya no es elegir el mismo número de la misma lista de 4 y compararlo por índice: si el pedido queda por encima del techo, ahora hay un tira y afloje —una chance de cerrar en un escalón intermedio, ninguno de los dos se sale con la suya entera— en vez de cortarse ahí. La chance depende de cuánto se pidió de más y de negociación, prestigio y confianza del representante.",
       "prioridad": null
     },
     {

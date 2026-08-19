@@ -1,3 +1,4 @@
+import { rngPara } from './rng';
 import { media } from './estado';
 import type { ContratoRepresentacion, Estado } from './tipos';
 
@@ -9,14 +10,23 @@ import type { ContratoRepresentacion, Estado } from './tipos';
  * mejorarlo nunca. Eso dejaba su rol a mitad de camino, porque el prestigio y
  * la plata le llegaban solos.
  *
- * Funciona con la misma regla que el pase, que es la regla del juego: **los dos
- * eligen y solo hay trato si eligen lo mismo**. El representante pide, el
- * futbolista acepta hasta dónde está dispuesto, y si no coinciden no hay
- * contrato nuevo. No hay forma de que uno le imponga el número al otro.
+ * Sigue funcionando con la misma regla del pase, que es la regla del juego: los
+ * dos eligen, sin verse. El representante pide, el futbolista dice hasta dónde
+ * llega. Lo que cambió es qué pasa cuando no coinciden.
  *
- * Lo que hace que no sea una pelea es que al futbolista le conviene tener un
- * representante caro: el que cobra más se mueve más, y el fijo del
- * representante sale de su prestigio, no del bolsillo del jugador.
+ * Alan lo dijo mirándola: "la mesa del contrato entre ustedes dos es medio
+ * aburrida". Tenía razón, y el motivo era concreto: pedido y techo eran el
+ * mismo número de la misma lista de cuatro, comparado por índice. Si el pedido
+ * quedaba un escalón arriba, no había nada que hacer —no discutían, no cedían
+ * nada, la mesa se levantaba sola—. Elegir un número de una lista no es
+ * negociar.
+ *
+ * Ahora, si el pedido queda por encima del techo, no se corta ahí: hay una
+ * chance de que el tira y afloje cierre igual, un escalón más arriba de lo que
+ * el futbolista ofrecía —ninguno de los dos se sale con la suya entera—, y esa
+ * chance depende de cuánto pidió de más y de la negociación, el prestigio y la
+ * confianza del representante. Pedir lejos sigue siendo una apuesta; pedir
+ * cerca del techo del otro ahora tiene premio.
  */
 
 export type Trato = {
@@ -140,49 +150,142 @@ export type ResultadoNegociacion = {
 	lineas: { visiblePara: 'ambos' | 'futbolista' | 'representante'; texto: string }[];
 };
 
+/** Los bordes de esta chance en particular: pedir de más nunca es gratis, pero tampoco imposible. */
+export const CHANCE_MINIMA_TIRA_Y_AFLOJA = 4;
+export const CHANCE_MAXIMA_TIRA_Y_AFLOJA = 88;
+
+/**
+ * Qué chance hay de cerrar la brecha entre el techo y el pedido.
+ *
+ * `brecha` es en escalones de la lista de tratos: 1 si pidió un escalón más de
+ * lo que el otro ofrecía, 2 si pidió dos, etc. Cuanto más lejos, más difícil
+ * —una brecha de tres pesa el triple que una de uno—, y lo que la achica es la
+ * negociación, el prestigio y la relación entre los dos: llegar a esta mesa con
+ * la confianza rota hace que cualquier pedido de más se sienta como una
+ * provocación.
+ */
+export function chanceDeCerrarLaBrecha(estado: Estado, brecha: number): number {
+	const a = estado.representante.atributos;
+	const bruto =
+		20 -
+		brecha * 18 +
+		(a.negociacion - 40) * 0.5 +
+		(estado.representante.prestigio - 40) * 0.3 +
+		(estado.confianza - 50) * 0.3;
+
+	const chance = 100 / (1 + Math.exp(-bruto / 16));
+	return Math.max(
+		CHANCE_MINIMA_TIRA_Y_AFLOJA,
+		Math.min(CHANCE_MAXIMA_TIRA_Y_AFLOJA, Math.round(chance))
+	);
+}
+
 /**
  * Resuelve la negociación con lo que eligieron los dos.
  *
- * El futbolista elige el techo al que está dispuesto a llegar; el representante,
- * lo que pide. Si el pedido entra dentro del techo, hay trato al número que
- * pidió el representante —no al techo—, porque quien pone el precio es el que
- * cobra. Si se pasó, no hay trato: el contrato viejo se estira una temporada
- * más y la relación se enfría.
+ * El futbolista elige el techo al que está dispuesto a llegar; el
+ * representante, lo que pide, sin verse el uno al otro. Si el pedido entra
+ * dentro del techo, hay trato al número que pidió —quien pone el precio es el
+ * que cobra—.
+ *
+ * Si se pasó, ya no se corta ahí solo. Hay un tira y afloje: una chance de
+ * cerrar en un escalón más arriba de lo que el futbolista ofrecía —ninguno de
+ * los dos se sale con la suya entera, que es lo que de verdad se siente cuando
+ * dos personas ceden—. Si ni así, no hay trato: el contrato viejo se estira una
+ * temporada más y la relación se enfría, más cuanto más lejos se pidió.
  */
 export function resolverNegociacion(
 	estado: Estado,
+	semilla: string,
 	eligeFutbolista: string | undefined,
 	eligeRepresentante: string | undefined
 ): ResultadoNegociacion {
 	const techo = trato(eligeFutbolista ?? 'estandar');
 	const pedido = trato(eligeRepresentante ?? 'estandar');
 
+	/** La confianza se resiente distinto según qué falló: acá se mutan los dos juntos. */
+	const conConfianzaPerdida = (resultado: ResultadoNegociacion, cuanto: number): ResultadoNegociacion => {
+		estado.confianza = Math.max(0, Math.min(100, estado.confianza - cuanto));
+		return resultado;
+	};
+
 	// El futbolista puede cortar la relación, y es su derecho.
 	if (eligeFutbolista === SIN_TRATO) {
-		return {
-			hubo: false,
-			contrato: { ...estado.contratoRepresentacion, duracionTemporadas: 1 },
-			lineas: [
-				{
-					visiblePara: 'ambos',
-					texto: `${estado.futbolista.nombre} no quiso firmar de nuevo. Siguen juntos por inercia, un año más.`
-				}
-			]
-		};
+		return conConfianzaPerdida(
+			{
+				hubo: false,
+				contrato: { ...estado.contratoRepresentacion, duracionTemporadas: 1 },
+				lineas: [
+					{
+						visiblePara: 'ambos',
+						texto: `${estado.futbolista.nombre} no quiso firmar de nuevo. Siguen juntos por inercia, un año más.`
+					}
+				]
+			},
+			6
+		);
 	}
 
 	if (!techo || !pedido) {
-		return {
-			hubo: false,
-			contrato: { ...estado.contratoRepresentacion, duracionTemporadas: 1 },
-			lineas: []
-		};
+		return conConfianzaPerdida(
+			{
+				hubo: false,
+				contrato: { ...estado.contratoRepresentacion, duracionTemporadas: 1 },
+				lineas: []
+			},
+			6
+		);
 	}
 
 	const indice = (t: Trato) => TRATOS.findIndex((x) => x.id === t.id);
+	const idxTecho = indice(techo);
+	const idxPedido = indice(pedido);
+	const brecha = idxPedido - idxTecho;
 
-	if (indice(pedido) > indice(techo)) {
-		return {
+	const firmar = (acordado: Trato, texto: string): ResultadoNegociacion => ({
+		hubo: true,
+		contrato: {
+			pctSalario: acordado.pctSalario,
+			pctTransferencia: acordado.pctTransferencia,
+			duracionTemporadas: acordado.duracionTemporadas,
+			clausulaSalida: estado.contratoRepresentacion.clausulaSalida
+		},
+		lineas: [{ visiblePara: 'ambos', texto }]
+	});
+
+	if (brecha <= 0) {
+		return firmar(
+			pedido,
+			`Firmaron: ${pedido.pctSalario}% del sueldo y ${pedido.pctTransferencia}% de cada pase, ` +
+				`por ${pedido.duracionTemporadas} temporadas.`
+		);
+	}
+
+	// El tira y afloje: pidió más de lo que el otro ofrecía. No se corta acá.
+	const chance = chanceDeCerrarLaBrecha(estado, brecha);
+	const rng = rngPara(semilla, {
+		temporada: estado.temporada,
+		fase: 1,
+		clave: 'mesa-representacion'
+	});
+
+	if (rng.ocurre(chance / 100)) {
+		// Ceden los dos: un escalón más de lo que el futbolista ofrecía, no lo
+		// que el representante pedía —salvo que ya estuviera a un escalón, en
+		// cuyo caso el pedido entero es el punto medio.
+		const acordado = TRATOS[Math.min(idxTecho + 1, idxPedido)];
+		return firmar(
+			acordado,
+			`Tira y afloje: ${estado.representante.nombre} pedía ${pedido.nombre.toLowerCase()} y ` +
+				`${estado.futbolista.nombre} ofrecía ${techo.nombre.toLowerCase()}. Cerraron en el medio, en ` +
+				`${acordado.nombre.toLowerCase()}: ${acordado.pctSalario}% del sueldo y ` +
+				`${acordado.pctTransferencia}% de cada pase, por ${acordado.duracionTemporadas} temporadas.`
+		);
+	}
+
+	// Ni el tira y afloje alcanzó: cuanto más lejos pidió, más se resiente.
+	return conConfianzaPerdida(
+		{
 			hubo: false,
 			contrato: { ...estado.contratoRepresentacion, duracionTemporadas: 1 },
 			lineas: [
@@ -190,28 +293,11 @@ export function resolverNegociacion(
 					visiblePara: 'ambos',
 					texto:
 						`No se pusieron de acuerdo: ${estado.representante.nombre} pedía ${pedido.nombre.toLowerCase()} ` +
-						`y ${estado.futbolista.nombre} llegaba hasta ${techo.nombre.toLowerCase()}. ` +
-						'Siguen con lo de antes, un año más.'
+						`y ${estado.futbolista.nombre} llegaba hasta ${techo.nombre.toLowerCase()}. Se tiraron y ` +
+						'aflojaron, pero no alcanzó. Siguen con lo de antes, un año más.'
 				}
 			]
-		};
-	}
-
-	return {
-		hubo: true,
-		contrato: {
-			pctSalario: pedido.pctSalario,
-			pctTransferencia: pedido.pctTransferencia,
-			duracionTemporadas: pedido.duracionTemporadas,
-			clausulaSalida: estado.contratoRepresentacion.clausulaSalida
 		},
-		lineas: [
-			{
-				visiblePara: 'ambos',
-				texto:
-					`Firmaron: ${pedido.pctSalario}% del sueldo y ${pedido.pctTransferencia}% de cada pase, ` +
-					`por ${pedido.duracionTemporadas} temporadas.`
-			}
-		]
-	};
+		6 + (brecha - 1) * 2
+	);
 }
